@@ -1,4 +1,4 @@
-<%- include('../partials/header', { title: `Installer: ${installer.name}` }) %>
+<%- include('../partials/header', { title: 'Installer: ' + (installer.name || 'Unknown') }) %>
 
 <div class="container-fluid">
   <div class="d-flex justify-content-between align-items-center mb-4">
@@ -121,11 +121,7 @@
                       <%= job.customer.name %>
                     </a>
                   </td>
-                  <td>
-                    <%= job.installDate ? new
-                    Date(job.installDate).toLocaleDateString() : 'Not scheduled'
-                    %>
-                  </td>
+                  <td><%= job.installDate ? new Date(job.installDate).toLocaleDateString() : 'Not scheduled' %></td>
                   <td>
                     <span
                       class="badge bg-<%= job.status === 'complete' ? 'success' : job.status === 'delayed' ? 'warning' : job.status === 'delivered' ? 'info' : 'secondary' %>"
@@ -133,10 +129,7 @@
                       <%= job.status %>
                     </span>
                   </td>
-                  <td>
-                    <%= job.salesRep ? job.salesRep.name : (job.soldByOwner ?
-                    'Owner' : 'N/A') %>
-                  </td>
+                  <td><%= job.salesRep ? job.salesRep.name : (job.soldByOwner ? 'Owner' : 'N/A') %></td>
                   <td>
                     <strong>$<%= (job.totalPrice || 0).toFixed(2) %></strong>
                   </td>
@@ -205,15 +198,11 @@
                     </a>
                   </td>
                   <td>
-                    <% if (payment.job.customer) { %> <%=
-                    payment.job.customer.name %> <% } else { %> N/A <% } %>
+                    <% if (payment.job.customer) { %><%= payment.job.customer.name %><% } else { %>N/A<% } %>
                   </td>
                   <td><strong>$<%= payment.amount.toFixed(2) %></strong></td>
                   <td>
-                    <span class="badge bg-secondary">
-                      <%= payment.paymentMethod.replace('_', '
-                      ').replace(/\b\w/g, l => l.toUpperCase()) %>
-                    </span>
+                    <span class="badge bg-secondary"><%= payment.paymentMethod.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) %></span>
                   </td>
                   <td>
                     <a

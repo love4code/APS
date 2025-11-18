@@ -1,4 +1,4 @@
-<%- include('../partials/header', { title: `Sales Rep: ${salesRep.name}` }) %>
+<%- include('../partials/header', { title: 'Sales Rep: ' + (salesRep.name || 'Unknown') }) %>
 
 <div class="container-fluid">
   <div class="d-flex justify-content-between align-items-center mb-4">
@@ -205,15 +205,11 @@
                     </a>
                   </td>
                   <td>
-                    <% if (payment.job.customer) { %> <%=
-                    payment.job.customer.name %> <% } else { %> N/A <% } %>
+                    <% if (payment.job.customer) { %><%= payment.job.customer.name %><% } else { %>N/A<% } %>
                   </td>
                   <td><strong>$<%= payment.amount.toFixed(2) %></strong></td>
                   <td>
-                    <span class="badge bg-secondary">
-                      <%= payment.paymentMethod.replace('_', '
-                      ').replace(/\b\w/g, l => l.toUpperCase()) %>
-                    </span>
+                    <span class="badge bg-secondary"><%= payment.paymentMethod.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) %></span>
                   </td>
                   <td>
                     <a
