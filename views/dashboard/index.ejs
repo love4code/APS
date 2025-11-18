@@ -10,7 +10,9 @@
       class="d-flex flex-row flex-nowrap overflow-auto pb-3"
       style="gap: 1rem"
     >
-      <% if (installers && installers.length > 0) { %> <% installers.forEach(installer => { %> <% if (installer && installer._id) { %>
+      <% if (installers && installers.length > 0) { %> <%
+      installers.forEach(installer => { %> <% if (installer && installer._id) {
+      %>
       <div class="card" style="min-width: 250px">
         <div class="card-body">
           <h5 class="card-title">
@@ -57,7 +59,8 @@
       class="d-flex flex-row flex-nowrap overflow-auto pb-3"
       style="gap: 1rem"
     >
-      <% if (salesReps && salesReps.length > 0) { %> <% salesReps.forEach(rep => { %> <% if (rep && rep._id) { %>
+      <% if (salesReps && salesReps.length > 0) { %> <% salesReps.forEach(rep =>
+      { %> <% if (rep && rep._id) { %>
       <div class="card" style="min-width: 250px">
         <div class="card-body">
           <h5 class="card-title">
@@ -76,7 +79,8 @@
               <strong>Total Jobs:</strong> <%= rep.totalJobs || 0 %>
             </p>
             <p class="mb-0">
-              <strong>Sales Total:</strong> $<%= (rep.salesTotal || 0).toFixed(2) %>
+              <strong>Sales Total:</strong> $<%= (rep.salesTotal ||
+              0).toFixed(2) %>
             </p>
           </div>
           <div class="mt-2">
@@ -104,13 +108,16 @@
       class="d-flex flex-row flex-nowrap overflow-auto pb-3"
       style="gap: 1rem"
     >
-      <% if (jobs && jobs.length > 0) { %> <% jobs.forEach(job => { %> <% if (job && job._id) { %>
+      <% if (jobs && jobs.length > 0) { %> <% jobs.forEach(job => { %> <% if
+      (job && job._id) { %>
       <div class="card" style="min-width: 300px">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start mb-2">
-            <span
-              class="badge bg-<%= job.status === 'complete' ? 'success' : job.status === 'delayed' ? 'warning' : job.status === 'delivered' ? 'info' : 'secondary' %>"
-            >
+            <% let statusClass = 'secondary'; if (job.status === 'complete')
+            statusClass = 'success'; else if (job.status === 'delayed')
+            statusClass = 'warning'; else if (job.status === 'delivered')
+            statusClass = 'info'; %>
+            <span class="badge bg-<%= statusClass %>">
               <%= job.status || 'pending' %>
             </span>
             <span class="badge bg-<%= job.isPaid ? 'success' : 'danger' %>">
@@ -118,21 +125,25 @@
             </span>
           </div>
           <h5 class="card-title">
-            <%= job.customer && job.customer.name ? job.customer.name : 'Unknown Customer' %>
+            <%= job.customer && job.customer.name ? job.customer.name : 'Unknown
+            Customer' %>
           </h5>
           <p class="card-text small mb-1">
             <strong>Total:</strong> $<%= (job.totalPrice || 0).toFixed(2) %>
           </p>
           <p class="card-text small mb-1">
             <strong>Sold by:</strong>
-            <%= job.soldByOwner ? 'Owner' : (job.salesRep && job.salesRep.name ? job.salesRep.name : 'N/A') %>
+            <%= job.soldByOwner ? 'Owner' : (job.salesRep && job.salesRep.name ?
+            job.salesRep.name : 'N/A') %>
           </p>
           <p class="card-text small mb-1">
-            <strong>Installer:</strong> <%= job.installer && job.installer.name ? job.installer.name : 'Not assigned' %>
+            <strong>Installer:</strong> <%= job.installer && job.installer.name
+            ? job.installer.name : 'Not assigned' %>
           </p>
           <% if (job.installDate) { %>
           <p class="card-text small mb-2">
-            <strong>Install Date:</strong> <%= new Date(job.installDate).toLocaleDateString() %>
+            <strong>Install Date:</strong> <%= new
+            Date(job.installDate).toLocaleDateString() %>
           </p>
           <% } %>
           <a

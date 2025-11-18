@@ -122,15 +122,25 @@ exports.getDashboard = async (req, res, next) => {
     res.locals.error = res.locals.error || []
 
     try {
+      console.log('Dashboard: Rendering view with data:', {
+        installersCount: safeInstallers.length,
+        salesRepsCount: safeSalesReps.length,
+        jobsCount: safeJobs.length,
+        hasUser: !!req.user
+      })
+      
       res.render('dashboard/index', {
         title: 'Dashboard',
-        installers: safeInstallers,
-        salesReps: safeSalesReps,
-        jobs: safeJobs,
-        user: req.user || null
+        installers: safeInstallers || [],
+        salesReps: safeSalesReps || [],
+        jobs: safeJobs || [],
+        user: req.user || null,
+        isAuthenticated: res.locals.isAuthenticated || false
       })
     } catch (renderError) {
       console.error('Dashboard render error:', renderError)
+      console.error('Dashboard render error name:', renderError.name)
+      console.error('Dashboard render error message:', renderError.message)
       console.error('Dashboard render error stack:', renderError.stack)
       console.error('Dashboard render error details:', {
         installers: safeInstallers.length,
