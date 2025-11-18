@@ -23,9 +23,30 @@ app.set('view engine', 'ejs')
 app.set('views', path.join(__dirname, 'views'))
 
 // Middleware
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
+app.use(express.json({ limit: '10mb' }))
+app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 app.use(express.static(path.join(__dirname, 'public')))
+
+// Request timeout middleware (30 seconds)
+app.use((req, res, next) => {
+  // Set socket timeout
+  req.setTimeout(30000, () => {
+    if (!res.headersSent) {
+      console.error('Request socket timeout:', req.method, req.path)
+      res.status(408).send('Request timeout')
+    }
+  })
+
+  // Set response timeout
+  res.setTimeout(30000, () => {
+    if (!res.headersSent) {
+      console.error('Response timeout:', req.method, req.path)
+      res.status(504).send('Gateway timeout')
+    }
+  })
+
+  next()
+})
 
 // Session configuration
 const sessionSecret =
@@ -37,17 +58,37 @@ if (!process.env.SESSION_SECRET && process.env.NODE_ENV === 'production') {
 // Create session store with error handling
 let sessionStore
 try {
+  const mongoUrl =
+    process.env.MONGODB_URI || 'mongodb://localhost:27017/aps_app'
+
   sessionStore = MongoStore.create({
-    mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/aps_app',
+    mongoUrl: mongoUrl,
     collectionName: 'sessions',
     ttl: 24 * 60 * 60, // 24 hours
     touchAfter: 24 * 3600, // lazy session update
-    autoRemove: 'native'
+    autoRemove: 'native',
+    // Connection options to prevent hanging
+    mongoOptions: {
+      serverSelectionTimeoutMS: 3000, // 3 second timeout
+      socketTimeoutMS: 10000,
+      connectTimeoutMS: 5000,
+      maxPoolSize: 2 // Limit session store connections
+    }
   })
 
   // Handle store errors gracefully
   sessionStore.on('error', error => {
     console.error('Session store error:', error)
+    // Don't crash on session store errors
+  })
+
+  // Handle store connection
+  sessionStore.on('connected', () => {
+    console.log('Session store connected')
+  })
+
+  sessionStore.on('disconnected', () => {
+    console.warn('Session store disconnected')
   })
 } catch (error) {
   console.error('Failed to create session store:', error)
@@ -79,6 +120,10 @@ app.use((req, res, next) => {
   res.locals.error = req.flash('error')
   next()
 })
+
+// Query timeout middleware
+const queryTimeout = require('./middleware/queryTimeout')
+app.use(queryTimeout)
 
 // Load user middleware (loads user into req.user)
 const { loadUser } = require('./middleware/auth')

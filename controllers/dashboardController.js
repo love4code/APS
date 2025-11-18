@@ -6,7 +6,10 @@ exports.getDashboard = async (req, res, next) => {
     // Check database connection
     const mongoose = require('mongoose')
     if (mongoose.connection.readyState !== 1) {
-      console.error('Database not connected, readyState:', mongoose.connection.readyState)
+      console.error(
+        'Database not connected, readyState:',
+        mongoose.connection.readyState
+      )
       return res.status(503).render('error', {
         title: 'Service Unavailable',
         message: 'Database connection error. Please try again.'
@@ -49,7 +52,10 @@ exports.getDashboard = async (req, res, next) => {
           j => j.status === 'complete'
         ).length
       } catch (err) {
-        console.error(`Error calculating stats for installer ${installer._id}:`, err)
+        console.error(
+          `Error calculating stats for installer ${installer._id}:`,
+          err
+        )
         installer.scheduled = 0
         installer.completed = 0
       }

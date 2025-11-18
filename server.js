@@ -4,7 +4,7 @@ const app = require('./app')
 const PORT = process.env.PORT || 3000
 
 // Handle unhandled promise rejections
-process.on('unhandledRejection', (err) => {
+process.on('unhandledRejection', err => {
   console.error('Unhandled Promise Rejection:', err)
   // Don't exit in production, let Heroku handle it
   if (process.env.NODE_ENV !== 'production') {
@@ -13,7 +13,7 @@ process.on('unhandledRejection', (err) => {
 })
 
 // Handle uncaught exceptions
-process.on('uncaughtException', (err) => {
+process.on('uncaughtException', err => {
   console.error('Uncaught Exception:', err)
   // Always exit on uncaught exceptions
   process.exit(1)

@@ -18,6 +18,9 @@ exports.requireAdmin = async (req, res, next) => {
 
   try {
     const user = await User.findById(req.session.userId)
+      .maxTimeMS(3000) // 3 second timeout
+      .lean()
+
     if (!user || user.role !== 'admin') {
       req.flash('error', 'Access denied. Admin privileges required.')
       return res.redirect('/')
@@ -25,6 +28,7 @@ exports.requireAdmin = async (req, res, next) => {
     req.user = user
     next()
   } catch (error) {
+    console.error('requireAdmin error:', error)
     req.flash('error', 'Error verifying user')
     res.redirect('/login')
   }
@@ -35,6 +39,9 @@ exports.loadUser = async (req, res, next) => {
   if (req.session.userId) {
     try {
       const user = await User.findById(req.session.userId)
+        .maxTimeMS(3000) // 3 second timeout
+        .lean()
+
       if (!user || !user.isActive) {
         // User not found or deactivated, clear session
         req.session.destroy(() => {

@@ -12,4 +12,3 @@ router.post('/:id', requireAuth, paymentController.update)
 router.post('/:id/delete', requireAuth, paymentController.delete)
 
 module.exports = router
-

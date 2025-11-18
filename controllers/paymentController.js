@@ -48,10 +48,14 @@ exports.newForm = async (req, res) => {
       .sort({ createdAt: -1 })
 
     // Get installers and sales reps
-    const installers = await User.find({ isInstaller: true, isActive: true })
-      .sort({ name: 1 })
-    const salesReps = await User.find({ isSalesRep: true, isActive: true })
-      .sort({ name: 1 })
+    const installers = await User.find({
+      isInstaller: true,
+      isActive: true
+    }).sort({ name: 1 })
+    const salesReps = await User.find({
+      isSalesRep: true,
+      isActive: true
+    }).sort({ name: 1 })
 
     // Pre-select job and recipient if provided
     let selectedJob = null
@@ -88,7 +92,15 @@ exports.newForm = async (req, res) => {
 // Create new payment
 exports.create = async (req, res) => {
   try {
-    const { job, recipient, recipientType, amount, datePaid, paymentMethod, notes } = req.body
+    const {
+      job,
+      recipient,
+      recipientType,
+      amount,
+      datePaid,
+      paymentMethod,
+      notes
+    } = req.body
 
     if (!job || !recipient || !recipientType || !amount) {
       req.flash('error', 'Job, recipient, type, and amount are required')
@@ -173,9 +185,17 @@ exports.editForm = async (req, res) => {
       return res.redirect('/payments')
     }
 
-    const jobs = await Job.find().populate('customer', 'name').sort({ createdAt: -1 })
-    const installers = await User.find({ isInstaller: true, isActive: true }).sort({ name: 1 })
-    const salesReps = await User.find({ isSalesRep: true, isActive: true }).sort({ name: 1 })
+    const jobs = await Job.find()
+      .populate('customer', 'name')
+      .sort({ createdAt: -1 })
+    const installers = await User.find({
+      isInstaller: true,
+      isActive: true
+    }).sort({ name: 1 })
+    const salesReps = await User.find({
+      isSalesRep: true,
+      isActive: true
+    }).sort({ name: 1 })
 
     res.render('payments/form', {
       title: 'Edit Payment',
@@ -197,7 +217,15 @@ exports.editForm = async (req, res) => {
 // Update payment
 exports.update = async (req, res) => {
   try {
-    const { job, recipient, recipientType, amount, datePaid, paymentMethod, notes } = req.body
+    const {
+      job,
+      recipient,
+      recipientType,
+      amount,
+      datePaid,
+      paymentMethod,
+      notes
+    } = req.body
 
     const payment = await Payment.findById(req.params.id)
     if (!payment) {
@@ -241,4 +269,3 @@ exports.delete = async (req, res) => {
     res.redirect('/payments')
   }
 }
-

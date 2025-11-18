@@ -3,29 +3,33 @@ require('dotenv').config()
 
 const connectDB = async () => {
   try {
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/aps_app'
-    
+    const mongoUri =
+      process.env.MONGODB_URI || 'mongodb://localhost:27017/aps_app'
+
     const options = {
       serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
-      socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
+      socketTimeoutMS: 30000, // Close sockets after 30s of inactivity
       connectTimeoutMS: 10000, // Give up initial connection after 10s
-      maxPoolSize: 10, // Maintain up to 10 socket connections
+      maxPoolSize: 5, // Limit connections to prevent hanging
+      minPoolSize: 1,
+      maxIdleTimeMS: 30000, // Close idle connections after 30s
       retryWrites: true,
-      w: 'majority'
+      w: 'majority',
+      heartbeatFrequencyMS: 10000 // Check connection health every 10s
     }
 
     await mongoose.connect(mongoUri, options)
     console.log('MongoDB connected')
-    
+
     // Handle connection events
-    mongoose.connection.on('error', (err) => {
+    mongoose.connection.on('error', err => {
       console.error('MongoDB connection error:', err)
     })
-    
+
     mongoose.connection.on('disconnected', () => {
       console.warn('MongoDB disconnected')
     })
-    
+
     mongoose.connection.on('reconnected', () => {
       console.log('MongoDB reconnected')
     })
