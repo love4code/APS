@@ -151,6 +151,12 @@ app.use('/my', require('./routes/jobRoutes')) // For /my/sales and /my/installs
 
 // 404 handler
 app.use((req, res) => {
+  // Ensure required variables are set for error view
+  res.locals.isAuthenticated = res.locals.isAuthenticated || false
+  res.locals.user = res.locals.user || null
+  res.locals.success = res.locals.success || []
+  res.locals.error = res.locals.error || []
+
   res.status(404).render('error', {
     title: '404 - Not Found',
     message: 'Page not found'
@@ -166,6 +172,12 @@ app.use((err, req, res, next) => {
   if (res.headersSent) {
     return next(err)
   }
+
+  // Ensure required variables are set for error view
+  res.locals.isAuthenticated = res.locals.isAuthenticated || false
+  res.locals.user = res.locals.user || null
+  res.locals.success = res.locals.success || []
+  res.locals.error = res.locals.error || []
 
   // Set status code
   const statusCode = err.status || err.statusCode || 500

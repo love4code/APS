@@ -30,7 +30,8 @@
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav me-auto">
-            <% if (isAuthenticated) { %>
+            <% if (typeof isAuthenticated !== 'undefined' && isAuthenticated) {
+            %>
             <li class="nav-item">
               <a class="nav-link" href="/">Dashboard</a>
             </li>
@@ -57,15 +58,18 @@
                 <i class="bi bi-plus-circle"></i> New Sale
               </a>
             </li>
-            <% if (user && (user.isSalesRep || user.soldByOwner)) { %>
+            <% if (typeof user !== 'undefined' && user && (user.isSalesRep ||
+            user.soldByOwner)) { %>
             <li class="nav-item">
               <a class="nav-link" href="/my/sales">My Sales</a>
             </li>
-            <% } %> <% if (user && user.isInstaller) { %>
+            <% } %> <% if (typeof user !== 'undefined' && user &&
+            user.isInstaller) { %>
             <li class="nav-item">
               <a class="nav-link" href="/my/installs">My Installs</a>
             </li>
-            <% } %> <% if (user && user.role === 'admin') { %>
+            <% } %> <% if (typeof user !== 'undefined' && user && user.role ===
+            'admin') { %>
             <li class="nav-item dropdown">
               <a
                 class="nav-link dropdown-toggle"
@@ -81,7 +85,8 @@
             <% } %> <% } %>
           </ul>
           <ul class="navbar-nav">
-            <% if (isAuthenticated) { %>
+            <% if (typeof isAuthenticated !== 'undefined' && isAuthenticated) {
+            %>
             <li class="nav-item dropdown">
               <a
                 class="nav-link dropdown-toggle"
@@ -89,8 +94,8 @@
                 role="button"
                 data-bs-toggle="dropdown"
               >
-                <i class="bi bi-person-circle"></i> <%= user ? user.name :
-                'User' %>
+                <i class="bi bi-person-circle"></i> <%= typeof user !==
+                'undefined' && user ? user.name : 'User' %>
               </a>
               <ul class="dropdown-menu dropdown-menu-end">
                 <li>
@@ -120,8 +125,9 @@
     </nav>
 
     <main class="container-fluid py-4">
-      <% if (success) { %> <% if (Array.isArray(success)) { %> <% for (var i =
-      0; i < success.length; i++) { %>
+      <% if (typeof success !== 'undefined' && success) { %> <% if
+      (Array.isArray(success)) { %> <% for (var i = 0; i < success.length; i++)
+      { %>
       <div class="alert alert-success alert-dismissible fade show" role="alert">
         <%= success[i] %>
         <button
@@ -139,8 +145,8 @@
           data-bs-dismiss="alert"
         ></button>
       </div>
-      <% } %> <% } %> <% if (error) { %> <% if (Array.isArray(error)) { %> <%
-      for (var i = 0; i < error.length; i++) { %>
+      <% } %> <% } %> <% if (typeof error !== 'undefined' && error) { %> <% if
+      (Array.isArray(error)) { %> <% for (var i = 0; i < error.length; i++) { %>
       <div class="alert alert-danger alert-dismissible fade show" role="alert">
         <%= error[i] %>
         <button
