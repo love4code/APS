@@ -1,11 +1,11 @@
-<%- include('../partials/header', { title: user ? 'Edit User' : 'New User' }) %>
+<%- include('../partials/header', { title: title || (user ? 'Edit User' : 'New User') }) %>
 
 <div class="container-fluid">
   <div class="row">
     <div class="col-md-8 mx-auto">
-      <h1 class="h3 mb-4"><%= user ? 'Edit User' : 'New User' %></h1>
+      <h1 class="h3 mb-4"><%= title || (user ? 'Edit User' : 'New User') %></h1>
 
-      <form method="POST" action="<%= user ? `/admin/users/${user._id}` : '/admin/users' %>">
+      <form method="POST" action="<%= user && user._id ? `/admin/users/${user._id}` : '/admin/users' %>">
         <div class="mb-3">
           <label for="name" class="form-label">Name *</label>
           <input type="text" class="form-control" id="name" name="name" value="<%= user ? user.name : '' %>" required>
@@ -16,11 +16,18 @@
           <input type="email" class="form-control" id="email" name="email" value="<%= user ? user.email : '' %>" required>
         </div>
 
+        <% if (!type || (user && user._id)) { %>
         <div class="mb-3">
           <label for="password" class="form-label"><%= user ? 'New Password (leave blank to keep current)' : 'Password *' %></label>
           <input type="password" class="form-control" id="password" name="password" <%= user ? '' : 'required' %>>
         </div>
+        <% } else { %>
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle"></i> A password will be automatically generated for this <%= type === 'salesrep' ? 'sales rep' : 'installer' %>.
+        </div>
+        <% } %>
 
+        <% if (!type || (user && user._id)) { %>
         <div class="mb-3">
           <label for="role" class="form-label">Role *</label>
           <select class="form-select" id="role" name="role" required>
@@ -28,6 +35,9 @@
             <option value="admin" <%= user && user.role === 'admin' ? 'selected' : '' %>>Admin</option>
           </select>
         </div>
+        <% } else { %>
+        <input type="hidden" name="role" value="user">
+        <% } %>
 
         <div class="mb-3">
           <div class="form-check">

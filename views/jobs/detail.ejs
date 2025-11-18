@@ -54,37 +54,61 @@
                   <th>Quantity</th>
                   <th>Unit Price</th>
                   <th>Taxable</th>
-                  <th>Total</th>
+                  <th>Item Total</th>
+                  <th>Tax (6.25%)</th>
                 </tr>
               </thead>
               <tbody>
                 <% if (job.items && job.items.length > 0) { %>
                   <% job.items.forEach(item => { %>
+                    <% 
+                      const itemTotal = (item.unitPrice || 0) * (item.quantity || 0);
+                      const itemTax = item.isTaxable ? itemTotal * 0.0625 : 0;
+                    %>
                     <tr>
                       <td><%= item.product ? item.product.name : 'Unknown' %></td>
                       <td><%= item.quantity %></td>
                       <td>$<%= (item.unitPrice || 0).toFixed(2) %></td>
-                      <td><% if (item.isTaxable) { %><i class="bi bi-check-circle text-success"></i><% } else { %><i class="bi bi-x-circle text-muted"></i><% } %></td>
-                      <td>$<%= ((item.unitPrice || 0) * (item.quantity || 0)).toFixed(2) %></td>
+                      <td>
+                        <% if (item.isTaxable) { %>
+                          <i class="bi bi-check-circle text-success"></i> Yes
+                        <% } else { %>
+                          <i class="bi bi-x-circle text-muted"></i> No
+                        <% } %>
+                      </td>
+                      <td>$<%= itemTotal.toFixed(2) %></td>
+                      <td>
+                        <% if (item.isTaxable) { %>
+                          <span class="text-success">$<%= itemTax.toFixed(2) %></span>
+                        <% } else { %>
+                          <span class="text-muted">$0.00</span>
+                        <% } %>
+                      </td>
                     </tr>
                   <% }) %>
                 <% } else { %>
                   <tr>
-                    <td colspan="5" class="text-center text-muted">No items</td>
+                    <td colspan="6" class="text-center text-muted">No items</td>
                   </tr>
                 <% } %>
               </tbody>
               <tfoot>
                 <tr>
-                  <td colspan="4" class="text-end"><strong>Subtotal:</strong></td>
+                  <td colspan="5" class="text-end"><strong>Subtotal:</strong></td>
                   <td><strong>$<%= (job.subtotal || 0).toFixed(2) %></strong></td>
                 </tr>
                 <tr>
-                  <td colspan="4" class="text-end"><strong>Tax (6.25%):</strong></td>
+                  <td colspan="5" class="text-end"><strong>Total Tax (6.25%):</strong></td>
                   <td><strong>$<%= (job.taxTotal || 0).toFixed(2) %></strong></td>
                 </tr>
+                <% if (job.installCost && job.installCost > 0) { %>
+                <tr>
+                  <td colspan="5" class="text-end"><strong>Install Cost:</strong></td>
+                  <td><strong>$<%= (job.installCost || 0).toFixed(2) %></strong></td>
+                </tr>
+                <% } %>
                 <tr class="table-primary">
-                  <td colspan="4" class="text-end"><strong>Total:</strong></td>
+                  <td colspan="5" class="text-end"><strong>Grand Total:</strong></td>
                   <td><strong>$<%= (job.totalPrice || 0).toFixed(2) %></strong></td>
                 </tr>
               </tfoot>
@@ -142,6 +166,27 @@
               </select>
             </div>
           </form>
+        </div>
+      </div>
+
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5 class="card-title">Record Payment</h5>
+          <div class="d-grid gap-2">
+            <% if (job.installer) { %>
+            <a href="/payments/new?jobId=<%= job._id %>&recipientId=<%= job.installer._id %>&recipientType=installer" class="btn btn-sm btn-outline-success">
+              <i class="bi bi-cash-coin"></i> Pay Installer
+            </a>
+            <% } %>
+            <% if (job.salesRep) { %>
+            <a href="/payments/new?jobId=<%= job._id %>&recipientId=<%= job.salesRep._id %>&recipientType=salesRep" class="btn btn-sm btn-outline-info">
+              <i class="bi bi-cash-coin"></i> Pay Sales Rep
+            </a>
+            <% } %>
+            <a href="/payments/new?jobId=<%= job._id %>" class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-plus-circle"></i> Record Payment
+            </a>
+          </div>
         </div>
       </div>
 

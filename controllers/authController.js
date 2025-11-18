@@ -30,6 +30,14 @@ exports.postLogin = async (req, res) => {
       })
     }
 
+    // Prevent login for users without passwords (sales reps/installers)
+    if (user.passwordHash === 'NO_PASSWORD_SET') {
+      return res.render('auth/login', {
+        title: 'Login',
+        error: 'This account does not have login access'
+      })
+    }
+
     const isValid = await user.verifyPassword(password)
 
     if (!isValid) {

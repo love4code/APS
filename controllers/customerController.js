@@ -1,11 +1,80 @@
 const Customer = require('../models/Customer')
 const Job = require('../models/Job')
+const User = require('../models/User')
 
 exports.list = async (req, res) => {
   try {
-    const customers = await Customer.find().sort({ name: 1 })
-    res.render('customers/list', { title: 'Customers', customers })
+    const searchQuery = req.query.search || ''
+    let customers = []
+
+    if (searchQuery.trim()) {
+      // Search in customer fields (name, email, phone)
+      const customerFieldsQuery = {
+        $or: [
+          { name: { $regex: searchQuery, $options: 'i' } },
+          { email: { $regex: searchQuery, $options: 'i' } },
+          { phone: { $regex: searchQuery, $options: 'i' } }
+        ]
+      }
+
+      // Find customers matching the search in their fields
+      const directMatches = await Customer.find(customerFieldsQuery).sort({
+        name: 1
+      })
+
+      // Search for users (sales reps or installers) matching the search term
+      const matchingUsers = await User.find({
+        $or: [
+          { name: { $regex: searchQuery, $options: 'i' } },
+          { email: { $regex: searchQuery, $options: 'i' } }
+        ]
+      }).select('_id')
+
+      const userIds = matchingUsers.map(u => u._id)
+
+      // Find customers through jobs with matching sales rep or installer
+      const jobsWithMatchingUsers = await Job.find({
+        $or: [{ salesRep: { $in: userIds } }, { installer: { $in: userIds } }]
+      }).distinct('customer')
+
+      // Get customers from job matches
+      const jobMatchedCustomers = await Customer.find({
+        _id: { $in: jobsWithMatchingUsers }
+      }).sort({ name: 1 })
+
+      // Combine and deduplicate customers
+      const allCustomerIds = new Set()
+      const uniqueCustomers = []
+
+      // Add direct matches
+      directMatches.forEach(c => {
+        if (!allCustomerIds.has(c._id.toString())) {
+          allCustomerIds.add(c._id.toString())
+          uniqueCustomers.push(c)
+        }
+      })
+
+      // Add job-matched customers
+      jobMatchedCustomers.forEach(c => {
+        if (!allCustomerIds.has(c._id.toString())) {
+          allCustomerIds.add(c._id.toString())
+          uniqueCustomers.push(c)
+        }
+      })
+
+      customers = uniqueCustomers.sort((a, b) => a.name.localeCompare(b.name))
+    } else {
+      // No search query - return all customers
+      customers = await Customer.find().sort({ name: 1 })
+    }
+
+    res.render('customers/list', {
+      title: 'Customers',
+      customers,
+      searchQuery
+    })
   } catch (error) {
+    console.error('Customer list error:', error)
     req.flash('error', 'Error loading customers')
     res.redirect('/')
   }

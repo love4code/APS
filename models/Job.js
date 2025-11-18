@@ -36,6 +36,10 @@ const jobSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  isSale: {
+    type: Boolean,
+    default: false
+  },
   installer: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
@@ -48,6 +52,11 @@ const jobSchema = new mongoose.Schema({
   taxTotal: {
     type: Number,
     default: 0
+  },
+  installCost: {
+    type: Number,
+    default: 0,
+    min: 0
   },
   totalPrice: {
     type: Number,
@@ -103,10 +112,12 @@ jobSchema.methods.recalculateTotals = function () {
     })
   }
 
-  this.totalPrice = this.subtotal + this.taxTotal
+  // Install cost is not taxable, just added to total
+  this.totalPrice = this.subtotal + this.taxTotal + (this.installCost || 0)
   return {
     subtotal: this.subtotal,
     taxTotal: this.taxTotal,
+    installCost: this.installCost || 0,
     totalPrice: this.totalPrice
   }
 }

@@ -14,7 +14,11 @@
       installers.forEach(installer => { %>
       <div class="card" style="min-width: 250px">
         <div class="card-body">
-          <h5 class="card-title"><%= installer.name %></h5>
+          <h5 class="card-title">
+            <a href="/installers/<%= installer._id %>" class="text-decoration-none">
+              <%= installer.name %>
+            </a>
+          </h5>
           <p class="card-text text-muted small"><%= installer.email %></p>
           <div class="d-flex justify-content-between">
             <span class="badge bg-info"
@@ -23,6 +27,11 @@
             <span class="badge bg-success"
               >Completed: <%= installer.completed || 0 %></span
             >
+          </div>
+          <div class="mt-2">
+            <a href="/installers/<%= installer._id %>" class="btn btn-sm btn-outline-primary w-100">
+              View Details
+            </a>
           </div>
         </div>
       </div>
@@ -45,7 +54,11 @@
       { %>
       <div class="card" style="min-width: 250px">
         <div class="card-body">
-          <h5 class="card-title"><%= rep.name %></h5>
+          <h5 class="card-title">
+            <a href="/sales-reps/<%= rep._id %>" class="text-decoration-none">
+              <%= rep.name %>
+            </a>
+          </h5>
           <p class="card-text text-muted small"><%= rep.email %></p>
           <div>
             <p class="mb-1">
@@ -55,6 +68,11 @@
               <strong>Sales Total:</strong> $<%= (rep.salesTotal ||
               0).toFixed(2) %>
             </p>
+          </div>
+          <div class="mt-2">
+            <a href="/sales-reps/<%= rep._id %>" class="btn btn-sm btn-outline-primary w-100">
+              View Details
+            </a>
           </div>
         </div>
       </div>

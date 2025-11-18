@@ -68,6 +68,10 @@ app.use('/', require('./routes/authRoutes'))
 app.use('/admin/users', require('./routes/userRoutes'))
 app.use('/customers', require('./routes/customerRoutes'))
 app.use('/products', require('./routes/productRoutes'))
+app.use('/sales', require('./routes/salesRoutes')) // Sales routes (must be before /my)
+app.use('/sales-reps', require('./routes/salesRepRoutes'))
+app.use('/installers', require('./routes/installerRoutes'))
+app.use('/payments', require('./routes/paymentRoutes'))
 app.use('/jobs', require('./routes/jobRoutes'))
 app.use('/my', require('./routes/jobRoutes')) // For /my/sales and /my/installs
 

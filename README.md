@@ -67,6 +67,12 @@ A comprehensive Customer Relationship Management (CRM) system for tracking pool 
 - Create, view, edit, and delete customers
 - Store customer information: name, phone, email, address, notes
 - View all jobs associated with each customer
+- **Search Functionality**: Search customers by:
+  - Customer name
+  - Email address
+  - Phone number
+  - Sales rep name (finds customers through their jobs)
+  - Installer/contractor name (finds customers through their jobs)
 
 ### Products & Services
 
@@ -82,9 +88,11 @@ A comprehensive Customer Relationship Management (CRM) system for tracking pool 
 - Add multiple products/services to each job
 - Track job status: scheduled, complete, delivered, undelivered, delayed
 - Automatic calculation of subtotals, tax, and total price
+- **Install Cost Tracking**: Separate field for installation costs (non-taxable)
 - Payment tracking (paid/unpaid, payment date)
 - Install date scheduling
 - Notes and activity history
+- Sales are stored as Jobs with `isSale: true` flag for easy filtering
 
 ### Personal Views
 
@@ -129,18 +137,35 @@ The dashboard provides an overview of:
 - **Sales Reps**: Cards showing total jobs and sales totals for each rep
 - **Recent Jobs**: Cards showing job status, payment status, customer, and totals
 
+### Navigation Menu
+
+The main navigation includes:
+
+- **Dashboard**: Overview of installers, sales reps, and recent jobs
+- **Customers**: Manage customer database with search functionality
+- **Products**: Manage products and services
+- **Jobs**: View and manage all jobs
+- **New Sale**: Create a new sale with multiple products and install cost tracking (see "Creating a New Sale" section)
+- **My Sales**: View your personal sales (if you're a sales rep)
+- **My Installs**: View your assigned installations (if you're an installer)
+- **Admin**: User management (admin only)
+
 ### Managing Customers
 
 1. **View All Customers**: Click "Customers" in the navigation
-2. **Create New Customer**:
+2. **Search Customers**:
+   - Use the search box at the top of the customers list
+   - Search by name, email, phone, sales rep, or installer
+   - Click "Clear Search" to show all customers again
+3. **Create New Customer**:
    - Click "New Customer" button
    - Fill in customer information (name is required)
    - Click "Save"
-3. **View Customer Details**: Click on a customer name to see:
+4. **View Customer Details**: Click on a customer name to see:
    - Contact information
    - All jobs associated with the customer
-4. **Edit Customer**: Click "Edit" on the customer detail page
-5. **Delete Customer**: Click "Delete" (only if customer has no jobs)
+5. **Edit Customer**: Click "Edit" on the customer detail page
+6. **Delete Customer**: Click "Delete" (only if customer has no jobs)
 
 ### Managing Products & Services
 
@@ -174,27 +199,68 @@ The dashboard provides an overview of:
    - Click "Save Job"
    - Totals are automatically calculated (subtotal, tax, total)
 
-3. **View Job Details**: Click "View" on any job to see:
+### Creating a New Sale
+
+The "New Sale" form is optimized for creating sales with multiple products and install cost tracking.
+
+1. **Access New Sale Form**: Click "New Sale" in the navigation bar
+2. **Fill in Customer Information** (left column):
+   - Select customer (required)
+   - Select sales rep (optional)
+   - Check "Sold by Owner" if applicable
+   - Select installer (optional)
+   - Set install date and status
+   - Add notes if needed
+3. **Add Products** (right column):
+   - Click "Add Product" button
+   - Select a product/service from the dropdown
+   - Quantity and price will auto-fill from the product
+   - Adjust quantity and price as needed
+   - Check/uncheck "Taxable" as needed
+   - Click "Add Product" again to add more products
+   - Remove products by clicking the "×" button on any product row
+   - **You can add multiple products** - just keep clicking "Add Product"
+4. **Set Install Cost**:
+   - Enter the installation cost in the "Install Cost" field
+   - This is **non-taxable** and added separately to the total
+5. **View Totals** (automatically calculated):
+   - The "Total Expenses" card shows:
+     - **Subtotal**: Sum of all products (quantity × unit price)
+     - **Tax (6.25%)**: Tax calculated only on taxable items
+     - **Install Cost**: Installation fee (non-taxable)
+     - **Total**: Grand total (subtotal + tax + install cost)
+   - Totals update in real-time as you add/remove products or change values
+6. **Save the Sale**:
+   - Click "Save Sale"
+   - You'll be redirected to the job detail page
+   - The sale is stored as a Job with `isSale: true` flag in the database
+
+### Viewing and Managing Jobs
+
+1. **View Job Details**: Click "View" on any job to see:
 
    - Customer information
    - Job details (status, dates, assigned personnel)
    - Items list with pricing
-   - Calculated totals (subtotal, tax, total)
+   - Calculated totals (subtotal, tax, install cost, total)
    - Payment status
    - Activity history
 
-4. **Update Job Status**:
+2. **Update Job Status**:
 
    - On job detail page, use the "Update Status" dropdown
    - Status changes are automatically logged
 
-5. **Update Payment Status**:
+3. **Update Payment Status**:
 
    - On job detail page, check "Is Paid" checkbox
    - Optionally set "Date Paid"
    - Changes are automatically saved and logged
 
-6. **Edit Job**: Click "Edit" to modify job details and items
+4. **Edit Job**: Click "Edit" to modify job details and items
+   - You can add/remove products
+   - Update install cost
+   - Modify customer, sales rep, installer, dates, and status
 
 ### Personal Views
 
@@ -229,7 +295,8 @@ The dashboard provides an overview of:
 - Taxable items are charged **6.25%** tax
 - Tax is automatically calculated on job creation and updates
 - Calculation: `taxTotal = sum(taxable_item_totals) * 0.0625`
-- Total price = subtotal + tax total
+- **Install cost is NOT taxable** - it's added separately to the total
+- Total price = subtotal + tax total + install cost
 
 ## 🔧 Technical Details
 
@@ -268,7 +335,9 @@ APS/
 - **User**: Authentication, roles, sales rep/installer flags
 - **Customer**: Customer information and contact details
 - **Product**: Products and services with pricing
-- **Job**: Sales and installation jobs with items, totals, status
+- **Job**: Sales and installation jobs with items, totals, status, install cost
+  - Sales are stored as Jobs with `isSale: true` flag
+  - All jobs (sales and regular jobs) use the same Job model
 - **ActivityLog**: Job activity history
 
 ## 🐛 Troubleshooting

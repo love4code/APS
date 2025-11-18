@@ -11,15 +11,27 @@ exports.list = async (req, res) => {
 }
 
 exports.newForm = (req, res) => {
-  res.render('users/form', { title: 'New User', user: null })
+  const type = req.query.type // 'salesrep' or 'installer'
+  const user = type
+    ? {
+        isSalesRep: type === 'salesrep',
+        isInstaller: type === 'installer'
+      }
+    : null
+
+  let title = 'New User'
+  if (type === 'salesrep') title = 'New Sales Rep'
+  if (type === 'installer') title = 'New Installer'
+
+  res.render('users/form', { title, user, type })
 }
 
 exports.create = async (req, res) => {
   try {
     const { name, email, password, role, isSalesRep, isInstaller } = req.body
 
-    if (!name || !email || !password) {
-      req.flash('error', 'Name, email, and password are required')
+    if (!name || !email) {
+      req.flash('error', 'Name and email are required')
       return res.redirect('/admin/users/new')
     }
 
@@ -29,42 +41,116 @@ exports.create = async (req, res) => {
       return res.redirect('/admin/users/new')
     }
 
-    await User.createWithPassword(
-      name,
-      email.toLowerCase(),
-      password,
-      role || 'user'
-    )
+    // Sales reps and installers don't need passwords - they're just for tracking
+    // Regular users need passwords to log in
+    const isSalesRepOrInstaller = isSalesRep === 'on' || isInstaller === 'on'
 
-    const user = await User.findOne({ email: email.toLowerCase() })
-    user.isSalesRep = isSalesRep === 'on'
-    user.isInstaller = isInstaller === 'on'
-    await user.save()
+    if (!password && !isSalesRepOrInstaller) {
+      req.flash('error', 'Password is required for regular users')
+      return res.redirect('/admin/users/new')
+    }
 
-    req.flash('success', 'User created successfully')
-    res.redirect('/admin/users')
+    if (isSalesRepOrInstaller && !password) {
+      // Create user without password - set a placeholder that can't be used for login
+      try {
+        const user = new User({
+          name,
+          email: email.toLowerCase(),
+          passwordHash: 'NO_PASSWORD_SET', // Placeholder - can't be used for login
+          role: role || 'user',
+          isSalesRep: isSalesRep === 'on',
+          isInstaller: isInstaller === 'on'
+        })
+        await user.save()
+
+        // Verify user was saved with an _id
+        if (!user._id) {
+          throw new Error('User was not saved properly - missing _id')
+        }
+
+        req.flash(
+          'success',
+          `${
+            isSalesRep === 'on' ? 'Sales rep' : 'Installer'
+          } created successfully`
+        )
+
+        // Redirect based on type immediately after successful save
+        if (isSalesRep === 'on') {
+          return res.redirect('/sales-reps')
+        } else if (isInstaller === 'on') {
+          return res.redirect('/installers')
+        }
+      } catch (saveError) {
+        console.error('Error saving sales rep/installer:', saveError)
+        req.flash('error', 'Error creating user: ' + saveError.message)
+        return res.redirect(
+          '/admin/users/new' + (req.query.type ? '?type=' + req.query.type : '')
+        )
+      }
+    } else {
+      // Regular user creation with password
+      await User.createWithPassword(
+        name,
+        email.toLowerCase(),
+        password,
+        role || 'user'
+      )
+
+      const user = await User.findOne({ email: email.toLowerCase() })
+      if (!user) {
+        throw new Error('User was created but could not be found')
+      }
+      user.isSalesRep = isSalesRep === 'on'
+      user.isInstaller = isInstaller === 'on'
+      await user.save()
+      req.flash('success', 'User created successfully')
+
+      // Redirect based on type
+      if (isSalesRep === 'on') {
+        return res.redirect('/sales-reps')
+      } else if (isInstaller === 'on') {
+        return res.redirect('/installers')
+      } else {
+        return res.redirect('/admin/users')
+      }
+    }
   } catch (error) {
+    console.error('Error in user create:', error)
     req.flash('error', error.message || 'Error creating user')
-    res.redirect('/admin/users/new')
+    const redirectUrl =
+      '/admin/users/new' + (req.query.type ? '?type=' + req.query.type : '')
+    return res.redirect(redirectUrl)
   }
 }
 
 exports.editForm = async (req, res) => {
   try {
+    if (!req.params.id || req.params.id === 'undefined') {
+      req.flash('error', 'Invalid user ID')
+      return res.redirect('/admin/users')
+    }
+
     const user = await User.findById(req.params.id)
     if (!user) {
       req.flash('error', 'User not found')
       return res.redirect('/admin/users')
     }
-    res.render('users/form', { title: 'Edit User', user })
+    res.render('users/form', { title: 'Edit User', user, type: null })
   } catch (error) {
-    req.flash('error', 'Error loading user')
+    console.error('Error loading user for edit:', error)
+    req.flash('error', 'Error loading user: ' + error.message)
     res.redirect('/admin/users')
   }
 }
 
 exports.update = async (req, res) => {
   try {
+    if (!req.params.id || req.params.id === 'undefined') {
+      req.flash('error', 'Invalid user ID')
+      return res.redirect('/admin/users')
+    }
+
     const { name, email, password, role, isSalesRep, isInstaller, isActive } =
       req.body
     const user = await User.findById(req.params.id)
@@ -97,15 +183,23 @@ exports.update = async (req, res) => {
 
 exports.deactivate = async (req, res) => {
   try {
+    if (!req.params.id || req.params.id === 'undefined') {
+      req.flash('error', 'Invalid user ID')
+      return res.redirect('/admin/users')
+    }
+
     const user = await User.findById(req.params.id)
     if (user) {
       user.isActive = false
       await user.save()
       req.flash('success', 'User deactivated')
+    } else {
+      req.flash('error', 'User not found')
     }
     res.redirect('/admin/users')
   } catch (error) {
-    req.flash('error', 'Error deactivating user')
+    console.error('Error deactivating user:', error)
+    req.flash('error', 'Error deactivating user: ' + error.message)
     res.redirect('/admin/users')
   }
 }

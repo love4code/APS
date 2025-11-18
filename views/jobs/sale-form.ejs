@@ -1,0 +1,334 @@
+<%- include('../partials/header', { title: 'New Sale' }) %>
+
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-md-12">
+      <h1 class="h3 mb-4">New Sale</h1>
+
+      <form method="POST" action="/sales" id="saleForm">
+        <div class="row">
+          <!-- Left Column: Customer & Details -->
+          <div class="col-md-6">
+            <div class="card mb-4">
+              <div class="card-header">
+                <h5 class="mb-0">Customer Information</h5>
+              </div>
+              <div class="card-body">
+                <div class="mb-3">
+                  <label for="customer" class="form-label">Customer *</label>
+                  <select
+                    class="form-select"
+                    id="customer"
+                    name="customer"
+                    required
+                  >
+                    <option value="">Select customer...</option>
+                    <% customers.forEach(c => { %>
+                    <option value="<%= c._id %>"><%= c.name %></option>
+                    <% }) %>
+                  </select>
+                </div>
+
+                <div class="mb-3">
+                  <label for="salesRep" class="form-label">Sales Rep</label>
+                  <select class="form-select" id="salesRep" name="salesRep">
+                    <option value="">Not assigned</option>
+                    <% salesReps.forEach(rep => { %>
+                    <option value="<%= rep._id %>"><%= rep.name %></option>
+                    <% }) %>
+                  </select>
+                </div>
+
+                <div class="mb-3">
+                  <div class="form-check">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      id="soldByOwner"
+                      name="soldByOwner"
+                    />
+                    <label class="form-check-label" for="soldByOwner"
+                      >Sold by Owner</label
+                    >
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <label for="installer" class="form-label">Installer</label>
+                  <select class="form-select" id="installer" name="installer">
+                    <option value="">Not assigned</option>
+                    <% installers.forEach(i => { %>
+                    <option value="<%= i._id %>"><%= i.name %></option>
+                    <% }) %>
+                  </select>
+                </div>
+
+                <div class="mb-3">
+                  <label for="installDate" class="form-label"
+                    >Install Date</label
+                  >
+                  <input
+                    type="date"
+                    class="form-control"
+                    id="installDate"
+                    name="installDate"
+                  />
+                </div>
+
+                <div class="mb-3">
+                  <label for="status" class="form-label">Status</label>
+                  <select class="form-select" id="status" name="status">
+                    <option value="scheduled">Scheduled</option>
+                    <option value="complete">Complete</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="undelivered">Undelivered</option>
+                    <option value="delayed">Delayed</option>
+                  </select>
+                </div>
+
+                <div class="mb-3">
+                  <label for="notes" class="form-label">Notes</label>
+                  <textarea
+                    class="form-control"
+                    id="notes"
+                    name="notes"
+                    rows="3"
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Products & Totals -->
+          <div class="col-md-6">
+            <div class="card mb-4">
+              <div class="card-header">
+                <h5 class="mb-0">Products Purchased</h5>
+              </div>
+              <div class="card-body">
+                <div id="items-container">
+                  <p class="text-muted">
+                    No items added yet. Click "Add Product" below to add
+                    multiple products.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  class="btn btn-outline-primary btn-sm mt-2"
+                  id="add-item-btn"
+                >
+                  <i class="bi bi-plus-circle"></i> Add Product
+                </button>
+                <small class="d-block text-muted mt-1"
+                  >You can add multiple products to this sale</small
+                >
+              </div>
+            </div>
+
+            <div class="card mb-4">
+              <div class="card-header">
+                <h5 class="mb-0">Installation Cost</h5>
+              </div>
+              <div class="card-body">
+                <div class="mb-3">
+                  <label for="installCost" class="form-label"
+                    >Install Cost</label
+                  >
+                  <div class="input-group">
+                    <span class="input-group-text">$</span>
+                    <input
+                      type="number"
+                      class="form-control"
+                      id="installCost"
+                      name="installCost"
+                      step="0.01"
+                      min="0"
+                      value="0"
+                      onchange="calculateTotals()"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card mb-4">
+              <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Total Expenses</h5>
+              </div>
+              <div class="card-body">
+                <table class="table table-sm">
+                  <tbody>
+                    <tr>
+                      <td><strong>Subtotal:</strong></td>
+                      <td class="text-end">
+                        <strong id="subtotal-display">$0.00</strong>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td><strong>Tax (6.25%):</strong></td>
+                      <td class="text-end">
+                        <strong id="tax-display">$0.00</strong>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td><strong>Install Cost:</strong></td>
+                      <td class="text-end">
+                        <strong id="install-cost-display">$0.00</strong>
+                      </td>
+                    </tr>
+                    <tr class="table-primary">
+                      <td><strong>Total:</strong></td>
+                      <td class="text-end">
+                        <strong id="total-display">$0.00</strong>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary">Save Sale</button>
+          <a href="/jobs" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  let itemIndex = 0;
+  const products = <%- JSON.stringify(products) %>;
+
+  function calculateTotals() {
+    let subtotal = 0;
+    let taxTotal = 0;
+    const installCost = parseFloat(document.getElementById('installCost').value) || 0;
+
+    document.querySelectorAll('.item-row').forEach(row => {
+      const quantity = parseFloat(row.querySelector('.quantity-input').value) || 0;
+      const unitPrice = parseFloat(row.querySelector('.price-input').value) || 0;
+      const isTaxable = row.querySelector('.taxable-checkbox').checked;
+
+      const itemTotal = quantity * unitPrice;
+      subtotal += itemTotal;
+
+      if (isTaxable) {
+        taxTotal += itemTotal * 0.0625;
+      }
+    });
+
+    const total = subtotal + taxTotal + installCost;
+
+    document.getElementById('subtotal-display').textContent = '$' + subtotal.toFixed(2);
+    document.getElementById('tax-display').textContent = '$' + taxTotal.toFixed(2);
+    document.getElementById('install-cost-display').textContent = '$' + installCost.toFixed(2);
+    document.getElementById('total-display').textContent = '$' + total.toFixed(2);
+  }
+
+  // Allow adding multiple products
+  document.getElementById('add-item-btn').addEventListener('click', function() {
+    const container = document.getElementById('items-container');
+    // Remove the "no items" message if it exists
+    const noItemsMsg = container.querySelector('.text-muted');
+    if (noItemsMsg) {
+      noItemsMsg.remove();
+    }
+
+    const itemRow = document.createElement('div');
+    itemRow.className = 'card mb-2 item-row';
+    itemRow.setAttribute('data-index', itemIndex);
+
+    let optionsHtml = '<option value="">Select product...</option>';
+    products.forEach(function(p) {
+      optionsHtml += '<option value="' + p._id + '" data-price="' + p.basePrice + '" data-taxable="' + p.isTaxable + '">' + p.name + ' - $' + p.basePrice.toFixed(2) + '</option>';
+    });
+
+    itemRow.innerHTML =
+      '<div class="card-body">' +
+        '<div class="row align-items-end">' +
+          '<div class="col-md-5">' +
+            '<label class="form-label small">Product</label>' +
+            '<select class="form-select form-select-sm product-select" name="items[' + itemIndex + '][productId]" required>' +
+              optionsHtml +
+            '</select>' +
+          '</div>' +
+          '<div class="col-md-2">' +
+            '<label class="form-label small">Qty</label>' +
+            '<input type="number" class="form-control form-control-sm quantity-input" name="items[' + itemIndex + '][quantity]" value="1" min="1" required onchange="calculateTotals()">' +
+          '</div>' +
+          '<div class="col-md-2">' +
+            '<label class="form-label small">Price</label>' +
+            '<input type="number" class="form-control form-control-sm price-input" name="items[' + itemIndex + '][unitPrice]" step="0.01" min="0" required onchange="calculateTotals()">' +
+          '</div>' +
+          '<div class="col-md-2">' +
+            '<div class="form-check mt-4">' +
+              '<input class="form-check-input taxable-checkbox" type="checkbox" name="items[' + itemIndex + '][isTaxable]" checked onchange="calculateTotals()">' +
+              '<label class="form-check-label small">Taxable</label>' +
+            '</div>' +
+          '</div>' +
+          '<div class="col-md-1">' +
+            '<button type="button" class="btn btn-danger btn-sm remove-item mt-4" onclick="this.closest(\'.item-row\').remove(); calculateTotals();">×</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    container.appendChild(itemRow);
+    itemIndex++;
+
+    const select = itemRow.querySelector('.product-select');
+    const priceInput = itemRow.querySelector('.price-input');
+    const taxableCheckbox = itemRow.querySelector('.taxable-checkbox');
+
+    select.addEventListener('change', function() {
+      if (this.value) {
+        const option = this.options[this.selectedIndex];
+        priceInput.value = option.getAttribute('data-price');
+        taxableCheckbox.checked = option.getAttribute('data-taxable') === 'true';
+        calculateTotals();
+      }
+    });
+  });
+
+  document.getElementById('saleForm').addEventListener('submit', function(e) {
+    const items = [];
+    document.querySelectorAll('.item-row').forEach(row => {
+      const productId = row.querySelector('.product-select').value;
+      const quantity = row.querySelector('.quantity-input').value;
+      const unitPrice = row.querySelector('.price-input').value;
+      const isTaxable = row.querySelector('.taxable-checkbox').checked;
+
+      // Validate that all fields are present and valid
+      if (productId &&
+          quantity &&
+          !isNaN(parseFloat(quantity)) &&
+          parseFloat(quantity) > 0 &&
+          unitPrice &&
+          !isNaN(parseFloat(unitPrice)) &&
+          parseFloat(unitPrice) >= 0) {
+        items.push({
+          productId: productId.trim(),
+          quantity: parseFloat(quantity),
+          unitPrice: parseFloat(unitPrice),
+          isTaxable: isTaxable.toString()
+        });
+      }
+    });
+
+    // Check if at least one item is present
+    if (items.length === 0) {
+      e.preventDefault();
+      alert('Please add at least one product to the sale.');
+      return false;
+    }
+
+    const hiddenInput = document.createElement('input');
+    hiddenInput.type = 'hidden';
+    hiddenInput.name = 'items';
+    hiddenInput.value = JSON.stringify(items);
+    this.appendChild(hiddenInput);
+  });
+</script>
+
+<%- include('../partials/footer') %>

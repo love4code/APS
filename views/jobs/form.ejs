@@ -228,14 +228,33 @@
       const unitPrice = row.querySelector('.price-input').value;
       const isTaxable = row.querySelector('.taxable-checkbox').checked;
 
-      if (productId && quantity && unitPrice) {
+      // Validate that all fields are present and valid
+      if (productId && 
+          quantity && 
+          !isNaN(parseFloat(quantity)) && 
+          parseFloat(quantity) > 0 &&
+          unitPrice && 
+          !isNaN(parseFloat(unitPrice)) && 
+          parseFloat(unitPrice) >= 0) {
         items.push({
-          productId,
-          quantity,
-          unitPrice,
+          productId: productId.trim(),
+          quantity: parseFloat(quantity),
+          unitPrice: parseFloat(unitPrice),
           isTaxable: isTaxable.toString()
         });
       }
+    });
+
+    // Check if at least one item is present
+    if (items.length === 0) {
+      e.preventDefault();
+      alert('Please add at least one product to the job.');
+      return false;
+    }
+
+    // Remove all native form field names for items to prevent double submission
+    document.querySelectorAll('.item-row input, .item-row select').forEach(field => {
+      field.removeAttribute('name');
     });
 
     // Add hidden input with JSON

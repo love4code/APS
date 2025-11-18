@@ -1,0 +1,142 @@
+<%- include('../partials/header', { title: payment ? 'Edit Payment' : 'Record Payment' }) %>
+
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-md-8 mx-auto">
+      <h1 class="h3 mb-4"><%= payment ? 'Edit Payment' : 'Record Payment' %></h1>
+
+      <form method="POST" action="<%= payment ? `/payments/${payment._id}` : '/payments' %>">
+        <div class="mb-3">
+          <label for="job" class="form-label">Job *</label>
+          <select class="form-select" id="job" name="job" required>
+            <option value="">Select a job...</option>
+            <% jobs.forEach(job => { %>
+              <option value="<%= job._id %>" 
+                <%= (payment && payment.job && payment.job._id.toString() === job._id.toString()) || 
+                    (selectedJob && selectedJob._id.toString() === job._id.toString()) ? 'selected' : '' %>>
+                Job #<%= job._id.toString().slice(-6) %> - 
+                <%= job.customer ? job.customer.name : 'Unknown' %> 
+                ($<%= (job.totalPrice || 0).toFixed(2) %>)
+              </option>
+            <% }) %>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label for="recipientType" class="form-label">Payment To *</label>
+          <select class="form-select" id="recipientType" name="recipientType" required onchange="updateRecipientOptions()">
+            <option value="">Select type...</option>
+            <option value="installer" <%= (payment && payment.recipientType === 'installer') || recipientType === 'installer' ? 'selected' : '' %>>
+              Installer
+            </option>
+            <option value="salesRep" <%= (payment && payment.recipientType === 'salesRep') || recipientType === 'salesRep' ? 'selected' : '' %>>
+              Sales Rep
+            </option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label for="recipient" class="form-label">Recipient *</label>
+          <select class="form-select" id="recipient" name="recipient" required>
+            <option value="">Select recipient...</option>
+            <!-- Installers -->
+            <optgroup label="Installers" id="installerGroup" style="display: none;">
+              <% installers.forEach(installer => { %>
+                <option value="<%= installer._id %>" 
+                  <%= (payment && payment.recipientType === 'installer' && payment.recipient && payment.recipient._id.toString() === installer._id.toString()) || 
+                      (selectedRecipient && selectedRecipient._id.toString() === installer._id.toString() && recipientType === 'installer') ? 'selected' : '' %>>
+                  <%= installer.name %>
+                </option>
+              <% }) %>
+            </optgroup>
+            <!-- Sales Reps -->
+            <optgroup label="Sales Reps" id="salesRepGroup" style="display: none;">
+              <% salesReps.forEach(rep => { %>
+                <option value="<%= rep._id %>" 
+                  <%= (payment && payment.recipientType === 'salesRep' && payment.recipient && payment.recipient._id.toString() === rep._id.toString()) || 
+                      (selectedRecipient && selectedRecipient._id.toString() === rep._id.toString() && recipientType === 'salesRep') ? 'selected' : '' %>>
+                  <%= rep.name %>
+                </option>
+              <% }) %>
+            </optgroup>
+          </select>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="amount" class="form-label">Amount *</label>
+            <div class="input-group">
+              <span class="input-group-text">$</span>
+              <input type="number" class="form-control" id="amount" name="amount" 
+                step="0.01" min="0" 
+                value="<%= payment ? payment.amount.toFixed(2) : '' %>" 
+                required>
+            </div>
+          </div>
+          <div class="col-md-6 mb-3">
+            <label for="datePaid" class="form-label">Date Paid *</label>
+            <input type="date" class="form-control" id="datePaid" name="datePaid" 
+              value="<%= payment ? new Date(payment.datePaid).toISOString().split('T')[0] : new Date().toISOString().split('T')[0] %>" 
+              required>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label for="paymentMethod" class="form-label">Payment Method</label>
+          <select class="form-select" id="paymentMethod" name="paymentMethod">
+            <option value="cash" <%= payment && payment.paymentMethod === 'cash' ? 'selected' : '' %>>Cash</option>
+            <option value="check" <%= payment && payment.paymentMethod === 'check' ? 'selected' : '' %>>Check</option>
+            <option value="bank_transfer" <%= payment && payment.paymentMethod === 'bank_transfer' ? 'selected' : '' %>>Bank Transfer</option>
+            <option value="other" <%= payment && payment.paymentMethod === 'other' ? 'selected' : '' %>>Other</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label for="notes" class="form-label">Notes</label>
+          <textarea class="form-control" id="notes" name="notes" rows="3"><%= payment ? payment.notes : '' %></textarea>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary">Save Payment</button>
+          <a href="/payments" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  function updateRecipientOptions() {
+    const type = document.getElementById('recipientType').value
+    const installerGroup = document.getElementById('installerGroup')
+    const salesRepGroup = document.getElementById('salesRepGroup')
+    const recipientSelect = document.getElementById('recipient')
+    
+    // Hide all options first
+    installerGroup.style.display = 'none'
+    salesRepGroup.style.display = 'none'
+    
+    // Show relevant group
+    if (type === 'installer') {
+      installerGroup.style.display = 'block'
+    } else if (type === 'salesRep') {
+      salesRepGroup.style.display = 'block'
+    }
+    
+    // Reset selection
+    recipientSelect.value = ''
+  }
+  
+  // Initialize on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    updateRecipientOptions()
+    // If recipientType is pre-selected, make sure the correct group is shown
+    const recipientTypeSelect = document.getElementById('recipientType')
+    if (recipientTypeSelect.value) {
+      updateRecipientOptions()
+    }
+  })
+</script>
+
+<%- include('../partials/footer') %>
+

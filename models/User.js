@@ -44,6 +44,8 @@ const userSchema = new mongoose.Schema({
 // Hash password before saving
 userSchema.pre('save', async function (next) {
   if (!this.isModified('passwordHash')) return next()
+  // Skip hashing if it's the placeholder for users without passwords (sales reps/installers)
+  if (this.passwordHash === 'NO_PASSWORD_SET') return next()
   try {
     const salt = await bcrypt.genSalt(10)
     this.passwordHash = await bcrypt.hash(this.passwordHash, salt)

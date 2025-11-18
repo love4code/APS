@@ -8,6 +8,39 @@
     </a>
   </div>
 
+  <!-- Search Form -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <form method="GET" action="/customers" class="row g-3">
+        <div class="col-md-10">
+          <input
+            type="text"
+            class="form-control"
+            name="search"
+            placeholder="Search by name, email, phone, sales rep, or installer..."
+            value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>"
+          />
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-search"></i> Search
+          </button>
+        </div>
+        <% if (typeof searchQuery !== 'undefined' && searchQuery) { %>
+        <div class="col-12">
+          <a href="/customers" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-x-circle"></i> Clear Search
+          </a>
+          <span class="ms-2 text-muted">
+            Showing <%= customers ? customers.length : 0 %> result(s) for "<%=
+            searchQuery %>"
+          </span>
+        </div>
+        <% } %>
+      </form>
+    </div>
+  </div>
+
   <div class="table-responsive">
     <table class="table table-striped">
       <thead>

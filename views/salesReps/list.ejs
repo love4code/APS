@@ -1,0 +1,95 @@
+<%- include('../partials/header', { title: 'Sales Reps' }) %>
+
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3">Sales Reps</h1>
+    <a href="/admin/users/new?type=salesrep" class="btn btn-primary">
+      <i class="bi bi-plus-circle"></i> Add New Sales Rep
+    </a>
+  </div>
+
+  <div class="row">
+    <% if (salesReps && salesReps.length > 0) { %> <% salesReps.forEach(rep => {
+    %>
+    <div class="col-md-6 col-lg-4 mb-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <h5 class="card-title">
+            <% if (rep._id) { %>
+            <a
+              href="/sales-reps/<%= rep._id.toString() %>"
+              class="text-decoration-none"
+            >
+              <%= rep.name %>
+            </a>
+            <% } else { %> <%= rep.name %> <% } %>
+          </h5>
+          <p class="card-text text-muted small mb-3">
+            <i class="bi bi-envelope"></i> <%= rep.email %>
+          </p>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <div class="border rounded p-2 text-center">
+                <div class="h4 mb-0 text-primary">
+                  <%= rep.totalJobs || 0 %>
+                </div>
+                <small class="text-muted">Total Jobs</small>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="border rounded p-2 text-center">
+                <div class="h4 mb-0 text-success">
+                  $<%= ((rep.totalSales || 0).toFixed(2)) %>
+                </div>
+                <small class="text-muted">Total Sales</small>
+              </div>
+            </div>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <div class="border rounded p-2 text-center bg-light">
+                <div class="h6 mb-0 text-success">
+                  $<%= ((rep.paidSales || 0).toFixed(2)) %>
+                </div>
+                <small class="text-muted">Paid</small>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="border rounded p-2 text-center bg-light">
+                <div class="h6 mb-0 text-warning">
+                  $<%= ((rep.unpaidSales || 0).toFixed(2)) %>
+                </div>
+                <small class="text-muted">Unpaid</small>
+              </div>
+            </div>
+          </div>
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="badge bg-info">
+              <i class="bi bi-check-circle"></i> <%= rep.completedJobs || 0 %>
+              Completed
+            </span>
+            <% if (rep._id) { %>
+            <a
+              href="/sales-reps/<%= rep._id.toString() %>"
+              class="btn btn-sm btn-outline-primary"
+            >
+              View Details <i class="bi bi-arrow-right"></i>
+            </a>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </div>
+    <% }) %> <% } else { %>
+    <div class="col-12">
+      <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> No sales reps found.
+        <a href="/admin/users/new">Add a new user</a> and mark them as a sales
+        rep.
+      </div>
+    </div>
+    <% } %>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

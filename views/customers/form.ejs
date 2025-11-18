@@ -1,5 +1,4 @@
-<%- include('../partials/header', { title: customer ? 'Edit Customer' : 'New
-Customer' }) %>
+<%- include('../partials/header', { title: customer ? 'Edit Customer' : 'New Customer' }) %>
 
 <div class="container-fluid">
   <div class="row">
@@ -48,16 +47,12 @@ Customer' }) %>
 
         <div class="mb-3">
           <label for="address" class="form-label">Address</label>
-          <textarea class="form-control" id="address" name="address" rows="2">
-<%= customer ? customer.address : '' %></textarea
-          >
+          <textarea class="form-control" id="address" name="address" rows="2"><%= customer ? customer.address : '' %></textarea>
         </div>
 
         <div class="mb-3">
           <label for="notes" class="form-label">Notes</label>
-          <textarea class="form-control" id="notes" name="notes" rows="4">
-<%= customer ? customer.notes : '' %></textarea
-          >
+          <textarea class="form-control" id="notes" name="notes" rows="4"><%= customer ? customer.notes : '' %></textarea>
         </div>
 
         <div class="d-flex gap-2">
