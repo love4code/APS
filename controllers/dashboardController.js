@@ -3,6 +3,10 @@ const Job = require('../models/Job')
 
 exports.getDashboard = async (req, res, next) => {
   try {
+    console.log('Dashboard: Starting request')
+    console.log('Dashboard: User authenticated:', !!req.user)
+    console.log('Dashboard: Session exists:', !!req.session)
+
     // Check database connection
     const mongoose = require('mongoose')
     if (!mongoose.connection || mongoose.connection.readyState !== 1) {
@@ -21,6 +25,8 @@ exports.getDashboard = async (req, res, next) => {
         message: 'Database connection error. Please try again.'
       })
     }
+
+    console.log('Dashboard: Database connected, fetching data...')
 
     // Get installers - with error handling
     let installers = []
@@ -139,13 +145,13 @@ exports.getDashboard = async (req, res, next) => {
     console.error('Dashboard error name:', error.name)
     console.error('Dashboard error message:', error.message)
     console.error('Dashboard error stack:', error.stack)
-    
+
     // Ensure variables are set before passing to error handler
     res.locals.isAuthenticated = res.locals.isAuthenticated || false
     res.locals.user = res.locals.user || null
     res.locals.success = res.locals.success || []
     res.locals.error = res.locals.error || []
-    
+
     // Pass error to Express error handler
     next(error)
   }

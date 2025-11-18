@@ -3,8 +3,35 @@ require('dotenv').config()
 
 const connectDB = async () => {
   try {
-    const mongoUri =
-      process.env.MONGODB_URI || 'mongodb://localhost:27017/aps_app'
+    const mongoUri = process.env.MONGODB_URI
+    
+    // Don't try to connect if MONGODB_URI is not set (especially on Heroku)
+    if (!mongoUri || mongoUri === 'mongodb://localhost:27017/aps_app') {
+      if (process.env.NODE_ENV === 'production') {
+        console.error('ERROR: MONGODB_URI environment variable is not set!')
+        console.error('Please set it with: heroku config:set MONGODB_URI=your_connection_string')
+        // Don't exit in production, let the app start and show errors
+        return
+      } else {
+        // In development, use localhost
+        const localUri = 'mongodb://localhost:27017/aps_app'
+        console.log('Using local MongoDB:', localUri)
+        const options = {
+          serverSelectionTimeoutMS: 5000,
+          socketTimeoutMS: 30000,
+          connectTimeoutMS: 10000,
+          maxPoolSize: 5,
+          minPoolSize: 1,
+          maxIdleTimeMS: 30000,
+          retryWrites: true,
+          w: 'majority',
+          heartbeatFrequencyMS: 10000
+        }
+        await mongoose.connect(localUri, options)
+        console.log('MongoDB connected (local)')
+        return
+      }
+    }
 
     const options = {
       serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s

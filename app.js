@@ -157,6 +157,39 @@ app.use((req, res, next) => {
   }
 })
 
+// Health check route (no middleware)
+app.get('/health', (req, res) => {
+  try {
+    const mongoose = require('mongoose')
+    const mongoUri = process.env.MONGODB_URI || 'not set'
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      mongodb_uri_set:
+        mongoUri !== 'not set' &&
+        mongoUri !== 'mongodb://localhost:27017/aps_app',
+      database: mongoose.connection
+        ? {
+            readyState: mongoose.connection.readyState,
+            host: mongoose.connection.host,
+            name: mongoose.connection.name
+          }
+        : 'not connected'
+    })
+  } catch (error) {
+    res.json({
+      status: 'error',
+      error: error.message,
+      mongodb_uri_set: !!process.env.MONGODB_URI
+    })
+  }
+})
+
+// Test route to check if app is working
+app.get('/test', (req, res) => {
+  res.send('App is working!')
+})
+
 // Routes
 app.use('/', require('./routes/dashboardRoutes'))
 app.use('/', require('./routes/authRoutes'))
@@ -186,60 +219,81 @@ app.use((req, res) => {
 
 // Error handler - must be last
 app.use((err, req, res, next) => {
-  console.error('=== ERROR HANDLER ===')
-  console.error('Error name:', err.name)
-  console.error('Error message:', err.message)
-  console.error('Error stack:', err.stack)
-  console.error('Request path:', req.path)
-  console.error('Request method:', req.method)
-
-  // Don't send response if headers already sent
-  if (res.headersSent) {
-    return next(err)
-  }
-
-  // Ensure required variables are set for error view
-  res.locals.isAuthenticated = res.locals.isAuthenticated || false
-  res.locals.user = res.locals.user || null
-  res.locals.success = res.locals.success || []
-  res.locals.error = res.locals.error || []
-
-  // Set status code
-  const statusCode = err.status || err.statusCode || 500
-
   try {
-    res.status(statusCode).render('error', {
-      title: `${statusCode} - Server Error`,
-      message:
-        process.env.NODE_ENV === 'production'
-          ? 'An error occurred. Please try again.'
-          : err.message || 'An error occurred'
-    })
-  } catch (renderError) {
-    // If render fails, send plain text
-    console.error('Error view render failed:', renderError)
-    console.error('Error view render stack:', renderError.stack)
-    console.error('Original error:', err.message)
+    console.error('=== ERROR HANDLER ===')
+    console.error('Error name:', err ? err.name : 'Unknown')
+    console.error('Error message:', err ? err.message : 'No error message')
+    console.error('Error stack:', err ? err.stack : 'No stack trace')
+    console.error('Request path:', req.path)
+    console.error('Request method:', req.method)
+
+    // Don't send response if headers already sent
+    if (res.headersSent) {
+      return next(err)
+    }
+
+    // Ensure required variables are set for error view
+    if (!res.locals) {
+      res.locals = {}
+    }
+    res.locals.isAuthenticated = res.locals.isAuthenticated || false
+    res.locals.user = res.locals.user || null
+    res.locals.success = res.locals.success || []
+    res.locals.error = res.locals.error || []
+
+    // Set status code
+    const statusCode = (err && (err.status || err.statusCode)) || 500
+    const errorMessage = err && err.message ? err.message : 'An error occurred'
+
     try {
-      res.status(statusCode).send(`
-        <html>
-          <head><title>Error ${statusCode}</title></head>
-          <body>
-            <h1>Error ${statusCode}</h1>
-            <p>${
-              process.env.NODE_ENV === 'production'
-                ? 'An error occurred. Please try again.'
-                : err.message || 'An error occurred'
-            }</p>
-            <a href="/">Go to Dashboard</a>
-          </body>
-        </html>
-      `)
-    } catch (sendError) {
-      console.error('Failed to send error response:', sendError)
-      // Last resort - just end the response
-      if (!res.headersSent) {
-        res.end()
+      res.status(statusCode).render('error', {
+        title: `${statusCode} - Server Error`,
+        message:
+          process.env.NODE_ENV === 'production'
+            ? 'An error occurred. Please try again.'
+            : errorMessage
+      })
+    } catch (renderError) {
+      // If render fails, send plain text
+      console.error('Error view render failed:', renderError)
+      console.error('Error view render stack:', renderError.stack)
+      console.error('Original error:', errorMessage)
+      try {
+        res.status(statusCode).send(`
+          <!DOCTYPE html>
+          <html>
+            <head><title>Error ${statusCode}</title></head>
+            <body>
+              <h1>Error ${statusCode}</h1>
+              <p>${
+                process.env.NODE_ENV === 'production'
+                  ? 'An error occurred. Please try again.'
+                  : errorMessage
+              }</p>
+              <a href="/login">Go to Login</a>
+            </body>
+          </html>
+        `)
+      } catch (sendError) {
+        console.error('Failed to send error response:', sendError)
+        // Last resort - just end the response
+        if (!res.headersSent) {
+          try {
+            res.status(statusCode).end()
+          } catch (endError) {
+            console.error('Failed to end response:', endError)
+          }
+        }
+      }
+    }
+  } catch (handlerError) {
+    // If error handler itself fails, log and try to send basic response
+    console.error('CRITICAL: Error handler failed:', handlerError)
+    if (!res.headersSent) {
+      try {
+        res.status(500).send('Internal Server Error')
+      } catch (finalError) {
+        console.error('CRITICAL: Could not send any response:', finalError)
       }
     }
   }
