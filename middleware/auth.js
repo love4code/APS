@@ -2,11 +2,16 @@ const User = require('../models/User')
 
 // Check if user is authenticated
 exports.requireAuth = (req, res, next) => {
-  if (!req.session.userId) {
-    req.flash('error', 'Please log in to access this page')
-    return res.redirect('/login')
+  try {
+    if (!req.session || !req.session.userId) {
+      req.flash('error', 'Please log in to access this page')
+      return res.redirect('/login')
+    }
+    next()
+  } catch (error) {
+    console.error('requireAuth error:', error)
+    res.redirect('/login')
   }
-  next()
 }
 
 // Check if user is admin

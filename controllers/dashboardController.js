@@ -112,7 +112,7 @@ exports.getDashboard = async (req, res, next) => {
         installers: safeInstallers.length,
         salesReps: safeSalesReps.length,
         jobs: safeJobs.length,
-        user: userData ? 'exists' : 'null'
+        user: req.user ? 'exists' : 'null'
       })
       throw renderError
     }
