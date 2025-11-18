@@ -186,8 +186,12 @@ app.use((req, res) => {
 
 // Error handler - must be last
 app.use((err, req, res, next) => {
-  console.error('Error:', err)
+  console.error('=== ERROR HANDLER ===')
+  console.error('Error name:', err.name)
+  console.error('Error message:', err.message)
   console.error('Error stack:', err.stack)
+  console.error('Request path:', req.path)
+  console.error('Request method:', req.method)
 
   // Don't send response if headers already sent
   if (res.headersSent) {

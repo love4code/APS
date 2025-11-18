@@ -5,10 +5,10 @@ exports.getDashboard = async (req, res, next) => {
   try {
     // Check database connection
     const mongoose = require('mongoose')
-    if (mongoose.connection.readyState !== 1) {
+    if (!mongoose.connection || mongoose.connection.readyState !== 1) {
       console.error(
         'Database not connected, readyState:',
-        mongoose.connection.readyState
+        mongoose.connection ? mongoose.connection.readyState : 'no connection'
       )
       // Ensure required variables are set for error view
       res.locals.isAuthenticated = res.locals.isAuthenticated || false
@@ -22,28 +22,46 @@ exports.getDashboard = async (req, res, next) => {
       })
     }
 
-    // Get installers
-    const installers = await User.find({ isInstaller: true, isActive: true })
-      .select('name email')
-      .lean()
-      .maxTimeMS(5000)
+    // Get installers - with error handling
+    let installers = []
+    try {
+      installers = await User.find({ isInstaller: true, isActive: true })
+        .select('name email')
+        .lean()
+        .maxTimeMS(5000)
+    } catch (err) {
+      console.error('Error fetching installers:', err)
+      installers = []
+    }
 
-    // Get sales reps
-    const salesReps = await User.find({ isSalesRep: true, isActive: true })
-      .select('name email')
-      .lean()
-      .maxTimeMS(5000)
+    // Get sales reps - with error handling
+    let salesReps = []
+    try {
+      salesReps = await User.find({ isSalesRep: true, isActive: true })
+        .select('name email')
+        .lean()
+        .maxTimeMS(5000)
+    } catch (err) {
+      console.error('Error fetching sales reps:', err)
+      salesReps = []
+    }
 
-    // Get jobs with populated data
-    const jobs = await Job.find()
-      .populate('customer', 'name')
-      .populate('salesRep', 'name')
-      .populate('installer', 'name')
-      .populate('createdBy', 'name')
-      .sort({ createdAt: -1 })
-      .limit(50)
-      .lean()
-      .maxTimeMS(5000)
+    // Get jobs with populated data - with error handling
+    let jobs = []
+    try {
+      jobs = await Job.find()
+        .populate('customer', 'name')
+        .populate('salesRep', 'name')
+        .populate('installer', 'name')
+        .populate('createdBy', 'name')
+        .sort({ createdAt: -1 })
+        .limit(50)
+        .lean()
+        .maxTimeMS(5000)
+    } catch (err) {
+      console.error('Error fetching jobs:', err)
+      jobs = []
+    }
 
     // Calculate stats for installers
     for (const installer of installers) {
@@ -118,7 +136,16 @@ exports.getDashboard = async (req, res, next) => {
     }
   } catch (error) {
     console.error('Dashboard error:', error)
+    console.error('Dashboard error name:', error.name)
+    console.error('Dashboard error message:', error.message)
     console.error('Dashboard error stack:', error.stack)
+    
+    // Ensure variables are set before passing to error handler
+    res.locals.isAuthenticated = res.locals.isAuthenticated || false
+    res.locals.user = res.locals.user || null
+    res.locals.success = res.locals.success || []
+    res.locals.error = res.locals.error || []
+    
     // Pass error to Express error handler
     next(error)
   }
