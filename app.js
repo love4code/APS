@@ -34,16 +34,33 @@ if (!process.env.SESSION_SECRET && process.env.NODE_ENV === 'production') {
   console.warn('WARNING: SESSION_SECRET not set in production!')
 }
 
+// Create session store with error handling
+let sessionStore
+try {
+  sessionStore = MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/aps_app',
+    collectionName: 'sessions',
+    ttl: 24 * 60 * 60, // 24 hours
+    touchAfter: 24 * 3600, // lazy session update
+    autoRemove: 'native'
+  })
+
+  // Handle store errors gracefully
+  sessionStore.on('error', error => {
+    console.error('Session store error:', error)
+  })
+} catch (error) {
+  console.error('Failed to create session store:', error)
+  // Continue without session store (will use memory store as fallback)
+  sessionStore = undefined
+}
+
 app.use(
   session({
     secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
-    store: MongoStore.create({
-      mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/aps_app',
-      collectionName: 'sessions',
-      ttl: 24 * 60 * 60 // 24 hours
-    }),
+    store: sessionStore,
     cookie: {
       maxAge: 1000 * 60 * 60 * 24, // 24 hours
       httpOnly: true,
@@ -95,13 +112,32 @@ app.use((req, res) => {
   })
 })
 
-// Error handler
+// Error handler - must be last
 app.use((err, req, res, next) => {
   console.error('Error:', err)
-  res.status(500).render('error', {
-    title: '500 - Server Error',
-    message: err.message || 'An error occurred'
-  })
+  console.error('Error stack:', err.stack)
+
+  // Don't send response if headers already sent
+  if (res.headersSent) {
+    return next(err)
+  }
+
+  // Set status code
+  const statusCode = err.status || err.statusCode || 500
+
+  try {
+    res.status(statusCode).render('error', {
+      title: `${statusCode} - Server Error`,
+      message:
+        process.env.NODE_ENV === 'production'
+          ? 'An error occurred. Please try again.'
+          : err.message || 'An error occurred'
+    })
+  } catch (renderError) {
+    // If render fails, send plain text
+    console.error('Render error:', renderError)
+    res.status(statusCode).send('Internal server error')
+  }
 })
 
 module.exports = app

@@ -1,4 +1,5 @@
 const User = require('../models/User')
+const mongoose = require('mongoose')
 
 exports.getLogin = (req, res) => {
   if (req.session.userId) {
@@ -18,10 +19,22 @@ exports.postLogin = async (req, res) => {
   }
 
   try {
+    // Check database connection
+    if (mongoose.connection.readyState !== 1) {
+      console.error(
+        'Database not connected, readyState:',
+        mongoose.connection.readyState
+      )
+      return res.render('auth/login', {
+        title: 'Login',
+        error: 'Database connection error. Please try again.'
+      })
+    }
+
     const user = await User.findOne({
       email: email.toLowerCase(),
       isActive: true
-    })
+    }).maxTimeMS(5000) // 5 second timeout
 
     if (!user) {
       return res.render('auth/login', {
@@ -47,15 +60,34 @@ exports.postLogin = async (req, res) => {
       })
     }
 
+    // Save session
     req.session.userId = user._id.toString()
-    req.flash('success', `Welcome back, ${user.name}!`)
-    res.redirect('/')
+
+    // Ensure session is saved before redirect
+    req.session.save(err => {
+      if (err) {
+        console.error('Session save error:', err)
+        return res.render('auth/login', {
+          title: 'Login',
+          error: 'Session error. Please try again.'
+        })
+      }
+
+      req.flash('success', `Welcome back, ${user.name}!`)
+      res.redirect('/')
+    })
   } catch (error) {
     console.error('Login error:', error)
-    res.render('auth/login', {
-      title: 'Login',
-      error: 'An error occurred. Please try again.'
-    })
+    // Always send a response
+    try {
+      res.render('auth/login', {
+        title: 'Login',
+        error: 'An error occurred. Please try again.'
+      })
+    } catch (renderError) {
+      console.error('Render error:', renderError)
+      res.status(500).send('Internal server error')
+    }
   }
 }
 
