@@ -64,6 +64,38 @@ const connectDB = async () => {
     })
   } catch (error) {
     console.error('MongoDB connection error:', error)
+    console.error('Error code:', error.code)
+    console.error('Error message:', error.message)
+
+    // Check for DNS errors (invalid connection string)
+    if (error.code === 'ENOTFOUND' || error.message.includes('ENOTFOUND')) {
+      console.error('')
+      console.error('='.repeat(60))
+      console.error('MONGODB CONNECTION STRING ERROR!')
+      console.error('='.repeat(60))
+      console.error('The MongoDB connection string appears to be invalid.')
+      console.error('The DNS lookup failed, which means:')
+      console.error('  1. The cluster name in the connection string is wrong')
+      console.error("  2. The cluster doesn't exist")
+      console.error('  3. The connection string format is incorrect')
+      console.error('')
+      console.error('To fix this:')
+      console.error('  1. Go to MongoDB Atlas (https://cloud.mongodb.com)')
+      console.error('  2. Click "Connect" on your cluster')
+      console.error('  3. Copy the connection string')
+      console.error('  4. Set it on Heroku:')
+      console.error(
+        '     heroku config:set MONGODB_URI="your_connection_string"'
+      )
+      console.error('')
+      console.error('Connection string format should be:')
+      console.error(
+        '  mongodb+srv://username:password@cluster-name.mongodb.net/database?retryWrites=true&w=majority'
+      )
+      console.error('='.repeat(60))
+      console.error('')
+    }
+
     // Don't exit in production - let the app try to handle requests
     if (process.env.NODE_ENV !== 'production') {
       process.exit(1)

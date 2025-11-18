@@ -61,35 +61,43 @@ try {
   const mongoUrl =
     process.env.MONGODB_URI || 'mongodb://localhost:27017/aps_app'
 
-  sessionStore = MongoStore.create({
-    mongoUrl: mongoUrl,
-    collectionName: 'sessions',
-    ttl: 24 * 60 * 60, // 24 hours
-    touchAfter: 24 * 3600, // lazy session update
-    autoRemove: 'native',
-    // Connection options to prevent hanging
-    mongoOptions: {
-      serverSelectionTimeoutMS: 3000, // 3 second timeout
-      socketTimeoutMS: 10000,
-      connectTimeoutMS: 5000,
-      maxPoolSize: 2 // Limit session store connections
+  // Don't create session store if MongoDB URI is invalid (DNS errors)
+  if (mongoUrl && !mongoUrl.includes('testapp1.mongodb.net')) {
+    sessionStore = MongoStore.create({
+      mongoUrl: mongoUrl,
+      collectionName: 'sessions',
+      ttl: 24 * 60 * 60, // 24 hours
+      touchAfter: 24 * 3600, // lazy session update
+      autoRemove: 'native',
+      // Connection options to prevent hanging
+      mongoOptions: {
+        serverSelectionTimeoutMS: 3000, // 3 second timeout
+        socketTimeoutMS: 10000,
+        connectTimeoutMS: 5000,
+        maxPoolSize: 2 // Limit session store connections
+      }
+    })
+
+    // Handle store errors gracefully (only if store was created)
+    if (sessionStore) {
+      sessionStore.on('error', error => {
+        console.error('Session store error:', error)
+        // Don't crash on session store errors
+      })
+
+      // Handle store connection
+      sessionStore.on('connected', () => {
+        console.log('Session store connected')
+      })
+
+      sessionStore.on('disconnected', () => {
+        console.warn('Session store disconnected')
+      })
     }
-  })
-
-  // Handle store errors gracefully
-  sessionStore.on('error', error => {
-    console.error('Session store error:', error)
-    // Don't crash on session store errors
-  })
-
-  // Handle store connection
-  sessionStore.on('connected', () => {
-    console.log('Session store connected')
-  })
-
-  sessionStore.on('disconnected', () => {
-    console.warn('Session store disconnected')
-  })
+  } else {
+    console.warn('Skipping session store creation - invalid MongoDB URI')
+    sessionStore = undefined
+  }
 } catch (error) {
   console.error('Failed to create session store:', error)
   // Continue without session store (will use memory store as fallback)
