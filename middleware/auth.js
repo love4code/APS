@@ -35,9 +35,23 @@ exports.loadUser = async (req, res, next) => {
   if (req.session.userId) {
     try {
       const user = await User.findById(req.session.userId)
+      if (!user || !user.isActive) {
+        // User not found or deactivated, clear session
+        req.session.destroy(() => {
+          req.user = null
+          next()
+        })
+        return
+      }
       req.user = user
     } catch (error) {
       console.error('Error loading user:', error)
+      // On error, clear session to prevent repeated failures
+      req.session.destroy(() => {
+        req.user = null
+        next()
+      })
+      return
     }
   }
   next()
