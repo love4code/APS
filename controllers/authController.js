@@ -5,6 +5,13 @@ exports.getLogin = (req, res) => {
   if (req.session.userId) {
     return res.redirect('/')
   }
+  
+  // Ensure required variables are set for the view
+  res.locals.isAuthenticated = res.locals.isAuthenticated || false
+  res.locals.user = res.locals.user || null
+  res.locals.success = res.locals.success || []
+  res.locals.error = res.locals.error || []
+  
   res.render('auth/login', { title: 'Login', error: null })
 }
 
@@ -12,6 +19,12 @@ exports.postLogin = async (req, res) => {
   const { email, password } = req.body
 
   if (!email || !password) {
+    // Ensure required variables are set for the view
+    res.locals.isAuthenticated = res.locals.isAuthenticated || false
+    res.locals.user = res.locals.user || null
+    res.locals.success = res.locals.success || []
+    res.locals.error = res.locals.error || []
+    
     return res.render('auth/login', {
       title: 'Login',
       error: 'Email and password are required'
@@ -25,6 +38,12 @@ exports.postLogin = async (req, res) => {
         'Database not connected, readyState:',
         mongoose.connection.readyState
       )
+      // Ensure required variables are set for the view
+      res.locals.isAuthenticated = res.locals.isAuthenticated || false
+      res.locals.user = res.locals.user || null
+      res.locals.success = res.locals.success || []
+      res.locals.error = res.locals.error || []
+      
       return res.render('auth/login', {
         title: 'Login',
         error: 'Database connection error. Please try again.'
@@ -36,6 +55,12 @@ exports.postLogin = async (req, res) => {
       isActive: true
     }).maxTimeMS(5000) // 5 second timeout
 
+    // Ensure required variables are set for the view
+    res.locals.isAuthenticated = res.locals.isAuthenticated || false
+    res.locals.user = res.locals.user || null
+    res.locals.success = res.locals.success || []
+    res.locals.error = res.locals.error || []
+    
     if (!user) {
       return res.render('auth/login', {
         title: 'Login',
@@ -67,6 +92,12 @@ exports.postLogin = async (req, res) => {
     req.session.save(err => {
       if (err) {
         console.error('Session save error:', err)
+        // Ensure required variables are set for the view
+        res.locals.isAuthenticated = res.locals.isAuthenticated || false
+        res.locals.user = res.locals.user || null
+        res.locals.success = res.locals.success || []
+        res.locals.error = res.locals.error || []
+        
         return res.render('auth/login', {
           title: 'Login',
           error: 'Session error. Please try again.'
@@ -80,6 +111,12 @@ exports.postLogin = async (req, res) => {
     console.error('Login error:', error)
     // Always send a response
     try {
+      // Ensure required variables are set for the view
+      res.locals.isAuthenticated = res.locals.isAuthenticated || false
+      res.locals.user = res.locals.user || null
+      res.locals.success = res.locals.success || []
+      res.locals.error = res.locals.error || []
+      
       res.render('auth/login', {
         title: 'Login',
         error: 'An error occurred. Please try again.'
