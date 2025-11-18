@@ -1,0 +1,13 @@
+{
+  "name": "APS - Aboveground Pool Sales",
+  "description": "CRM system for tracking pool sales, installations, customers, products, and job management",
+  "repository": "https://github.com/yourusername/aps-app",
+  "logo": "",
+  "keywords": ["node", "express", "mongodb", "crm"],
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
+    }
+  ]
+}
+
