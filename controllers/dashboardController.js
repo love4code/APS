@@ -10,6 +10,12 @@ exports.getDashboard = async (req, res, next) => {
         'Database not connected, readyState:',
         mongoose.connection.readyState
       )
+      // Ensure required variables are set for error view
+      res.locals.isAuthenticated = res.locals.isAuthenticated || false
+      res.locals.user = res.locals.user || null
+      res.locals.success = res.locals.success || []
+      res.locals.error = res.locals.error || []
+
       return res.status(503).render('error', {
         title: 'Service Unavailable',
         message: 'Database connection error. Please try again.'
@@ -84,12 +90,25 @@ exports.getDashboard = async (req, res, next) => {
     const safeSalesReps = Array.isArray(salesReps) ? salesReps : []
     const safeJobs = Array.isArray(jobs) ? jobs : []
 
+    // Ensure user is a plain object if it exists
+    const userData = req.user
+      ? req.user.toObject
+        ? req.user.toObject()
+        : req.user
+      : null
+
+    // Ensure all required variables are set for the view
+    res.locals.isAuthenticated = res.locals.isAuthenticated || false
+    res.locals.user = userData
+    res.locals.success = res.locals.success || []
+    res.locals.error = res.locals.error || []
+
     res.render('dashboard/index', {
       title: 'Dashboard',
       installers: safeInstallers,
       salesReps: safeSalesReps,
       jobs: safeJobs,
-      user: req.user || null
+      user: userData
     })
   } catch (error) {
     console.error('Dashboard error:', error)

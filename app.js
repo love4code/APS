@@ -131,7 +131,12 @@ app.use(loadUser)
 
 // Make user available to all views
 app.use((req, res, next) => {
+  // Ensure user is a plain object if it exists (not a Mongoose document)
   res.locals.user = req.user
+    ? req.user.toObject
+      ? req.user.toObject()
+      : req.user
+    : null
   res.locals.isAuthenticated = !!req.session.userId
   next()
 })
