@@ -4,12 +4,14 @@ require('dotenv').config()
 const connectDB = async () => {
   try {
     const mongoUri = process.env.MONGODB_URI
-    
+
     // Don't try to connect if MONGODB_URI is not set (especially on Heroku)
     if (!mongoUri || mongoUri === 'mongodb://localhost:27017/aps_app') {
       if (process.env.NODE_ENV === 'production') {
         console.error('ERROR: MONGODB_URI environment variable is not set!')
-        console.error('Please set it with: heroku config:set MONGODB_URI=your_connection_string')
+        console.error(
+          'Please set it with: heroku config:set MONGODB_URI=your_connection_string'
+        )
         // Don't exit in production, let the app start and show errors
         return
       } else {
