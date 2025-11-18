@@ -1,0 +1,251 @@
+<%- include('../partials/header', { title: job ? 'Edit Job' : 'New Job' }) %>
+
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-md-10 mx-auto">
+      <h1 class="h3 mb-4"><%= job ? 'Edit Job' : 'New Job' %></h1>
+
+      <form method="POST" action="<%= job ? `/jobs/${job._id}` : '/jobs' %>" id="jobForm">
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="customer" class="form-label">Customer *</label>
+            <select class="form-select" id="customer" name="customer" required>
+              <option value="">Select customer...</option>
+              <% customers.forEach(c => { %>
+                <option value="<%= c._id %>" <%= job && job.customer && job.customer.toString() === c._id.toString() ? 'selected' : '' %>>
+                  <%= c.name %>
+                </option>
+              <% }) %>
+            </select>
+          </div>
+
+          <div class="col-md-6 mb-3">
+            <label for="installer" class="form-label">Installer</label>
+            <select class="form-select" id="installer" name="installer">
+              <option value="">Not assigned</option>
+              <% installers.forEach(i => { %>
+                <option value="<%= i._id %>" <%= job && job.installer && job.installer.toString() === i._id.toString() ? 'selected' : '' %>>
+                  <%= i.name %>
+                </option>
+              <% }) %>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="salesRep" class="form-label">Sales Rep</label>
+            <select class="form-select" id="salesRep" name="salesRep">
+              <option value="">Not assigned</option>
+              <% salesReps.forEach(rep => { %>
+                <option value="<%= rep._id %>" <%= job && job.salesRep && job.salesRep.toString() === rep._id.toString() ? 'selected' : '' %>>
+                  <%= rep.name %>
+                </option>
+              <% }) %>
+            </select>
+          </div>
+
+          <div class="col-md-6 mb-3">
+            <div class="form-check mt-4">
+              <input class="form-check-input" type="checkbox" id="soldByOwner" name="soldByOwner" <%= job && job.soldByOwner ? 'checked' : '' %>>
+              <label class="form-check-label" for="soldByOwner">Sold by Owner</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="installDate" class="form-label">Install Date</label>
+            <input type="date" class="form-control" id="installDate" name="installDate" value="<%= job && job.installDate ? new Date(job.installDate).toISOString().split('T')[0] : '' %>">
+          </div>
+
+          <div class="col-md-6 mb-3">
+            <label for="status" class="form-label">Status</label>
+            <select class="form-select" id="status" name="status">
+              <option value="scheduled" <%= job && job.status === 'scheduled' ? 'selected' : '' %>>Scheduled</option>
+              <option value="complete" <%= job && job.status === 'complete' ? 'selected' : '' %>>Complete</option>
+              <option value="delivered" <%= job && job.status === 'delivered' ? 'selected' : '' %>>Delivered</option>
+              <option value="undelivered" <%= job && job.status === 'undelivered' ? 'selected' : '' %>>Undelivered</option>
+              <option value="delayed" <%= job && job.status === 'delayed' ? 'selected' : '' %>>Delayed</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <h5 class="mb-3">Items</h5>
+          <div id="items-container">
+            <% if (job && job.items && job.items.length > 0) { %>
+              <% job.items.forEach((item, index) => { %>
+                <div class="card mb-2 item-row" data-index="<%= index %>">
+                  <div class="card-body">
+                    <div class="row align-items-end">
+                      <div class="col-md-4">
+                        <label class="form-label">Product/Service</label>
+                        <select class="form-select product-select" name="items[<%= index %>][productId]" required>
+                          <option value="">Select...</option>
+                          <% products.forEach(p => { %>
+                            <option value="<%= p._id %>" data-price="<%= p.basePrice %>" data-taxable="<%= p.isTaxable %>" <%= item.product && item.product._id.toString() === p._id.toString() ? 'selected' : '' %>>
+                              <%= p.name %> - $<%= p.basePrice.toFixed(2) %>
+                            </option>
+                          <% }) %>
+                        </select>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label">Quantity</label>
+                        <input type="number" class="form-control quantity-input" name="items[<%= index %>][quantity]" value="<%= item.quantity %>" min="1" required>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label">Unit Price</label>
+                        <input type="number" class="form-control price-input" name="items[<%= index %>][unitPrice]" value="<%= item.unitPrice %>" step="0.01" min="0" required>
+                      </div>
+                      <div class="col-md-2">
+                        <div class="form-check mt-4">
+                          <input class="form-check-input taxable-checkbox" type="checkbox" name="items[<%= index %>][isTaxable]" <%= item.isTaxable ? 'checked' : '' %>>
+                          <label class="form-check-label">Taxable</label>
+                        </div>
+                      </div>
+                      <div class="col-md-2">
+                        <button type="button" class="btn btn-danger btn-sm remove-item">Remove</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              <% }) %>
+            <% } else { %>
+              <p class="text-muted">No items added yet. Click "Add Item" below.</p>
+            <% } %>
+          </div>
+          <button type="button" class="btn btn-outline-primary mt-2" id="add-item-btn">
+            <i class="bi bi-plus-circle"></i> Add Item
+          </button>
+        </div>
+
+        <div class="mb-3">
+          <label for="notes" class="form-label">Notes</label>
+          <textarea class="form-control" id="notes" name="notes" rows="4"><%= job ? job.notes : '' %></textarea>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary">Save Job</button>
+          <a href="<%= job ? `/jobs/${job._id}` : '/jobs' %>" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  let itemIndex = <%= job && job.items ? job.items.length : 0 %>;
+  const products = <%- JSON.stringify(products) %>;
+
+  document.getElementById('add-item-btn').addEventListener('click', function() {
+    const container = document.getElementById('items-container');
+    const itemRow = document.createElement('div');
+    itemRow.className = 'card mb-2 item-row';
+    itemRow.setAttribute('data-index', itemIndex);
+    
+    let optionsHtml = '<option value="">Select...</option>';
+    products.forEach(function(p) {
+      optionsHtml += '<option value="' + p._id + '" data-price="' + p.basePrice + '" data-taxable="' + p.isTaxable + '">' + p.name + ' - $' + p.basePrice.toFixed(2) + '</option>';
+    });
+    
+    itemRow.innerHTML = 
+      '<div class="card-body">' +
+        '<div class="row align-items-end">' +
+          '<div class="col-md-4">' +
+            '<label class="form-label">Product/Service</label>' +
+            '<select class="form-select product-select" name="items[' + itemIndex + '][productId]" required>' +
+              optionsHtml +
+            '</select>' +
+          '</div>' +
+          '<div class="col-md-2">' +
+            '<label class="form-label">Quantity</label>' +
+            '<input type="number" class="form-control quantity-input" name="items[' + itemIndex + '][quantity]" value="1" min="1" required>' +
+          '</div>' +
+          '<div class="col-md-2">' +
+            '<label class="form-label">Unit Price</label>' +
+            '<input type="number" class="form-control price-input" name="items[' + itemIndex + '][unitPrice]" step="0.01" min="0" required>' +
+          '</div>' +
+          '<div class="col-md-2">' +
+            '<div class="form-check mt-4">' +
+              '<input class="form-check-input taxable-checkbox" type="checkbox" name="items[' + itemIndex + '][isTaxable]" checked>' +
+              '<label class="form-check-label">Taxable</label>' +
+            '</div>' +
+          '</div>' +
+          '<div class="col-md-2">' +
+            '<button type="button" class="btn btn-danger btn-sm remove-item">Remove</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    container.appendChild(itemRow);
+    itemIndex++;
+
+    // Add event listeners to new row
+    const select = itemRow.querySelector('.product-select');
+    const priceInput = itemRow.querySelector('.price-input');
+    const taxableCheckbox = itemRow.querySelector('.taxable-checkbox');
+
+    select.addEventListener('change', function() {
+      if (this.value) {
+        const option = this.options[this.selectedIndex];
+        priceInput.value = option.getAttribute('data-price');
+        taxableCheckbox.checked = option.getAttribute('data-taxable') === 'true';
+      }
+    });
+
+    itemRow.querySelector('.remove-item').addEventListener('click', function() {
+      itemRow.remove();
+    });
+  });
+
+  // Add event listeners to existing product selects
+  document.querySelectorAll('.product-select').forEach(select => {
+    select.addEventListener('change', function() {
+      const row = this.closest('.item-row');
+      const priceInput = row.querySelector('.price-input');
+      const taxableCheckbox = row.querySelector('.taxable-checkbox');
+      if (this.value) {
+        const option = this.options[this.selectedIndex];
+        priceInput.value = option.getAttribute('data-price');
+        taxableCheckbox.checked = option.getAttribute('data-taxable') === 'true';
+      }
+    });
+  });
+
+  // Remove item buttons
+  document.querySelectorAll('.remove-item').forEach(btn => {
+    btn.addEventListener('click', function() {
+      this.closest('.item-row').remove();
+    });
+  });
+
+  // Convert items array to JSON before submit
+  document.getElementById('jobForm').addEventListener('submit', function(e) {
+    const items = [];
+    document.querySelectorAll('.item-row').forEach(row => {
+      const productId = row.querySelector('.product-select').value;
+      const quantity = row.querySelector('.quantity-input').value;
+      const unitPrice = row.querySelector('.price-input').value;
+      const isTaxable = row.querySelector('.taxable-checkbox').checked;
+
+      if (productId && quantity && unitPrice) {
+        items.push({
+          productId,
+          quantity,
+          unitPrice,
+          isTaxable: isTaxable.toString()
+        });
+      }
+    });
+
+    // Add hidden input with JSON
+    const hiddenInput = document.createElement('input');
+    hiddenInput.type = 'hidden';
+    hiddenInput.name = 'items';
+    hiddenInput.value = JSON.stringify(items);
+    this.appendChild(hiddenInput);
+  });
+</script>
+
+<%- include('../partials/footer') %>
+

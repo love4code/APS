@@ -1,0 +1,176 @@
+<%- include('../partials/header', { title: title }) %>
+
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3"><%= title %></h1>
+    <div>
+      <a href="/jobs/<%= job._id %>/edit" class="btn btn-outline-primary">Edit</a>
+      <a href="/jobs" class="btn btn-outline-secondary">Back to Jobs</a>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-8">
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5 class="card-title">Customer Information</h5>
+          <p><strong>Name:</strong> <a href="/customers/<%= job.customer._id %>"><%= job.customer.name %></a></p>
+          <p><strong>Phone:</strong> <%= job.customer.phone || 'N/A' %></p>
+          <p><strong>Email:</strong> <%= job.customer.email || 'N/A' %></p>
+          <p><strong>Address:</strong> <%= job.customer.address || 'N/A' %></p>
+        </div>
+      </div>
+
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5 class="card-title">Job Details</h5>
+          <div class="row">
+            <div class="col-md-6">
+              <p><strong>Status:</strong> 
+                <span class="badge bg-<%= job.status === 'complete' ? 'success' : job.status === 'delayed' ? 'warning' : job.status === 'delivered' ? 'info' : 'secondary' %>">
+                  <%= job.status %>
+                </span>
+              </p>
+              <p><strong>Sold By:</strong> <%= job.soldByOwner ? 'Owner' : (job.salesRep ? job.salesRep.name : 'N/A') %></p>
+              <p><strong>Installer:</strong> <%= job.installer ? job.installer.name : 'Not assigned' %></p>
+            </div>
+            <div class="col-md-6">
+              <p><strong>Install Date:</strong> <%= job.installDate ? new Date(job.installDate).toLocaleDateString() : 'Not scheduled' %></p>
+              <p><strong>Created:</strong> <%= new Date(job.createdAt).toLocaleDateString() %></p>
+              <p><strong>Created By:</strong> <%= job.createdBy ? job.createdBy.name : 'Unknown' %></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5 class="card-title">Items</h5>
+          <div class="table-responsive">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Product/Service</th>
+                  <th>Quantity</th>
+                  <th>Unit Price</th>
+                  <th>Taxable</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (job.items && job.items.length > 0) { %>
+                  <% job.items.forEach(item => { %>
+                    <tr>
+                      <td><%= item.product ? item.product.name : 'Unknown' %></td>
+                      <td><%= item.quantity %></td>
+                      <td>$<%= (item.unitPrice || 0).toFixed(2) %></td>
+                      <td><% if (item.isTaxable) { %><i class="bi bi-check-circle text-success"></i><% } else { %><i class="bi bi-x-circle text-muted"></i><% } %></td>
+                      <td>$<%= ((item.unitPrice || 0) * (item.quantity || 0)).toFixed(2) %></td>
+                    </tr>
+                  <% }) %>
+                <% } else { %>
+                  <tr>
+                    <td colspan="5" class="text-center text-muted">No items</td>
+                  </tr>
+                <% } %>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="4" class="text-end"><strong>Subtotal:</strong></td>
+                  <td><strong>$<%= (job.subtotal || 0).toFixed(2) %></strong></td>
+                </tr>
+                <tr>
+                  <td colspan="4" class="text-end"><strong>Tax (6.25%):</strong></td>
+                  <td><strong>$<%= (job.taxTotal || 0).toFixed(2) %></strong></td>
+                </tr>
+                <tr class="table-primary">
+                  <td colspan="4" class="text-end"><strong>Total:</strong></td>
+                  <td><strong>$<%= (job.totalPrice || 0).toFixed(2) %></strong></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <% if (job.notes) { %>
+        <div class="card mb-4">
+          <div class="card-body">
+            <h5 class="card-title">Notes</h5>
+            <p class="text-muted"><%= job.notes %></p>
+          </div>
+        </div>
+      <% } %>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5 class="card-title">Payment Status</h5>
+          <form action="/jobs/<%= job._id %>/payment" method="POST">
+            <div class="mb-3">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="isPaid" name="isPaid" <%= job.isPaid ? 'checked' : '' %> onchange="this.form.submit()">
+                <label class="form-check-label" for="isPaid">Is Paid</label>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="datePaid" class="form-label">Date Paid</label>
+              <input type="date" class="form-control" id="datePaid" name="datePaid" value="<%= job.datePaid ? new Date(job.datePaid).toISOString().split('T')[0] : '' %>" onchange="this.form.submit()">
+            </div>
+          </form>
+          <p class="text-muted small">
+            <strong>Current Status:</strong> 
+            <span class="badge bg-<%= job.isPaid ? 'success' : 'danger' %>">
+              <%= job.isPaid ? 'Paid' : 'Unpaid' %>
+            </span>
+          </p>
+        </div>
+      </div>
+
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5 class="card-title">Update Status</h5>
+          <form action="/jobs/<%= job._id %>/status" method="POST">
+            <div class="mb-3">
+              <select class="form-select" name="status" onchange="this.form.submit()">
+                <option value="scheduled" <%= job.status === 'scheduled' ? 'selected' : '' %>>Scheduled</option>
+                <option value="complete" <%= job.status === 'complete' ? 'selected' : '' %>>Complete</option>
+                <option value="delivered" <%= job.status === 'delivered' ? 'selected' : '' %>>Delivered</option>
+                <option value="undelivered" <%= job.status === 'undelivered' ? 'selected' : '' %>>Undelivered</option>
+                <option value="delayed" <%= job.status === 'delayed' ? 'selected' : '' %>>Delayed</option>
+              </select>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <% if (activities && activities.length > 0) { %>
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">Activity History</h5>
+            <div class="list-group list-group-flush">
+              <% activities.forEach(activity => { %>
+                <div class="list-group-item">
+                  <div class="d-flex justify-content-between">
+                    <div>
+                      <strong><%= activity.user ? activity.user.name : 'Unknown' %></strong>
+                      <div class="small text-muted"><%= activity.action %></div>
+                    </div>
+                    <small class="text-muted"><%= new Date(activity.createdAt).toLocaleString() %></small>
+                  </div>
+                  <% if (activity.details) { %>
+                    <div class="small text-muted mt-1"><%= activity.details %></div>
+                  <% } %>
+                </div>
+              <% }) %>
+            </div>
+          </div>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>
+
