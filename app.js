@@ -208,6 +208,7 @@ app.use('/sales', require('./routes/salesRoutes')) // Sales routes (must be befo
 app.use('/sales-reps', require('./routes/salesRepRoutes'))
 app.use('/installers', require('./routes/installerRoutes'))
 app.use('/payments', require('./routes/paymentRoutes'))
+app.use('/stores', require('./routes/storeRoutes'))
 app.use('/jobs', require('./routes/jobRoutes'))
 app.use('/my', require('./routes/jobRoutes')) // For /my/sales and /my/installs
 

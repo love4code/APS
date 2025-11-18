@@ -33,6 +33,7 @@
               </p>
               <p><strong>Sold By:</strong> <%= job.soldByOwner ? 'Owner' : (job.salesRep ? job.salesRep.name : 'N/A') %></p>
               <p><strong>Installer:</strong> <%= job.installer ? job.installer.name : 'Not assigned' %></p>
+              <p><strong>Store:</strong> <%= job.store ? job.store.name : 'No store selected' %></p>
             </div>
             <div class="col-md-6">
               <p><strong>Install Date:</strong> <%= job.installDate ? new Date(job.installDate).toLocaleDateString() : 'Not scheduled' %></p>

@@ -30,50 +30,56 @@
           <ul class="navbar-nav me-auto">
             <% if (typeof isAuthenticated !== 'undefined' && isAuthenticated) { %>
             <li class="nav-item">
-              <a class="nav-link" href="/">Dashboard</a>
+              <a class="nav-link" href="/">
+                <i class="bi bi-speedometer2"></i> Dashboard
+              </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="/customers">Customers</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="/products">Products</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="/jobs">Jobs</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="/sales-reps">Sales Reps</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="/installers">Installers</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="/payments">Payments</a>
+              <a class="nav-link" href="/jobs">
+                <i class="bi bi-briefcase"></i> Jobs
+              </a>
             </li>
             <li class="nav-item">
               <a class="nav-link" href="/sales/new">
                 <i class="bi bi-plus-circle"></i> New Sale
               </a>
             </li>
-            <% if (typeof user !== 'undefined' && user && (user.isSalesRep || user.soldByOwner)) { %>
-            <li class="nav-item">
-              <a class="nav-link" href="/my/sales">My Sales</a>
-            </li>
-            <% } %> <% if (typeof user !== 'undefined' && user && user.isInstaller) { %>
-            <li class="nav-item">
-              <a class="nav-link" href="/my/installs">My Installs</a>
-            </li>
-            <% } %> <% if (typeof user !== 'undefined' && user && user.role === 'admin') { %>
             <li class="nav-item dropdown">
-              <a
-                class="nav-link dropdown-toggle"
-                href="#"
-                role="button"
-                data-bs-toggle="dropdown"
-                >Admin</a
-              >
+              <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                <i class="bi bi-people"></i> People
+              </a>
               <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="/admin/users">Users</a></li>
+                <li><a class="dropdown-item" href="/customers"><i class="bi bi-person"></i> Customers</a></li>
+                <li><a class="dropdown-item" href="/sales-reps"><i class="bi bi-person-badge"></i> Sales Reps</a></li>
+                <li><a class="dropdown-item" href="/installers"><i class="bi bi-tools"></i> Installers</a></li>
+              </ul>
+            </li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                <i class="bi bi-gear"></i> Settings
+              </a>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="/products"><i class="bi bi-box"></i> Products</a></li>
+                <li><a class="dropdown-item" href="/stores"><i class="bi bi-shop"></i> Stores</a></li>
+                <li><a class="dropdown-item" href="/payments"><i class="bi bi-cash-coin"></i> Payments</a></li>
+                <% if (typeof user !== 'undefined' && user && user.role === 'admin') { %>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="/admin/users"><i class="bi bi-person-gear"></i> Users</a></li>
+                <% } %>
+              </ul>
+            </li>
+            <% if (typeof user !== 'undefined' && user && (user.isSalesRep || user.soldByOwner || user.isInstaller)) { %>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                <i class="bi bi-person-circle"></i> My
+              </a>
+              <ul class="dropdown-menu">
+                <% if (typeof user !== 'undefined' && user && (user.isSalesRep || user.soldByOwner)) { %>
+                <li><a class="dropdown-item" href="/my/sales"><i class="bi bi-receipt"></i> My Sales</a></li>
+                <% } %>
+                <% if (typeof user !== 'undefined' && user && user.isInstaller) { %>
+                <li><a class="dropdown-item" href="/my/installs"><i class="bi bi-wrench"></i> My Installs</a></li>
+                <% } %>
               </ul>
             </li>
             <% } %> <% } %>
@@ -81,34 +87,23 @@
           <ul class="navbar-nav">
             <% if (typeof isAuthenticated !== 'undefined' && isAuthenticated) { %>
             <li class="nav-item dropdown">
-              <a
-                class="nav-link dropdown-toggle"
-                href="#"
-                role="button"
-                data-bs-toggle="dropdown"
-              >
+              <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                 <i class="bi bi-person-circle"></i> <%= typeof user !== 'undefined' && user ? user.name : 'User' %>
               </a>
               <ul class="dropdown-menu dropdown-menu-end">
                 <li>
-                  <a
-                    class="dropdown-item"
-                    href="/logout"
-                    onclick="event.preventDefault(); document.getElementById('logout-form').submit();"
-                    >Logout</a
-                  >
+                  <a class="dropdown-item" href="/logout" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                    <i class="bi bi-box-arrow-right"></i> Logout
+                  </a>
                 </li>
               </ul>
             </li>
-            <form
-              id="logout-form"
-              action="/logout"
-              method="POST"
-              style="display: none"
-            ></form>
+            <form id="logout-form" action="/logout" method="POST" style="display: none"></form>
             <% } else { %>
             <li class="nav-item">
-              <a class="nav-link" href="/login">Login</a>
+              <a class="nav-link" href="/login">
+                <i class="bi bi-box-arrow-in-right"></i> Login
+              </a>
             </li>
             <% } %>
           </ul>

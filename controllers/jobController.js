@@ -2,6 +2,7 @@ const Job = require('../models/Job')
 const Customer = require('../models/Customer')
 const Product = require('../models/Product')
 const User = require('../models/User')
+const Store = require('../models/Store')
 const ActivityLog = require('../models/ActivityLog')
 
 exports.list = async (req, res) => {
@@ -35,6 +36,7 @@ exports.newForm = async (req, res) => {
       isInstaller: true,
       isActive: true
     }).sort({ name: 1 })
+    const stores = await Store.find({ isActive: true }).sort({ name: 1 })
 
     res.render('jobs/form', {
       title: 'New Job',
@@ -42,7 +44,8 @@ exports.newForm = async (req, res) => {
       customers,
       products,
       salesReps,
-      installers
+      installers,
+      stores
     })
   } catch (error) {
     req.flash('error', 'Error loading form data')
@@ -65,6 +68,7 @@ exports.newSaleForm = async (req, res) => {
       isInstaller: true,
       isActive: true
     }).sort({ name: 1 })
+    const stores = await Store.find({ isActive: true }).sort({ name: 1 })
 
     res.render('jobs/sale-form', {
       title: 'New Sale',
@@ -72,7 +76,8 @@ exports.newSaleForm = async (req, res) => {
       customers,
       products,
       salesReps,
-      installers
+      installers,
+      stores
     })
   } catch (error) {
     req.flash('error', 'Error loading form data')
@@ -87,6 +92,7 @@ exports.create = async (req, res) => {
       salesRep,
       soldByOwner,
       installer,
+      store,
       installDate,
       status,
       notes,
@@ -147,6 +153,7 @@ exports.create = async (req, res) => {
       soldByOwner: soldByOwner === 'on' || soldByOwner === 'true',
       isSale: isSaleForm, // Mark as sale if created from sale form
       installer: installer || null,
+      store: store || null,
       installDate: installDate || null,
       status: status || 'scheduled',
       notes: notes || '',
@@ -183,6 +190,7 @@ exports.detail = async (req, res) => {
       .populate('customer')
       .populate('salesRep', 'name email')
       .populate('installer', 'name email')
+      .populate('store', 'name')
       .populate('createdBy', 'name')
       .populate('items.product')
 
@@ -230,6 +238,7 @@ exports.editForm = async (req, res) => {
       isInstaller: true,
       isActive: true
     }).sort({ name: 1 })
+    const stores = await Store.find({ isActive: true }).sort({ name: 1 })
 
     res.render('jobs/form', {
       title: 'Edit Job',
@@ -237,7 +246,8 @@ exports.editForm = async (req, res) => {
       customers,
       products,
       salesReps,
-      installers
+      installers,
+      stores
     })
   } catch (error) {
     req.flash('error', 'Error loading job')
@@ -252,6 +262,7 @@ exports.update = async (req, res) => {
       salesRep,
       soldByOwner,
       installer,
+      store,
       installDate,
       status,
       notes,
@@ -308,6 +319,7 @@ exports.update = async (req, res) => {
     job.salesRep = salesRep || null
     job.soldByOwner = soldByOwner === 'on' || soldByOwner === 'true'
     job.installer = installer || null
+    job.store = store || null
     job.installDate = installDate || null
     job.status = status || 'scheduled'
     job.notes = notes || ''

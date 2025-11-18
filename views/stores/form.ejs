@@ -1,0 +1,72 @@
+<%- include('../partials/header', { title: store ? 'Edit Store' : 'New Store' }) %>
+
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-md-8 mx-auto">
+      <h1 class="h3 mb-4"><%= store ? 'Edit Store' : 'New Store' %></h1>
+
+      <form method="POST" action="<%= store ? `/stores/${store._id}` : '/stores' %>">
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="name" class="form-label">Store Name *</label>
+            <input type="text" class="form-control" id="name" name="name" value="<%= store ? store.name : '' %>" required>
+          </div>
+
+          <div class="col-md-6 mb-3">
+            <label for="phone" class="form-label">Phone</label>
+            <input type="tel" class="form-control" id="phone" name="phone" value="<%= store ? store.phone : '' %>">
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="email" class="form-label">Email</label>
+            <input type="email" class="form-control" id="email" name="email" value="<%= store ? store.email : '' %>">
+          </div>
+
+          <div class="col-md-6 mb-3">
+            <div class="form-check mt-4">
+              <input class="form-check-input" type="checkbox" id="isActive" name="isActive" <%= store && store.isActive ? 'checked' : 'checked' %>>
+              <label class="form-check-label" for="isActive">Active</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label for="address" class="form-label">Address</label>
+          <input type="text" class="form-control" id="address" name="address" value="<%= store ? store.address : '' %>">
+        </div>
+
+        <div class="row">
+          <div class="col-md-4 mb-3">
+            <label for="city" class="form-label">City</label>
+            <input type="text" class="form-control" id="city" name="city" value="<%= store ? store.city : '' %>">
+          </div>
+
+          <div class="col-md-4 mb-3">
+            <label for="state" class="form-label">State</label>
+            <input type="text" class="form-control" id="state" name="state" value="<%= store ? store.state : '' %>">
+          </div>
+
+          <div class="col-md-4 mb-3">
+            <label for="zipCode" class="form-label">Zip Code</label>
+            <input type="text" class="form-control" id="zipCode" name="zipCode" value="<%= store ? store.zipCode : '' %>">
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label for="notes" class="form-label">Notes</label>
+          <textarea class="form-control" id="notes" name="notes" rows="4"><%= store ? store.notes : '' %></textarea>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary">Save Store</button>
+          <a href="/stores" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>
+

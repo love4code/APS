@@ -64,6 +64,21 @@
                 </div>
 
                 <div class="mb-3">
+                  <label for="store" class="form-label">Store</label>
+                  <select class="form-select" id="store" name="store">
+                    <option value="">No store selected</option>
+                    <% if (stores && stores.length > 0) { %>
+                      <% stores.forEach(s => { %>
+                        <option value="<%= s._id %>"><%= s.name %></option>
+                      <% }) %>
+                    <% } %>
+                  </select>
+                  <small class="form-text text-muted">
+                    <a href="/stores/new" target="_blank">Add new store</a>
+                  </small>
+                </div>
+
+                <div class="mb-3">
                   <label for="installDate" class="form-label"
                     >Install Date</label
                   >
