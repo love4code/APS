@@ -96,20 +96,33 @@ try {
   sessionStore = undefined
 }
 
-app.use(
-  session({
-    secret: sessionSecret,
-    resave: false,
-    saveUninitialized: false,
-    store: sessionStore,
-    cookie: {
-      maxAge: 1000 * 60 * 60 * 24, // 24 hours
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax'
+// Session middleware with error handling
+const sessionMiddleware = session({
+  secret: sessionSecret,
+  resave: false,
+  saveUninitialized: false,
+  store: sessionStore,
+  cookie: {
+    maxAge: 1000 * 60 * 60 * 24, // 24 hours
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax'
+  }
+})
+
+// Wrap session middleware to catch errors
+app.use((req, res, next) => {
+  try {
+    sessionMiddleware(req, res, next)
+  } catch (error) {
+    console.error('Session middleware error:', error)
+    // Continue without session if it fails
+    if (!req.session) {
+      req.session = {}
     }
-  })
-)
+    next()
+  }
+})
 
 // Flash messages
 app.use(flash())
@@ -131,10 +144,17 @@ app.use(loadUser)
 
 // Make user available to all views
 app.use((req, res, next) => {
-  // req.user is already a plain object from loadUser middleware (.lean())
-  res.locals.user = req.user || null
-  res.locals.isAuthenticated = !!req.session.userId
-  next()
+  try {
+    // req.user is already a plain object from loadUser middleware (.lean())
+    res.locals.user = req.user || null
+    res.locals.isAuthenticated = !!(req.session && req.session.userId)
+    next()
+  } catch (error) {
+    console.error('Error setting user locals:', error)
+    res.locals.user = null
+    res.locals.isAuthenticated = false
+    next()
+  }
 })
 
 // Routes
