@@ -90,26 +90,32 @@ exports.getDashboard = async (req, res, next) => {
     const safeSalesReps = Array.isArray(salesReps) ? salesReps : []
     const safeJobs = Array.isArray(jobs) ? jobs : []
 
-    // Ensure user is a plain object if it exists
-    const userData = req.user
-      ? req.user.toObject
-        ? req.user.toObject()
-        : req.user
-      : null
-
+    // req.user is already a plain object from loadUser middleware (.lean())
     // Ensure all required variables are set for the view
     res.locals.isAuthenticated = res.locals.isAuthenticated || false
-    res.locals.user = userData
+    res.locals.user = req.user || null
     res.locals.success = res.locals.success || []
     res.locals.error = res.locals.error || []
 
-    res.render('dashboard/index', {
-      title: 'Dashboard',
-      installers: safeInstallers,
-      salesReps: safeSalesReps,
-      jobs: safeJobs,
-      user: userData
-    })
+    try {
+      res.render('dashboard/index', {
+        title: 'Dashboard',
+        installers: safeInstallers,
+        salesReps: safeSalesReps,
+        jobs: safeJobs,
+        user: req.user || null
+      })
+    } catch (renderError) {
+      console.error('Dashboard render error:', renderError)
+      console.error('Dashboard render error stack:', renderError.stack)
+      console.error('Dashboard render error details:', {
+        installers: safeInstallers.length,
+        salesReps: safeSalesReps.length,
+        jobs: safeJobs.length,
+        user: userData ? 'exists' : 'null'
+      })
+      throw renderError
+    }
   } catch (error) {
     console.error('Dashboard error:', error)
     console.error('Dashboard error stack:', error.stack)

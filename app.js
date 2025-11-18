@@ -131,12 +131,8 @@ app.use(loadUser)
 
 // Make user available to all views
 app.use((req, res, next) => {
-  // Ensure user is a plain object if it exists (not a Mongoose document)
-  res.locals.user = req.user
-    ? req.user.toObject
-      ? req.user.toObject()
-      : req.user
-    : null
+  // req.user is already a plain object from loadUser middleware (.lean())
+  res.locals.user = req.user || null
   res.locals.isAuthenticated = !!req.session.userId
   next()
 })
@@ -197,8 +193,31 @@ app.use((err, req, res, next) => {
     })
   } catch (renderError) {
     // If render fails, send plain text
-    console.error('Render error:', renderError)
-    res.status(statusCode).send('Internal server error')
+    console.error('Error view render failed:', renderError)
+    console.error('Error view render stack:', renderError.stack)
+    console.error('Original error:', err.message)
+    try {
+      res.status(statusCode).send(`
+        <html>
+          <head><title>Error ${statusCode}</title></head>
+          <body>
+            <h1>Error ${statusCode}</h1>
+            <p>${
+              process.env.NODE_ENV === 'production'
+                ? 'An error occurred. Please try again.'
+                : err.message || 'An error occurred'
+            }</p>
+            <a href="/">Go to Dashboard</a>
+          </body>
+        </html>
+      `)
+    } catch (sendError) {
+      console.error('Failed to send error response:', sendError)
+      // Last resort - just end the response
+      if (!res.headersSent) {
+        res.end()
+      }
+    }
   }
 })
 
