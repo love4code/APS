@@ -36,30 +36,39 @@ exports.requireAdmin = async (req, res, next) => {
 
 // Load user into req.user for all authenticated routes
 exports.loadUser = async (req, res, next) => {
-  if (req.session.userId) {
-    try {
-      const user = await User.findById(req.session.userId)
-        .maxTimeMS(3000) // 3 second timeout
-        .lean()
-
-      if (!user || !user.isActive) {
-        // User not found or deactivated, clear session
-        req.session.destroy(() => {
-          req.user = null
-          next()
-        })
-        return
-      }
-      req.user = user
-    } catch (error) {
-      console.error('Error loading user:', error)
-      // On error, clear session to prevent repeated failures
+  // If no session, skip user loading
+  if (!req.session || !req.session.userId) {
+    req.user = null
+    return next()
+  }
+  
+  try {
+    const user = await User.findById(req.session.userId)
+      .maxTimeMS(3000) // 3 second timeout
+      .lean()
+    
+    if (!user || !user.isActive) {
+      // User not found or deactivated, clear session
       req.session.destroy(() => {
         req.user = null
         next()
       })
       return
     }
+    req.user = user
+    next()
+  } catch (error) {
+    console.error('Error loading user:', error)
+    // On error, clear session to prevent repeated failures
+    try {
+      req.session.destroy(() => {
+        req.user = null
+        next()
+      })
+    } catch (destroyError) {
+      // If destroy fails, just continue
+      req.user = null
+      next()
+    }
   }
-  next()
 }

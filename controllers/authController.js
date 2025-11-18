@@ -1,18 +1,25 @@
 const User = require('../models/User')
 const mongoose = require('mongoose')
 
-exports.getLogin = (req, res) => {
-  if (req.session.userId) {
-    return res.redirect('/')
+exports.getLogin = (req, res, next) => {
+  try {
+    // Check if session exists and has userId
+    if (req.session && req.session.userId) {
+      return res.redirect('/')
+    }
+    
+    // Ensure required variables are set for the view
+    res.locals.isAuthenticated = false
+    res.locals.user = null
+    res.locals.success = res.locals.success || []
+    res.locals.error = res.locals.error || []
+    
+    res.render('auth/login', { title: 'Login', error: null })
+  } catch (error) {
+    console.error('getLogin error:', error)
+    console.error('getLogin error stack:', error.stack)
+    next(error)
   }
-  
-  // Ensure required variables are set for the view
-  res.locals.isAuthenticated = res.locals.isAuthenticated || false
-  res.locals.user = res.locals.user || null
-  res.locals.success = res.locals.success || []
-  res.locals.error = res.locals.error || []
-  
-  res.render('auth/login', { title: 'Login', error: null })
 }
 
 exports.postLogin = async (req, res) => {

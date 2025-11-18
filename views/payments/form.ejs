@@ -11,9 +11,7 @@
           <select class="form-select" id="job" name="job" required>
             <option value="">Select a job...</option>
             <% jobs.forEach(job => { %>
-              <option value="<%= job._id %>" 
-                <%= (payment && payment.job && payment.job._id.toString() === job._id.toString()) || 
-                    (selectedJob && selectedJob._id.toString() === job._id.toString()) ? 'selected' : '' %>>
+              <option value="<%= job._id %>"<% if ((payment && payment.job && payment.job._id.toString() === job._id.toString()) || (selectedJob && selectedJob._id.toString() === job._id.toString())) { %> selected<% } %>>
                 Job #<%= job._id.toString().slice(-6) %> - 
                 <%= job.customer ? job.customer.name : 'Unknown' %> 
                 ($<%= (job.totalPrice || 0).toFixed(2) %>)
@@ -26,12 +24,8 @@
           <label for="recipientType" class="form-label">Payment To *</label>
           <select class="form-select" id="recipientType" name="recipientType" required onchange="updateRecipientOptions()">
             <option value="">Select type...</option>
-            <option value="installer" <%= (payment && payment.recipientType === 'installer') || recipientType === 'installer' ? 'selected' : '' %>>
-              Installer
-            </option>
-            <option value="salesRep" <%= (payment && payment.recipientType === 'salesRep') || recipientType === 'salesRep' ? 'selected' : '' %>>
-              Sales Rep
-            </option>
+            <option value="installer"<% if ((payment && payment.recipientType === 'installer') || recipientType === 'installer') { %> selected<% } %>>Installer</option>
+            <option value="salesRep"<% if ((payment && payment.recipientType === 'salesRep') || recipientType === 'salesRep') { %> selected<% } %>>Sales Rep</option>
           </select>
         </div>
 
@@ -42,21 +36,13 @@
             <!-- Installers -->
             <optgroup label="Installers" id="installerGroup" style="display: none;">
               <% installers.forEach(installer => { %>
-                <option value="<%= installer._id %>" 
-                  <%= (payment && payment.recipientType === 'installer' && payment.recipient && payment.recipient._id.toString() === installer._id.toString()) || 
-                      (selectedRecipient && selectedRecipient._id.toString() === installer._id.toString() && recipientType === 'installer') ? 'selected' : '' %>>
-                  <%= installer.name %>
-                </option>
+                <option value="<%= installer._id %>"<% if ((payment && payment.recipientType === 'installer' && payment.recipient && payment.recipient._id.toString() === installer._id.toString()) || (selectedRecipient && selectedRecipient._id.toString() === installer._id.toString() && recipientType === 'installer')) { %> selected<% } %>><%= installer.name %></option>
               <% }) %>
             </optgroup>
             <!-- Sales Reps -->
             <optgroup label="Sales Reps" id="salesRepGroup" style="display: none;">
               <% salesReps.forEach(rep => { %>
-                <option value="<%= rep._id %>" 
-                  <%= (payment && payment.recipientType === 'salesRep' && payment.recipient && payment.recipient._id.toString() === rep._id.toString()) || 
-                      (selectedRecipient && selectedRecipient._id.toString() === rep._id.toString() && recipientType === 'salesRep') ? 'selected' : '' %>>
-                  <%= rep.name %>
-                </option>
+                <option value="<%= rep._id %>"<% if ((payment && payment.recipientType === 'salesRep' && payment.recipient && payment.recipient._id.toString() === rep._id.toString()) || (selectedRecipient && selectedRecipient._id.toString() === rep._id.toString() && recipientType === 'salesRep')) { %> selected<% } %>><%= rep.name %></option>
               <% }) %>
             </optgroup>
           </select>
@@ -84,10 +70,10 @@
         <div class="mb-3">
           <label for="paymentMethod" class="form-label">Payment Method</label>
           <select class="form-select" id="paymentMethod" name="paymentMethod">
-            <option value="cash" <%= payment && payment.paymentMethod === 'cash' ? 'selected' : '' %>>Cash</option>
-            <option value="check" <%= payment && payment.paymentMethod === 'check' ? 'selected' : '' %>>Check</option>
-            <option value="bank_transfer" <%= payment && payment.paymentMethod === 'bank_transfer' ? 'selected' : '' %>>Bank Transfer</option>
-            <option value="other" <%= payment && payment.paymentMethod === 'other' ? 'selected' : '' %>>Other</option>
+            <option value="cash"<% if (payment && payment.paymentMethod === 'cash') { %> selected<% } %>>Cash</option>
+            <option value="check"<% if (payment && payment.paymentMethod === 'check') { %> selected<% } %>>Check</option>
+            <option value="bank_transfer"<% if (payment && payment.paymentMethod === 'bank_transfer') { %> selected<% } %>>Bank Transfer</option>
+            <option value="other"<% if (payment && payment.paymentMethod === 'other') { %> selected<% } %>>Other</option>
           </select>
         </div>
 
