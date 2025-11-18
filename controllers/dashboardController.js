@@ -56,16 +56,50 @@ exports.getDashboard = async (req, res, next) => {
     let jobs = []
     try {
       jobs = await Job.find()
-        .populate('customer', 'name')
-        .populate('salesRep', 'name')
-        .populate('installer', 'name')
-        .populate('createdBy', 'name')
+        .populate({
+          path: 'customer',
+          select: 'name',
+          options: { lean: true }
+        })
+        .populate({
+          path: 'salesRep',
+          select: 'name',
+          options: { lean: true }
+        })
+        .populate({
+          path: 'installer',
+          select: 'name',
+          options: { lean: true }
+        })
+        .populate({
+          path: 'createdBy',
+          select: 'name',
+          options: { lean: true }
+        })
         .sort({ createdAt: -1 })
         .limit(50)
         .lean()
         .maxTimeMS(5000)
+
+      // Ensure all jobs have safe data
+      jobs = jobs.map(job => ({
+        ...job,
+        customer: job.customer || null,
+        salesRep: job.salesRep || null,
+        installer: job.installer || null,
+        createdBy: job.createdBy || null,
+        totalPrice: job.totalPrice || 0,
+        status: job.status || 'pending',
+        isPaid: job.isPaid || false,
+        installDate: job.installDate || null
+      }))
     } catch (err) {
       console.error('Error fetching jobs:', err)
+      console.error('Error details:', {
+        name: err.name,
+        message: err.message,
+        stack: err.stack
+      })
       jobs = []
     }
 
@@ -128,7 +162,7 @@ exports.getDashboard = async (req, res, next) => {
         jobsCount: safeJobs.length,
         hasUser: !!req.user
       })
-      
+
       res.render('dashboard/index', {
         title: 'Dashboard',
         installers: safeInstallers || [],
