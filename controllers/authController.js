@@ -8,16 +8,33 @@ exports.getLogin = (req, res, next) => {
       return res.redirect('/')
     }
     
-    // Ensure required variables are set for the view
+    // Ensure ALL required variables are explicitly set for the view
+    // These are needed by the header partial
     res.locals.isAuthenticated = false
     res.locals.user = null
-    res.locals.success = res.locals.success || []
-    res.locals.error = res.locals.error || []
+    res.locals.success = Array.isArray(res.locals.success) ? res.locals.success : []
+    res.locals.error = Array.isArray(res.locals.error) ? res.locals.error : []
     
-    res.render('auth/login', { title: 'Login', error: null })
+    // Render with explicit variables
+    const renderData = {
+      title: 'Login',
+      error: null,
+      isAuthenticated: false,
+      user: null,
+      success: res.locals.success
+    }
+    
+    console.log('Rendering login page with data:', {
+      title: renderData.title,
+      hasUser: !!renderData.user,
+      isAuthenticated: renderData.isAuthenticated
+    })
+    
+    res.render('auth/login', renderData)
   } catch (error) {
     console.error('getLogin error:', error)
     console.error('getLogin error stack:', error.stack)
+    console.error('getLogin error message:', error.message)
     next(error)
   }
 }
