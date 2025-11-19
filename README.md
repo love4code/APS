@@ -111,15 +111,15 @@ A comprehensive Customer Relationship Management (CRM) system for tracking pool 
 ### Core Features
 
 - **Authentication & User Management**: Secure login, role-based access, user management
-- **Customer Management**: Complete customer database with search functionality
-- **Product & Service Management**: Manage products/services with pricing and tax settings
-- **Job Management**: Track sales and installations with full job details
+- **Customer Management**: Complete customer database with search functionality, separate sales and jobs views
+- **Product & Service Management**: Manage products/services with pricing and tax settings, searchable dropdowns with type filtering
+- **Job Management**: Track sales and installations with full job details, extended price calculations
 - **Store Management**: Manage multiple store locations
 - **Sales Rep Management**: Track sales representatives and their performance
 - **Installer Management**: Track installers and their assigned jobs
 - **Payment Tracking**: Record and track payments for jobs
-- **Invoice System**: Generate standalone invoices and PDF invoices
-- **Calendar View**: Visual calendar of scheduled jobs with color-coding by store
+- **Invoice System**: Generate standalone invoices and PDF invoices with extended price display, delete functionality
+- **Calendar View**: Visual calendar of scheduled jobs (jobs only, not sales) with color-coding by store, clickable events with read-only job details
 - **Calendar Sharing**: Share calendars with stores, installers, and sales reps (direct links or email invites)
 - **Calendar Invites**: Send email invitations that require login credentials
 - **Email Integration**: Send PDF invoices via email
@@ -219,9 +219,11 @@ The main navigation includes:
 1. Click on a customer name from the list
 2. You'll see:
    - Contact information
-   - All jobs associated with the customer
-   - Option to add a new job for this customer
+   - **Sales Section**: All sales (isSale = true) for this customer
+   - **Jobs Section**: All jobs (installations) for this customer
+   - Option to add a new job or sale for this customer
    - Option to create an invoice for this customer
+   - Recent invoices
 
 #### Edit Customer
 
@@ -265,7 +267,16 @@ The main navigation includes:
 1. Click **"Delete"** next to any product
 2. Confirm deletion
 
-**Note**: Products can be created on-the-fly when creating jobs using the "New Product/Service" button in the job form.
+**Note**: Products can be created on-the-fly when creating jobs or sales using the "New Product/Service" button in the form (no page refresh required).
+
+#### Product/Service Search Features
+
+When adding items to jobs, sales, or invoices:
+
+- **Searchable Dropdown**: Type to filter products/services by name
+- **Type Filter**: Use the dropdown to filter by "All", "Products", or "Services"
+- **Real-time Filtering**: Results update as you type
+- **Extended Price Display**: Automatically shows quantity × unit price
 
 ### 6. Managing Stores
 
@@ -318,8 +329,15 @@ The main navigation includes:
 1. Click **"Jobs"** → **"Calendar"** in the navigation
 2. You'll see a visual calendar of all scheduled jobs
 3. Jobs are color-coded by store
-4. Click on any event to view job details
+4. **Click on any event** to view job details in a read-only modal:
+   - Customer information
+   - Job details (status, dates, assigned personnel, store)
+   - Items list with pricing
+   - Calculated totals
+   - Payment status
+   - Notes
 5. Use the view switcher (Month, Week, Day, List) to change the view
+6. **Note**: Only jobs (not sales) appear on the calendar
 
 #### Create New Job
 
@@ -333,9 +351,12 @@ The main navigation includes:
    - **Status**: Set job status (scheduled, complete, delivered, etc.)
 3. **Add Items**:
    - Click **"Add Item"** button
-   - Select product/service from dropdown
+   - **Search for products/services**: Type in the search field to filter products/services
+   - **Filter by type**: Use the dropdown to filter by "All", "Products", or "Services"
+   - Select product/service from the filtered results
    - Quantity and price will auto-fill
-   - Adjust quantity and price as needed
+   - **Extended Price** is automatically calculated and displayed (quantity × unit price)
+   - Adjust quantity and price as needed (extended price updates in real-time)
    - Check/uncheck "Taxable" as needed
    - Click **"New Product/Service"** to create a product on-the-fly (no page refresh)
    - Remove items by clicking **"Remove"** button
@@ -403,9 +424,12 @@ The "New Sale" form is optimized for creating sales with multiple products.
    - Add notes if needed
 3. **Add Products** (right column):
    - Click **"Add Product"** button
-   - Select a product/service from the dropdown
+   - **Search for products/services**: Type in the search field to filter products/services
+   - **Filter by type**: Use the dropdown to filter by "All", "Products", or "Services"
+   - Select a product/service from the filtered results
    - Quantity and price will auto-fill
-   - Adjust as needed
+   - **Extended Price** is automatically calculated and displayed (quantity × unit price)
+   - Adjust as needed (extended price updates in real-time)
    - Check/uncheck "Taxable" as needed
    - Click **"New Product/Service"** to create a product on-the-fly
    - Remove products by clicking the trash icon
@@ -447,6 +471,8 @@ The "New Sale" form is optimized for creating sales with multiple products.
 4. **Add Items**:
    - Click **"Add Item"** button
    - Enter description, quantity, unit price
+   - **Extended Price** is automatically calculated and displayed (quantity × unit price)
+   - Extended price updates in real-time as you change quantity or unit price
    - Check "Taxable" if applicable
    - Add multiple items as needed
 5. **Discount**: Enter discount amount (optional)
@@ -461,14 +487,21 @@ The "New Sale" form is optimized for creating sales with multiple products.
 2. You'll see:
    - Invoice number and dates
    - Customer information
-   - Items and totals
+   - Items table showing:
+     - Description
+     - Quantity
+     - Unit Price
+     - Extended Price (quantity × unit price)
+     - Taxable status
+     - Item Total
+   - Calculated totals (subtotal, discount, tax, total)
    - Payment status
    - Actions:
      - **Download PDF**: Download PDF invoice
      - **Email PDF**: Send invoice via email
      - **Mark as Paid**: Update payment status
      - **Edit**: Edit invoice
-     - **Delete**: Delete invoice
+     - **Delete**: Delete invoice (with confirmation)
 
 #### Download PDF Invoice
 
@@ -570,6 +603,7 @@ The calendar sharing feature allows you to share job calendars with stores, inst
 4. Copy the link from the modal
 5. Send to the store
 6. Store sees only jobs assigned to their store (no login required)
+7. **Click on any calendar event** to view job details in a read-only modal
 
 **Option 2: Send Email Invite (Requires Login)**
 
@@ -593,6 +627,7 @@ The calendar sharing feature allows you to share job calendars with stores, inst
 5. Copy the link from the modal
 6. Send to the installer
 7. Installer sees only their assigned jobs (no login required)
+8. **Click on any calendar event** to view job details in a read-only modal
 
 **Option 2: Send Email Invite (Requires Login)**
 
@@ -617,6 +652,7 @@ The calendar sharing feature allows you to share job calendars with stores, inst
 5. Copy the link from the modal
 6. Send to the sales rep
 7. Sales rep sees **all jobs across all stores** (no login required)
+8. **Click on any calendar event** to view job details in a read-only modal
 
 **Option 2: Send Email Invite (Requires Login)**
 
@@ -907,6 +943,11 @@ Before deploying to production:
 - Calendar invites expire after 30 days
 - Users can be permanently deleted (admin only, cannot delete yourself)
 - Invite system requires email configuration to send invitations
+- **Calendar shows only jobs (not sales)** - sales are excluded from calendar view
+- **Customer page separates sales and jobs** - sales appear in a separate section from jobs
+- **Extended prices** are calculated and displayed in real-time on invoice forms (quantity × unit price)
+- **Product/service search** with type filtering (Products vs Services) available in all forms
+- **Calendar events are clickable** - clicking any event shows read-only job details in a modal
 
 ## 📄 License
 

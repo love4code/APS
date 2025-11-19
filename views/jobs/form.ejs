@@ -3,10 +3,11 @@
 <style>
   .product-search-wrapper {
     position: relative;
+    z-index: 1000;
   }
   .product-dropdown {
     position: absolute;
-    z-index: 1000;
+    z-index: 10000;
     background: white;
     border: 1px solid #ccc;
     border-radius: 4px;
@@ -15,6 +16,13 @@
     width: 100%;
     margin-top: 2px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  .item-row {
+    position: relative;
+    z-index: 1;
+  }
+  .item-row:hover {
+    z-index: 1000;
   }
   .product-option {
     cursor: pointer;
@@ -288,7 +296,7 @@
                 '</select>' +
                 '<input type="text" class="form-control product-search-input" placeholder="Search products/services..." autocomplete="off">' +
                 '<input type="hidden" class="product-id-input" name="items[' + itemIndex + '][productId]" required>' +
-                '<div class="product-dropdown" style="display: none; position: absolute; z-index: 1000; background: white; border: 1px solid #ccc; border-radius: 4px; max-height: 200px; overflow-y: auto; width: 100%; margin-top: 2px;"></div>' +
+                '<div class="product-dropdown" style="display: none;"></div>' +
               '</div>' +
             '</div>' +
           '</div>' +
@@ -349,18 +357,22 @@
     let selectedProduct = null;
     
     function filterProducts() {
+      if (!searchInput || !dropdown || !products) {
+        return;
+      }
+      
       const searchTerm = searchInput.value.toLowerCase().trim();
-      const typeFilterValue = typeFilter.value;
+      const typeFilterValue = typeFilter ? typeFilter.value : 'all';
       
       // Filter products based on search term and type
       const filtered = products.filter(p => {
-        const matchesSearch = p.name.toLowerCase().includes(searchTerm);
+        const matchesSearch = searchTerm.length === 0 || p.name.toLowerCase().includes(searchTerm);
         const matchesType = typeFilterValue === 'all' || p.type === typeFilterValue;
         return matchesSearch && matchesType;
       });
       
-      // Show/hide dropdown
-      if (searchTerm.length > 0 && filtered.length > 0) {
+      // Show dropdown if there are results (or if input is empty, show all filtered by type)
+      if (filtered.length > 0) {
         dropdown.style.display = 'block';
         dropdown.innerHTML = filtered.map(p => {
           const typeBadge = p.type === 'product' ? '<span class="badge bg-primary">Product</span>' : '<span class="badge bg-info">Service</span>';
@@ -374,34 +386,46 @@
           </div>`;
         }).join('');
         
-        // Position dropdown
-        const rect = searchInput.getBoundingClientRect();
+        // Position dropdown using absolute positioning relative to wrapper
         dropdown.style.position = 'absolute';
-        dropdown.style.top = (rect.bottom - rect.top + 2) + 'px';
+        dropdown.style.top = '100%';
         dropdown.style.left = '0';
-        dropdown.style.width = searchInput.offsetWidth + 'px';
+        dropdown.style.width = '100%';
+        dropdown.style.zIndex = '10000';
+        dropdown.style.display = 'block'; // Ensure it's visible
       } else {
         dropdown.style.display = 'none';
       }
     }
     
-    // Search input event
+    // Search input event - show suggestions as user types
     searchInput.addEventListener('input', filterProducts);
+    
+    // Show suggestions on focus
     searchInput.addEventListener('focus', function() {
-      if (this.value.length > 0) {
-        filterProducts();
+      filterProducts();
+    });
+    
+    // Don't close dropdown on blur - let click handler manage it
+    searchInput.addEventListener('blur', function(e) {
+      // Don't close if clicking on dropdown or items container
+      const relatedTarget = e.relatedTarget;
+      if (relatedTarget && (dropdown.contains(relatedTarget) || (itemsContainer && itemsContainer.contains(relatedTarget)))) {
+        // Keep focus on input to prevent closing
+        setTimeout(function() {
+          searchInput.focus();
+        }, 0);
       }
     });
     
     // Type filter change
     typeFilter.addEventListener('change', function() {
-      if (searchInput.value.length > 0) {
-        filterProducts();
-      }
+      filterProducts();
     });
     
     // Dropdown option click
     dropdown.addEventListener('click', function(e) {
+      e.stopPropagation(); // Prevent event from bubbling to document
       const option = e.target.closest('.product-option');
       if (option) {
         const productId = option.getAttribute('data-id');
@@ -423,12 +447,117 @@
       }
     });
     
-    // Close dropdown when clicking outside
-    document.addEventListener('click', function(e) {
-      if (!wrapper.contains(e.target)) {
-        dropdown.style.display = 'none';
-      }
+    // Prevent dropdown from closing when interacting with it
+    // Prevent dropdown from closing when interacting with it
+    dropdown.addEventListener('mousedown', function(e) {
+      e.stopPropagation();
     });
+    
+    dropdown.addEventListener('click', function(e) {
+      e.stopPropagation();
+    });
+    
+    // Get the item row and items container
+    const itemRow = wrapper.closest('.item-row');
+    const itemsContainer = document.getElementById('items-container');
+    
+    // Close dropdown when clicking outside - use a more robust check
+    const closeDropdownOnOutsideClick = function(e) {
+      // Skip if dropdown is already hidden
+      if (dropdown.style.display === 'none') {
+        return;
+      }
+      
+      // Get the element that was clicked
+      const target = e.target;
+      
+      // Don't close if clicking on:
+      // 1. The dropdown itself or any of its children
+      if (dropdown.contains(target)) {
+        return;
+      }
+      
+      // 2. The search input or wrapper
+      if (wrapper.contains(target)) {
+        return;
+      }
+      
+      // 3. The item row containing this input
+      if (itemRow && itemRow.contains(target)) {
+        return;
+      }
+      
+      // 4. Anywhere in the items container
+      if (itemsContainer && itemsContainer.contains(target)) {
+        return;
+      }
+      
+      // Only close if clicking completely outside all these areas
+      dropdown.style.display = 'none';
+    };
+    
+    // Track if we should prevent closing (when mouse is moving)
+    let preventClose = false;
+    
+    // Prevent closing when mouse enters dropdown or items container
+    dropdown.addEventListener('mouseenter', function() {
+      preventClose = true;
+    });
+    
+    if (itemsContainer) {
+      itemsContainer.addEventListener('mouseenter', function() {
+        preventClose = true;
+      });
+      itemsContainer.addEventListener('mouseleave', function() {
+        preventClose = false;
+      });
+    }
+    
+    dropdown.addEventListener('mouseleave', function() {
+      // Small delay to allow mouse to move back
+      setTimeout(function() {
+        preventClose = false;
+      }, 100);
+    });
+    
+    // Track mouse position to prevent closing when over safe areas
+    let mouseOverSafeArea = false;
+    
+    // Mark safe area when mouse enters
+    if (itemsContainer) {
+      itemsContainer.addEventListener('mouseenter', function() {
+        mouseOverSafeArea = true;
+      });
+      itemsContainer.addEventListener('mouseleave', function() {
+        mouseOverSafeArea = false;
+      });
+    }
+    
+    dropdown.addEventListener('mouseenter', function() {
+      mouseOverSafeArea = true;
+    });
+    
+    dropdown.addEventListener('mouseleave', function(e) {
+      // Check if mouse moved to items container
+      setTimeout(function() {
+        const elementUnderMouse = document.elementFromPoint(e.clientX, e.clientY);
+        if (!itemsContainer || !itemsContainer.contains(elementUnderMouse)) {
+          mouseOverSafeArea = false;
+        }
+      }, 50);
+    });
+    
+    // Modified close handler that checks mouse position
+    const safeCloseHandler = function(e) {
+      // Don't close if mouse is over safe area
+      if (mouseOverSafeArea || preventClose) {
+        return;
+      }
+      closeDropdownOnOutsideClick(e);
+    };
+    
+    // Use click event in bubble phase - only fires on actual clicks, not mouse movement
+    document.addEventListener('click', safeCloseHandler, false);
     
     // Handle existing selected product (for edit mode)
     if (searchInput.getAttribute('data-selected-id')) {

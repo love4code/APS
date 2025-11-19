@@ -394,6 +394,43 @@ exports.updateStatus = async (req, res) => {
   }
 }
 
+exports.delete = async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id)
+
+    if (!job) {
+      req.flash('error', 'Job not found')
+      return res.redirect('/jobs')
+    }
+
+    // Store customer ID for redirect
+    const customerId = job.customer
+
+    // Delete associated activity logs
+    await ActivityLog.deleteMany({ job: job._id })
+
+    // Delete the job
+    await Job.findByIdAndDelete(req.params.id)
+
+    req.flash('success', 'Job deleted successfully')
+    
+    // Redirect to customer page if customerId is provided, otherwise jobs list
+    if (req.query.customerId || customerId) {
+      res.redirect(`/customers/${req.query.customerId || customerId}`)
+    } else {
+      res.redirect('/jobs')
+    }
+  } catch (error) {
+    console.error('Delete job error:', error)
+    req.flash('error', 'Error deleting job')
+    if (req.query.customerId) {
+      res.redirect(`/customers/${req.query.customerId}`)
+    } else {
+      res.redirect('/jobs')
+    }
+  }
+}
+
 exports.updatePayment = async (req, res) => {
   try {
     const { isPaid, datePaid } = req.body
@@ -616,6 +653,65 @@ exports.calendarEvents = async (req, res) => {
   } catch (error) {
     console.error('Calendar events error:', error)
     res.status(500).json({ error: 'Error loading calendar events' })
+  }
+}
+
+// Get job details as JSON (for calendar modal)
+exports.getJobDetails = async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id)
+      .populate('customer', 'name phone email address')
+      .populate('salesRep', 'name email')
+      .populate('installer', 'name email')
+      .populate('store', 'name')
+      .populate('items.product', 'name description')
+
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' })
+    }
+
+    // Format job data for display
+    const jobData = {
+      id: job._id.toString(),
+      customer: job.customer ? {
+        name: job.customer.name,
+        phone: job.customer.phone || 'N/A',
+        email: job.customer.email || 'N/A',
+        address: job.customer.address || 'N/A'
+      } : null,
+      status: job.status,
+      soldByOwner: job.soldByOwner,
+      salesRep: job.salesRep ? {
+        name: job.salesRep.name,
+        email: job.salesRep.email || 'N/A'
+      } : null,
+      installer: job.installer ? {
+        name: job.installer.name,
+        email: job.installer.email || 'N/A'
+      } : null,
+      store: job.store ? job.store.name : 'No store selected',
+      installDate: job.installDate ? new Date(job.installDate).toLocaleDateString() : 'Not scheduled',
+      createdAt: new Date(job.createdAt).toLocaleDateString(),
+      items: job.items ? job.items.map(item => ({
+        product: item.product ? item.product.name : 'Unknown',
+        quantity: item.quantity || 0,
+        unitPrice: item.unitPrice || 0,
+        isTaxable: item.isTaxable || false,
+        itemTotal: (item.quantity || 0) * (item.unitPrice || 0),
+        itemTax: item.isTaxable ? ((item.quantity || 0) * (item.unitPrice || 0)) * 0.0625 : 0
+      })) : [],
+      subtotal: job.subtotal || 0,
+      taxTotal: job.taxTotal || 0,
+      installCost: job.installCost || 0,
+      totalPrice: job.totalPrice || 0,
+      isPaid: job.isPaid || false,
+      notes: job.notes || ''
+    }
+
+    res.json(jobData)
+  } catch (error) {
+    console.error('Get job details error:', error)
+    res.status(500).json({ error: 'Error loading job details' })
   }
 }
 

@@ -35,7 +35,7 @@ const getCompanySettings = async () => {
  * @param {Object} job - Job object with populated customer, items, etc.
  * @returns {Promise<Buffer>} PDF buffer
  */
-exports.generateInvoicePDF = async (job) => {
+exports.generateInvoicePDF = async job => {
   return new Promise(async (resolve, reject) => {
     try {
       const settings = await getCompanySettings()
@@ -49,46 +49,100 @@ exports.generateInvoicePDF = async (job) => {
       })
       doc.on('error', reject)
 
-      // Header
-      doc.fontSize(24).text('INVOICE', { align: 'center' })
-      doc.moveDown()
+      // Add logo if available (position on left side)
+      let logoHeight = 0
+      const logoX = 50
+      const logoY = 50
+      if (settings.logoPath) {
+        try {
+          const logoPath = path.join(
+            __dirname,
+            '..',
+            'public',
+            settings.logoPath
+          )
+          if (fs.existsSync(logoPath)) {
+            // Add logo (max width 120px, max height 80px, maintain aspect ratio)
+            doc.image(logoPath, logoX, logoY, {
+              width: 120,
+              height: 80,
+              fit: [120, 80]
+            })
+            logoHeight = 80
+          }
+        } catch (error) {
+          console.error('Error loading logo:', error)
+          // Continue without logo if there's an error
+        }
+      }
 
-      // Invoice details
+      // Invoice details (right side, top)
+      const invoiceDetailsY = 50
       doc.fontSize(12)
-      doc.text(`Invoice #: ${job._id.toString().slice(-8).toUpperCase()}`, { align: 'right' })
-      doc.text(`Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, { align: 'right' })
-      doc.moveDown()
+      doc.text(`Invoice #: ${job._id.toString().slice(-8).toUpperCase()}`, {
+        align: 'right',
+        y: invoiceDetailsY
+      })
+      doc.text(
+        `Date: ${new Date().toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        })}`,
+        { align: 'right', y: invoiceDetailsY + 15 }
+      )
 
-      // Company info from settings
+      // Header (centered, below logo/invoice details area)
+      const headerY = Math.max(logoY + logoHeight, invoiceDetailsY + 30) + 20
+      doc.fontSize(24).text('INVOICE', { align: 'center', y: headerY })
+
+      // Company info from settings (position on left side, below logo)
       doc.fontSize(10)
-      let companyY = 50
+      const companyX = 50 // Left side of page
+      // Start company info below the logo
+      let companyY = logoY + logoHeight + 20 // Below logo with spacing
+
+      // If no logo, start at top
+      if (logoHeight === 0) {
+        companyY = 50
+      }
+
       if (settings.companyName) {
-        doc.text(settings.companyName, 50, companyY)
+        doc.text(settings.companyName, companyX, companyY)
         companyY += 15
       }
       if (settings.companyAddress) {
-        doc.text(settings.companyAddress, 50, companyY)
+        doc.text(settings.companyAddress, companyX, companyY)
         companyY += 15
       }
-      const cityStateZip = [settings.companyCity, settings.companyState, settings.companyZipCode]
+      const cityStateZip = [
+        settings.companyCity,
+        settings.companyState,
+        settings.companyZipCode
+      ]
         .filter(Boolean)
         .join(', ')
       if (cityStateZip) {
-        doc.text(cityStateZip, 50, companyY)
+        doc.text(cityStateZip, companyX, companyY)
         companyY += 15
       }
       if (settings.companyPhone) {
-        doc.text(`Phone: ${settings.companyPhone}`, 50, companyY)
+        doc.text(`Phone: ${settings.companyPhone}`, companyX, companyY)
         companyY += 15
       }
       if (settings.companyEmail) {
-        doc.text(`Email: ${settings.companyEmail}`, 50, companyY)
+        doc.text(`Email: ${settings.companyEmail}`, companyX, companyY)
         companyY += 15
       }
       if (settings.companyWebsite) {
-        doc.text(`Website: ${settings.companyWebsite}`, 50, companyY)
+        doc.text(`Website: ${settings.companyWebsite}`, companyX, companyY)
+        companyY += 15
       }
-      doc.moveDown(3)
+
+      // Move down to start customer info section (below header and company info)
+      const customerInfoStartY = Math.max(headerY + 30, companyY) + 20
+      doc.y = customerInfoStartY
+      doc.moveDown(1)
 
       // Customer info
       const customerY = doc.y
@@ -100,7 +154,11 @@ exports.generateInvoicePDF = async (job) => {
           doc.text(job.customer.address, 50, customerY + 35)
         }
         if (job.customer.city || job.customer.state || job.customer.zipCode) {
-          const cityStateZip = [job.customer.city, job.customer.state, job.customer.zipCode]
+          const cityStateZip = [
+            job.customer.city,
+            job.customer.state,
+            job.customer.zipCode
+          ]
             .filter(Boolean)
             .join(', ')
           doc.text(cityStateZip, 50, customerY + 50)
@@ -119,7 +177,11 @@ exports.generateInvoicePDF = async (job) => {
       doc.fontSize(10)
       doc.text(`Status: ${job.status || 'N/A'}`, 50, doc.y + 15)
       if (job.installDate) {
-        doc.text(`Install Date: ${new Date(job.installDate).toLocaleDateString()}`, 50, doc.y + 15)
+        doc.text(
+          `Install Date: ${new Date(job.installDate).toLocaleDateString()}`,
+          50,
+          doc.y + 15
+        )
       }
       if (job.installer) {
         doc.text(`Installer: ${job.installer.name || 'N/A'}`, 50, doc.y + 15)
@@ -141,7 +203,7 @@ exports.generateInvoicePDF = async (job) => {
       doc.text('Unit Price', 300, currentY)
       doc.text('Taxable', 400, currentY)
       doc.text('Total', 450, currentY)
-      
+
       currentY += itemHeight
       doc.moveTo(50, currentY).lineTo(550, currentY).stroke()
       currentY += 5
@@ -149,9 +211,9 @@ exports.generateInvoicePDF = async (job) => {
       // Table rows
       doc.font('Helvetica')
       let totalItems = 0
-      
+
       if (job.items && job.items.length > 0) {
-        job.items.forEach((item) => {
+        job.items.forEach(item => {
           const itemName = item.product ? item.product.name : 'Unknown Product'
           const quantity = item.quantity || 0
           const unitPrice = item.unitPrice || 0
@@ -164,7 +226,7 @@ exports.generateInvoicePDF = async (job) => {
           doc.text(`$${unitPrice.toFixed(2)}`, 300, currentY)
           doc.text(item.isTaxable ? 'Yes' : 'No', 400, currentY)
           doc.text(`$${itemTotal.toFixed(2)}`, 450, currentY)
-          
+
           currentY += itemHeight
         })
       } else {
@@ -180,14 +242,14 @@ exports.generateInvoicePDF = async (job) => {
       const totalsStartX = 400
       const totalsEndX = 550
       const totalsWidth = totalsEndX - totalsStartX
-      
+
       const subtotal = job.subtotal || 0
       const taxTotal = job.taxTotal || 0
       const installCost = job.installCost || 0
       const totalPrice = job.totalPrice || 0
 
       doc.fontSize(10).font('Helvetica')
-      
+
       // Subtotal
       const subtotalLabel = 'Subtotal:'
       const subtotalValue = `$${subtotal.toFixed(2)}`
@@ -233,9 +295,17 @@ exports.generateInvoicePDF = async (job) => {
       // Payment status
       currentY += 30
       doc.fontSize(10).font('Helvetica')
-      doc.text(`Payment Status: ${job.isPaid ? 'PAID' : 'UNPAID'}`, 50, currentY)
+      doc.text(
+        `Payment Status: ${job.isPaid ? 'PAID' : 'UNPAID'}`,
+        50,
+        currentY
+      )
       if (job.isPaid && job.datePaid) {
-        doc.text(`Paid Date: ${new Date(job.datePaid).toLocaleDateString()}`, 50, currentY + 15)
+        doc.text(
+          `Paid Date: ${new Date(job.datePaid).toLocaleDateString()}`,
+          50,
+          currentY + 15
+        )
       }
 
       // Notes
@@ -251,7 +321,12 @@ exports.generateInvoicePDF = async (job) => {
       const pageHeight = doc.page.height
       const footerY = pageHeight - 50
       doc.fontSize(8)
-      doc.text(settings.invoiceFooter || 'Thank you for your business!', 50, footerY, { align: 'center' })
+      doc.text(
+        settings.invoiceFooter || 'Thank you for your business!',
+        50,
+        footerY,
+        { align: 'center' }
+      )
 
       doc.end()
     } catch (error) {
@@ -265,7 +340,7 @@ exports.generateInvoicePDF = async (job) => {
  * @param {Object} invoice - Invoice object with populated customer, items, etc.
  * @returns {Promise<Buffer>} PDF buffer
  */
-exports.generateInvoicePDFFromInvoice = async (invoice) => {
+exports.generateInvoicePDFFromInvoice = async invoice => {
   return new Promise(async (resolve, reject) => {
     try {
       const settings = await getCompanySettings()
@@ -279,49 +354,114 @@ exports.generateInvoicePDFFromInvoice = async (invoice) => {
       })
       doc.on('error', reject)
 
-      // Header
-      doc.fontSize(24).text('INVOICE', { align: 'center' })
-      doc.moveDown()
-
-      // Invoice details
-      doc.fontSize(12)
-      doc.text(`Invoice #: ${invoice.invoiceNumber}`, { align: 'right' })
-      doc.text(`Date: ${new Date(invoice.issueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, { align: 'right' })
-      if (invoice.dueDate) {
-        doc.text(`Due Date: ${new Date(invoice.dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, { align: 'right' })
+      // Add logo if available (position on left side)
+      let logoHeight = 0
+      const logoX = 50
+      const logoY = 50
+      if (settings.logoPath) {
+        try {
+          const logoPath = path.join(
+            __dirname,
+            '..',
+            'public',
+            settings.logoPath
+          )
+          if (fs.existsSync(logoPath)) {
+            // Add logo (max width 120px, max height 80px, maintain aspect ratio)
+            doc.image(logoPath, logoX, logoY, {
+              width: 120,
+              height: 80,
+              fit: [120, 80]
+            })
+            logoHeight = 80
+          }
+        } catch (error) {
+          console.error('Error loading logo:', error)
+          // Continue without logo if there's an error
+        }
       }
-      doc.moveDown()
 
-      // Company info from settings
+      // Invoice details (right side, top)
+      const invoiceDetailsY = 50
+      doc.fontSize(12)
+      doc.text(`Invoice #: ${invoice.invoiceNumber}`, {
+        align: 'right',
+        y: invoiceDetailsY
+      })
+      doc.text(
+        `Date: ${new Date(invoice.issueDate).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        })}`,
+        { align: 'right', y: invoiceDetailsY + 15 }
+      )
+      if (invoice.dueDate) {
+        doc.text(
+          `Due Date: ${new Date(invoice.dueDate).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          })}`,
+          { align: 'right', y: invoiceDetailsY + 30 }
+        )
+      }
+
+      // Header (centered, below logo/invoice details area)
+      const headerY =
+        Math.max(
+          logoY + logoHeight,
+          invoiceDetailsY + (invoice.dueDate ? 45 : 30)
+        ) + 20
+      doc.fontSize(24).text('INVOICE', { align: 'center', y: headerY })
+
+      // Company info from settings (position on left side, below logo)
       doc.fontSize(10)
-      let companyY = 50
+      const companyX = 50 // Left side of page
+      // Start company info below the logo
+      let companyY = logoY + logoHeight + 20 // Below logo with spacing
+
+      // If no logo, start at top
+      if (logoHeight === 0) {
+        companyY = 50
+      }
+
       if (settings.companyName) {
-        doc.text(settings.companyName, 50, companyY)
+        doc.text(settings.companyName, companyX, companyY)
         companyY += 15
       }
       if (settings.companyAddress) {
-        doc.text(settings.companyAddress, 50, companyY)
+        doc.text(settings.companyAddress, companyX, companyY)
         companyY += 15
       }
-      const cityStateZip = [settings.companyCity, settings.companyState, settings.companyZipCode]
+      const cityStateZip = [
+        settings.companyCity,
+        settings.companyState,
+        settings.companyZipCode
+      ]
         .filter(Boolean)
         .join(', ')
       if (cityStateZip) {
-        doc.text(cityStateZip, 50, companyY)
+        doc.text(cityStateZip, companyX, companyY)
         companyY += 15
       }
       if (settings.companyPhone) {
-        doc.text(`Phone: ${settings.companyPhone}`, 50, companyY)
+        doc.text(`Phone: ${settings.companyPhone}`, companyX, companyY)
         companyY += 15
       }
       if (settings.companyEmail) {
-        doc.text(`Email: ${settings.companyEmail}`, 50, companyY)
+        doc.text(`Email: ${settings.companyEmail}`, companyX, companyY)
         companyY += 15
       }
       if (settings.companyWebsite) {
-        doc.text(`Website: ${settings.companyWebsite}`, 50, companyY)
+        doc.text(`Website: ${settings.companyWebsite}`, companyX, companyY)
+        companyY += 15
       }
-      doc.moveDown(3)
+
+      // Move down to start customer info section (below header and company info)
+      const customerInfoStartY = Math.max(headerY + 30, companyY) + 20
+      doc.y = customerInfoStartY
+      doc.moveDown(1)
 
       // Customer info
       const customerY = doc.y
@@ -332,8 +472,16 @@ exports.generateInvoicePDFFromInvoice = async (invoice) => {
         if (invoice.customer.address) {
           doc.text(invoice.customer.address, 50, customerY + 35)
         }
-        if (invoice.customer.city || invoice.customer.state || invoice.customer.zipCode) {
-          const cityStateZip = [invoice.customer.city, invoice.customer.state, invoice.customer.zipCode]
+        if (
+          invoice.customer.city ||
+          invoice.customer.state ||
+          invoice.customer.zipCode
+        ) {
+          const cityStateZip = [
+            invoice.customer.city,
+            invoice.customer.state,
+            invoice.customer.zipCode
+          ]
             .filter(Boolean)
             .join(', ')
           doc.text(cityStateZip, 50, customerY + 50)
@@ -373,16 +521,16 @@ exports.generateInvoicePDFFromInvoice = async (invoice) => {
       doc.text('Unit Price', 350, currentY)
       doc.text('Taxable', 450, currentY)
       doc.text('Total', 500, currentY)
-      
+
       currentY += itemHeight
       doc.moveTo(50, currentY).lineTo(550, currentY).stroke()
       currentY += 5
 
       // Table rows
       doc.font('Helvetica')
-      
+
       if (invoice.items && invoice.items.length > 0) {
-        invoice.items.forEach((item) => {
+        invoice.items.forEach(item => {
           const description = item.description || 'Unknown Item'
           const quantity = item.quantity || 0
           const unitPrice = item.unitPrice || 0
@@ -394,7 +542,7 @@ exports.generateInvoicePDFFromInvoice = async (invoice) => {
           doc.text(`$${unitPrice.toFixed(2)}`, 350, currentY)
           doc.text(item.isTaxable ? 'Yes' : 'No', 450, currentY)
           doc.text(`$${itemTotal.toFixed(2)}`, 500, currentY)
-          
+
           currentY += itemHeight
         })
       } else {
@@ -409,14 +557,14 @@ exports.generateInvoicePDFFromInvoice = async (invoice) => {
       // Totals section - right aligned
       const totalsStartX = 400
       const totalsEndX = 550
-      
+
       const subtotal = invoice.subtotal || 0
       const taxTotal = invoice.taxTotal || 0
       const discount = invoice.discount || 0
       const totalPrice = invoice.totalPrice || 0
 
       doc.fontSize(10).font('Helvetica')
-      
+
       // Subtotal
       const subtotalLabel = 'Subtotal:'
       const subtotalValue = `$${subtotal.toFixed(2)}`
@@ -462,9 +610,19 @@ exports.generateInvoicePDFFromInvoice = async (invoice) => {
       // Payment status
       currentY += 30
       doc.fontSize(10).font('Helvetica')
-      doc.text(`Payment Status: ${invoice.status === 'paid' ? 'PAID' : invoice.status.toUpperCase()}`, 50, currentY)
+      doc.text(
+        `Payment Status: ${
+          invoice.status === 'paid' ? 'PAID' : invoice.status.toUpperCase()
+        }`,
+        50,
+        currentY
+      )
       if (invoice.status === 'paid' && invoice.datePaid) {
-        doc.text(`Paid Date: ${new Date(invoice.datePaid).toLocaleDateString()}`, 50, currentY + 15)
+        doc.text(
+          `Paid Date: ${new Date(invoice.datePaid).toLocaleDateString()}`,
+          50,
+          currentY + 15
+        )
       }
       if (invoice.paymentMethod) {
         const methodNames = {
@@ -474,7 +632,13 @@ exports.generateInvoicePDFFromInvoice = async (invoice) => {
           bank_transfer: 'Bank Transfer',
           other: 'Other'
         }
-        doc.text(`Payment Method: ${methodNames[invoice.paymentMethod] || invoice.paymentMethod}`, 50, currentY + 30)
+        doc.text(
+          `Payment Method: ${
+            methodNames[invoice.paymentMethod] || invoice.paymentMethod
+          }`,
+          50,
+          currentY + 30
+        )
       }
 
       // Terms
@@ -499,7 +663,12 @@ exports.generateInvoicePDFFromInvoice = async (invoice) => {
       const pageHeight = doc.page.height
       const footerY = pageHeight - 50
       doc.fontSize(8)
-      doc.text(settings.invoiceFooter || 'Thank you for your business!', 50, footerY, { align: 'center' })
+      doc.text(
+        settings.invoiceFooter || 'Thank you for your business!',
+        50,
+        footerY,
+        { align: 'center' }
+      )
 
       doc.end()
     } catch (error) {
@@ -507,4 +676,3 @@ exports.generateInvoicePDFFromInvoice = async (invoice) => {
     }
   })
 }
-

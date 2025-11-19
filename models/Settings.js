@@ -57,6 +57,11 @@ const settingsSchema = new mongoose.Schema({
     default: 'Thank you for your business!',
     trim: true
   },
+  logoPath: {
+    type: String,
+    default: '',
+    trim: true
+  },
   updatedAt: {
     type: Date,
     default: Date.now
