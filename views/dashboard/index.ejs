@@ -97,6 +97,74 @@
     </div>
   </div>
 
+  <!-- Pool Sales Row -->
+  <div class="mb-4">
+    <h2 class="h5 mb-3">Recent Pool Sales</h2>
+    <div
+      class="d-flex flex-row flex-nowrap overflow-auto pb-3"
+      style="gap: 1rem"
+    >
+      <% if (poolSales && poolSales.length > 0) { %> <% poolSales.forEach(sale => { %> <% if (sale && sale._id) { %>
+      <div class="card" style="min-width: 320px">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <% 
+              let deliveryStatusClass = 'secondary';
+              let deliveryStatusText = 'Not Ordered';
+              if (sale.deliveryDate) {
+                deliveryStatusClass = 'success';
+                deliveryStatusText = 'Delivered';
+              } else if (sale.orderDate) {
+                deliveryStatusClass = 'warning';
+                deliveryStatusText = 'Ordered';
+              }
+            %>
+            <span class="badge bg-<%= deliveryStatusClass %>">
+              <%= deliveryStatusText %>
+            </span>
+            <span class="badge bg-<%= sale.isPaid ? 'success' : 'danger' %>">
+              <%= sale.isPaid ? 'Paid' : 'Unpaid' %>
+            </span>
+          </div>
+          <h5 class="card-title">
+            <%= sale.customer && sale.customer.name ? sale.customer.name : 'Unknown Customer' %>
+          </h5>
+          <p class="card-text small mb-1">
+            <strong>Total:</strong> $<%= (sale.totalPrice || 0).toFixed(2) %>
+          </p>
+          <p class="card-text small mb-1">
+            <strong>Sold by:</strong>
+            <%= sale.soldByOwner ? 'Owner' : (sale.salesRep && sale.salesRep.name ? sale.salesRep.name : 'N/A') %>
+          </p>
+          <% if (sale.orderDate) { %>
+          <p class="card-text small mb-1">
+            <strong>Order Date:</strong> <%= new Date(sale.orderDate).toLocaleDateString() %>
+          </p>
+          <% } %>
+          <% if (sale.deliveryDate) { %>
+          <p class="card-text small mb-1">
+            <strong>Delivery Date:</strong> <%= new Date(sale.deliveryDate).toLocaleDateString() %>
+          </p>
+          <% } else if (sale.orderDate) { %>
+          <p class="card-text small mb-2 text-warning">
+            <strong>Status:</strong> Awaiting Delivery
+          </p>
+          <% } %>
+          <a
+            href="/jobs/<%= sale._id.toString() %>"
+            class="btn btn-sm btn-primary"
+            >View Details</a
+          >
+        </div>
+      </div>
+      <% } %> <% }) %> <% } else { %>
+      <div class="card" style="min-width: 320px">
+        <div class="card-body text-muted">No pool sales found</div>
+      </div>
+      <% } %>
+    </div>
+  </div>
+
   <!-- Jobs Row -->
   <div class="mb-4">
     <h2 class="h5 mb-3">Recent Jobs</h2>

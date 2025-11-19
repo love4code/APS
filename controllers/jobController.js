@@ -112,6 +112,8 @@ exports.create = async (req, res) => {
       installer,
       store,
       installDate,
+      orderDate,
+      deliveryDate,
       status,
       notes,
       items,
@@ -173,6 +175,8 @@ exports.create = async (req, res) => {
       installer: installer || null,
       store: store || null,
       installDate: installDate || null,
+      orderDate: orderDate || null,
+      deliveryDate: deliveryDate || null,
       status: status || 'scheduled',
       notes: notes || '',
       installCost: installCost ? parseFloat(installCost) : 0,
@@ -283,6 +287,8 @@ exports.update = async (req, res) => {
       installer,
       store,
       installDate,
+      orderDate,
+      deliveryDate,
       status,
       notes,
       items,
@@ -340,6 +346,8 @@ exports.update = async (req, res) => {
     job.installer = installer || null
     job.store = store || null
     job.installDate = installDate || null
+    job.orderDate = orderDate || null
+    job.deliveryDate = deliveryDate || null
     job.status = status || 'scheduled'
     job.notes = notes || ''
     job.installCost = installCost ? parseFloat(installCost) : 0

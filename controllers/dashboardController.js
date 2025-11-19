@@ -1,5 +1,6 @@
 const User = require('../models/User')
 const Job = require('../models/Job')
+const Product = require('../models/Product')
 
 exports.getDashboard = async (req, res, next) => {
   try {
@@ -143,10 +144,74 @@ exports.getDashboard = async (req, res, next) => {
       }
     }
 
+    // Get pool sales (sales with pool products) - with error handling
+    let poolSales = []
+    try {
+      // First, get all products that contain "pool" in the name (case-insensitive)
+      const poolProducts = await Product.find({
+        name: { $regex: /pool/i },
+        isActive: true
+      })
+        .select('_id')
+        .lean()
+        .maxTimeMS(3000)
+      
+      const poolProductIds = poolProducts.map(p => p._id)
+      
+      if (poolProductIds.length > 0) {
+        // Get sales (isSale: true) that have pool products in their items
+        const allSales = await Job.find({ isSale: true })
+          .populate({
+            path: 'customer',
+            select: 'name',
+            options: { lean: true }
+          })
+          .populate({
+            path: 'salesRep',
+            select: 'name',
+            options: { lean: true }
+          })
+          .populate({
+            path: 'items.product',
+            select: 'name',
+            options: { lean: true }
+          })
+          .sort({ createdAt: -1 })
+          .limit(20)
+          .lean()
+          .maxTimeMS(5000)
+        
+        // Filter to only include sales that have pool products
+        poolSales = allSales.filter(sale => {
+          if (!sale.items || sale.items.length === 0) return false
+          return sale.items.some(item => 
+            item.product && poolProductIds.some(id => 
+              id.toString() === item.product._id.toString()
+            )
+          )
+        })
+        
+        // Ensure all pool sales have safe data
+        poolSales = poolSales.map(sale => ({
+          ...sale,
+          customer: sale.customer || null,
+          salesRep: sale.salesRep || null,
+          totalPrice: sale.totalPrice || 0,
+          orderDate: sale.orderDate || null,
+          deliveryDate: sale.deliveryDate || null,
+          status: sale.status || 'pending'
+        }))
+      }
+    } catch (err) {
+      console.error('Error fetching pool sales:', err)
+      poolSales = []
+    }
+
     // Ensure arrays are always defined
     const safeInstallers = Array.isArray(installers) ? installers : []
     const safeSalesReps = Array.isArray(salesReps) ? salesReps : []
     const safeJobs = Array.isArray(jobs) ? jobs : []
+    const safePoolSales = Array.isArray(poolSales) ? poolSales : []
 
     // req.user is already a plain object from loadUser middleware (.lean())
     // Ensure all required variables are set for the view
@@ -168,6 +233,7 @@ exports.getDashboard = async (req, res, next) => {
         installers: safeInstallers || [],
         salesReps: safeSalesReps || [],
         jobs: safeJobs || [],
+        poolSales: safePoolSales || [],
         user: req.user || null,
         isAuthenticated: res.locals.isAuthenticated || false
       })

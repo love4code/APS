@@ -76,6 +76,12 @@ const jobSchema = new mongoose.Schema({
   installDate: {
     type: Date
   },
+  orderDate: {
+    type: Date
+  },
+  deliveryDate: {
+    type: Date
+  },
   status: {
     type: String,
     enum: ['scheduled', 'complete', 'delivered', 'undelivered', 'delayed'],

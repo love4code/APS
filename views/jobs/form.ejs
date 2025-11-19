@@ -123,6 +123,20 @@
 
         <div class="row">
           <div class="col-md-6 mb-3">
+            <label for="orderDate" class="form-label">Pool Order Date</label>
+            <input type="date" class="form-control" id="orderDate" name="orderDate" value="<%= job && job.orderDate ? new Date(job.orderDate).toISOString().split('T')[0] : '' %>">
+            <small class="form-text text-muted">Date when pool was ordered</small>
+          </div>
+
+          <div class="col-md-6 mb-3">
+            <label for="deliveryDate" class="form-label">Pool Delivery Date</label>
+            <input type="date" class="form-control" id="deliveryDate" name="deliveryDate" value="<%= job && job.deliveryDate ? new Date(job.deliveryDate).toISOString().split('T')[0] : '' %>">
+            <small class="form-text text-muted">Date when pool was delivered</small>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
             <label for="status" class="form-label">Status</label>
             <select class="form-select" id="status" name="status">
               <option value="scheduled" <%= job && job.status === 'scheduled' ? 'selected' : '' %>>Scheduled</option>
