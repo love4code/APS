@@ -36,10 +36,15 @@
       <p class="mb-0">
         <% if (entityType === 'store') { %>
           <i class="bi bi-shop"></i> Store Calendar
+        <% } else if (entityType === 'salesrep') { %>
+          <i class="bi bi-person-badge"></i> All Jobs Calendar (All Stores)
         <% } else { %>
           <i class="bi bi-tools"></i> Installer Calendar
         <% } %>
       </p>
+      <% if (entityType === 'salesrep') { %>
+        <p class="mb-0 mt-2"><small>Viewing all scheduled jobs across all stores</small></p>
+      <% } %>
     </div>
 
     <!-- Store Legend -->
@@ -92,6 +97,8 @@
         eventsUrl += 'storeToken=' + token
       } else if (type === 'installer') {
         eventsUrl += 'installerToken=' + token
+      } else if (type === 'salesrep') {
+        eventsUrl += 'salesRepToken=' + token
       }
       
       const calendar = new FullCalendar.Calendar(calendarEl, {

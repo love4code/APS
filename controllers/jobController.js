@@ -546,6 +546,19 @@ exports.calendarEvents = async (req, res) => {
         query.installer = installer._id
       }
     }
+    
+    // Sales rep token shows ALL jobs (no filter) - they can see everything
+    // We still validate the token but don't filter the query
+    if (req.query.salesRepToken) {
+      const salesRep = await User.findOne({ 
+        calendarShareToken: req.query.salesRepToken,
+        isSalesRep: true 
+      })
+      if (!salesRep) {
+        return res.status(403).json({ error: 'Invalid sales rep token' })
+      }
+      // No query filter - show all jobs
+    }
 
     const jobs = await Job.find(query)
       .populate('customer', 'name')
@@ -617,6 +630,14 @@ exports.sharedCalendar = async (req, res) => {
       })
       if (entity) {
         title = `${entity.name} - Installation Calendar`
+      }
+    } else if (type === 'salesrep' && token) {
+      entity = await User.findOne({ 
+        calendarShareToken: token,
+        isSalesRep: true 
+      })
+      if (entity) {
+        title = `${entity.name} - All Jobs Calendar`
       }
     }
     

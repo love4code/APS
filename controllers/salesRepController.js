@@ -95,16 +95,50 @@ exports.detail = async (req, res) => {
       paymentCount: payments.length
     }
 
+    // Ensure sales rep has share token
+    if (!salesRep.calendarShareToken) {
+      await salesRep.save() // This will trigger the pre-save hook to generate token
+    }
+    
+    // Re-fetch to get updated token
+    const updatedSalesRep = await User.findById(req.params.id)
+    
+    // Generate base URL for share links
+    const baseUrl = req.protocol + '://' + req.get('host')
+    
     res.render('salesReps/detail', {
       title: `Sales Rep: ${salesRep.name}`,
-      salesRep,
+      salesRep: updatedSalesRep,
       jobs,
       payments,
-      stats
+      stats,
+      baseUrl
     })
   } catch (error) {
     console.error('Sales rep detail error:', error)
     req.flash('error', 'Error loading sales rep details')
+    res.redirect('/sales-reps')
+  }
+}
+
+// Regenerate sales rep share token
+exports.regenerateToken = async (req, res) => {
+  try {
+    const salesRep = await User.findById(req.params.id)
+    if (!salesRep || !salesRep.isSalesRep) {
+      req.flash('error', 'Sales rep not found')
+      return res.redirect('/sales-reps')
+    }
+    
+    const crypto = require('crypto')
+    salesRep.calendarShareToken = crypto.randomBytes(32).toString('hex')
+    await salesRep.save()
+    
+    req.flash('success', 'Calendar share token regenerated. Old links will no longer work.')
+    res.redirect(`/sales-reps/${req.params.id}`)
+  } catch (error) {
+    console.error('Regenerate token error:', error)
+    req.flash('error', 'Error regenerating token')
     res.redirect('/sales-reps')
   }
 }

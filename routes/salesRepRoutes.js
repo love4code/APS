@@ -5,6 +5,7 @@ const { requireAuth } = require('../middleware/auth')
 
 router.get('/', requireAuth, salesRepController.list)
 router.get('/:id', requireAuth, salesRepController.detail)
+router.post('/:id/regenerate-token', requireAuth, salesRepController.regenerateToken)
 
 module.exports = router
 

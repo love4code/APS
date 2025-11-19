@@ -46,9 +46,9 @@ const userSchema = new mongoose.Schema({
   }
 })
 
-// Generate share token for installers before saving
+// Generate share token for installers and sales reps before saving
 userSchema.pre('save', async function (next) {
-  if (this.isInstaller && !this.calendarShareToken) {
+  if ((this.isInstaller || this.isSalesRep) && !this.calendarShareToken) {
     const crypto = require('crypto')
     this.calendarShareToken = crypto.randomBytes(32).toString('hex')
   }
