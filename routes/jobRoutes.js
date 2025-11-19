@@ -9,6 +9,8 @@ router.get('/installs', requireAuth, jobController.myInstalls)
 
 // Job CRUD (mounted at /jobs)
 router.get('/', requireAuth, jobController.list)
+router.get('/calendar', requireAuth, jobController.calendar)
+router.get('/calendar/events', requireAuth, jobController.calendarEvents)
 router.get('/new', requireAuth, jobController.newForm)
 router.post('/', requireAuth, jobController.create)
 router.get('/:id', requireAuth, jobController.detail)

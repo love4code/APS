@@ -1,0 +1,123 @@
+<%- include('../partials/header', { title: 'Job Calendar' }) %>
+
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3">Job Calendar</h1>
+    <div>
+      <a href="/jobs" class="btn btn-outline-secondary">
+        <i class="bi bi-list"></i> View Jobs List
+      </a>
+    </div>
+  </div>
+
+  <!-- Store Legend -->
+  <% if (stores && stores.length > 0) { %>
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5 class="card-title mb-3">Store Colors</h5>
+      <div class="row">
+        <% stores.forEach((store, index) => { %>
+          <% 
+            const colors = [
+              '#0d6efd', '#198754', '#dc3545', '#ffc107', '#6f42c1',
+              '#fd7e14', '#20c997', '#e83e8c', '#6610f2', '#0dcaf0',
+              '#198754', '#ffc107', '#dc3545', '#0d6efd', '#6c757d'
+            ]
+            const color = colors[index % colors.length]
+          %>
+          <div class="col-md-3 col-sm-4 col-6 mb-2">
+            <div class="d-flex align-items-center">
+              <span class="badge me-2" style="background-color: <%= color %>; width: 20px; height: 20px; display: inline-block;"></span>
+              <span><%= store.name %></span>
+            </div>
+          </div>
+        <% }) %>
+        <div class="col-md-3 col-sm-4 col-6 mb-2">
+          <div class="d-flex align-items-center">
+            <span class="badge me-2" style="background-color: #6c757d; width: 20px; height: 20px; display: inline-block;"></span>
+            <span>No Store</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <% } %>
+
+  <!-- Calendar -->
+  <div class="card">
+    <div class="card-body">
+      <div id="calendar"></div>
+    </div>
+  </div>
+</div>
+
+<!-- FullCalendar CSS -->
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet" />
+
+<!-- FullCalendar JS -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const calendarEl = document.getElementById('calendar')
+    
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: 'dayGridMonth',
+      headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+      },
+      events: '/jobs/calendar/events',
+      eventClick: function(info) {
+        // Navigate to job detail page
+        window.location.href = '/jobs/' + info.event.extendedProps.jobId
+      },
+      eventMouseEnter: function(info) {
+        // Show tooltip on hover
+        const tooltip = document.createElement('div')
+        tooltip.className = 'fc-event-tooltip'
+        tooltip.style.cssText = 'position: absolute; z-index: 1000; background: #333; color: white; padding: 8px; border-radius: 4px; font-size: 12px; pointer-events: none;'
+        tooltip.innerHTML = `
+          <strong>${info.event.extendedProps.customer}</strong><br>
+          Store: ${info.event.extendedProps.store}<br>
+          Installer: ${info.event.extendedProps.installer}<br>
+          Sales Rep: ${info.event.extendedProps.salesRep}<br>
+          Status: ${info.event.extendedProps.status}<br>
+          Total: $${info.event.extendedProps.totalPrice.toFixed(2)}
+        `
+        document.body.appendChild(tooltip)
+        
+        const updateTooltip = (e) => {
+          tooltip.style.left = e.pageX + 10 + 'px'
+          tooltip.style.top = e.pageY + 10 + 'px'
+        }
+        
+        document.addEventListener('mousemove', updateTooltip)
+        info.el.addEventListener('mouseleave', () => {
+          document.body.removeChild(tooltip)
+          document.removeEventListener('mousemove', updateTooltip)
+        })
+      }
+    })
+    
+    calendar.render()
+  })
+</script>
+
+<style>
+  .fc-event {
+    cursor: pointer;
+  }
+  
+  .fc-event:hover {
+    opacity: 0.8;
+  }
+  
+  .fc-toolbar-title {
+    font-size: 1.5rem;
+  }
+</style>
+
+<%- include('../partials/footer') %>
+

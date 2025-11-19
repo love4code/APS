@@ -452,3 +452,109 @@ exports.myInstalls = async (req, res) => {
     res.redirect('/')
   }
 }
+
+// Calendar view
+exports.calendar = async (req, res) => {
+  try {
+    // Get all jobs with install dates
+    const jobs = await Job.find({ installDate: { $exists: true, $ne: null } })
+      .populate('customer', 'name')
+      .populate('store', 'name')
+      .populate('installer', 'name')
+      .populate('salesRep', 'name')
+      .sort({ installDate: 1 })
+
+    // Get all stores to generate color mapping
+    const stores = await Store.find({ isActive: true }).sort({ name: 1 })
+
+    // Generate color palette for stores
+    const colors = [
+      '#0d6efd', // Blue
+      '#198754', // Green
+      '#dc3545', // Red
+      '#ffc107', // Yellow
+      '#6f42c1', // Purple
+      '#fd7e14', // Orange
+      '#20c997', // Teal
+      '#e83e8c', // Pink
+      '#6610f2', // Indigo
+      '#0dcaf0', // Cyan
+      '#198754', // Success green
+      '#ffc107', // Warning yellow
+      '#dc3545', // Danger red
+      '#0d6efd', // Primary blue
+      '#6c757d'  // Secondary gray
+    ]
+
+    // Create store color mapping
+    const storeColorMap = {}
+    stores.forEach((store, index) => {
+      storeColorMap[store._id.toString()] = colors[index % colors.length]
+    })
+
+    res.render('jobs/calendar', {
+      title: 'Job Calendar',
+      jobs,
+      stores,
+      storeColorMap
+    })
+  } catch (error) {
+    console.error('Calendar error:', error)
+    req.flash('error', 'Error loading calendar')
+    res.redirect('/jobs')
+  }
+}
+
+// API endpoint for calendar events (JSON)
+exports.calendarEvents = async (req, res) => {
+  try {
+    const jobs = await Job.find({ installDate: { $exists: true, $ne: null } })
+      .populate('customer', 'name')
+      .populate('store', 'name')
+      .populate('installer', 'name')
+      .populate('salesRep', 'name')
+      .sort({ installDate: 1 })
+
+    const stores = await Store.find({ isActive: true }).sort({ name: 1 })
+
+    const colors = [
+      '#0d6efd', '#198754', '#dc3545', '#ffc107', '#6f42c1',
+      '#fd7e14', '#20c997', '#e83e8c', '#6610f2', '#0dcaf0',
+      '#198754', '#ffc107', '#dc3545', '#0d6efd', '#6c757d'
+    ]
+
+    const storeColorMap = {}
+    stores.forEach((store, index) => {
+      storeColorMap[store._id.toString()] = colors[index % colors.length]
+    })
+
+    // Format events for FullCalendar
+    const events = jobs.map(job => {
+      const storeId = job.store ? job.store._id.toString() : 'no-store'
+      const color = job.store ? storeColorMap[storeId] : '#6c757d' // Gray for jobs without store
+      
+      return {
+        id: job._id.toString(),
+        title: `${job.customer ? job.customer.name : 'Unknown Customer'}${job.store ? ' - ' + job.store.name : ''}`,
+        start: job.installDate.toISOString().split('T')[0],
+        backgroundColor: color,
+        borderColor: color,
+        textColor: '#ffffff',
+        extendedProps: {
+          jobId: job._id.toString(),
+          customer: job.customer ? job.customer.name : 'Unknown',
+          store: job.store ? job.store.name : 'No Store',
+          installer: job.installer ? job.installer.name : 'Not assigned',
+          salesRep: job.soldByOwner ? 'Owner' : (job.salesRep ? job.salesRep.name : 'N/A'),
+          status: job.status,
+          totalPrice: job.totalPrice || 0
+        }
+      }
+    })
+
+    res.json(events)
+  } catch (error) {
+    console.error('Calendar events error:', error)
+    res.status(500).json({ error: 'Error loading calendar events' })
+  }
+}
