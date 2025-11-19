@@ -362,8 +362,24 @@
       }
     });
     
+    // Visual feedback: highlight the new row and scroll to it
+    itemRow.style.transition = 'all 0.3s ease';
+    itemRow.style.backgroundColor = '#d4edda'; // Light green background
+    itemRow.style.border = '2px solid #28a745'; // Green border
+    
+    // Scroll to the new item smoothly
+    itemRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    
+    // Remove highlight after 2 seconds
+    setTimeout(function() {
+      itemRow.style.backgroundColor = '';
+      itemRow.style.border = '';
+    }, 2000);
+    
     // Focus on the search input for better UX
-    searchInput.focus();
+    setTimeout(function() {
+      searchInput.focus();
+    }, 100);
   }
 
   // Product search functionality

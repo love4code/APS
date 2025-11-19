@@ -43,12 +43,10 @@
             'N/A') %>
           </td>
           <td>
-            <%= sale.orderDate ? new Date(sale.orderDate).toLocaleDateString()
-            : '-' %>
+            <%= sale.orderDate ? (() => { const d = new Date(sale.orderDate); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); })() : '-' %>
           </td>
           <td>
-            <%= sale.deliveryDate ? new Date(sale.deliveryDate).toLocaleDateString()
-            : '-' %>
+            <%= sale.deliveryDate ? (() => { const d = new Date(sale.deliveryDate); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); })() : '-' %>
           </td>
           <td>$<%= (sale.totalPrice || 0).toFixed(2) %></td>
           <td>

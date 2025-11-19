@@ -44,8 +44,7 @@
           </td>
           <td><%= job.installer ? job.installer.name : 'Not assigned' %></td>
           <td>
-            <%= job.installDate ? new Date(job.installDate).toLocaleDateString()
-            : '-' %>
+            <%= job.installDate ? (() => { const d = new Date(job.installDate); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); })() : '-' %>
           </td>
           <td>$<%= (job.totalPrice || 0).toFixed(2) %></td>
           <td>

@@ -185,6 +185,28 @@ exports.create = async (req, res) => {
       return res.redirect(isSaleForm ? '/sales/new' : '/jobs/new')
     }
 
+    // Parse dates to avoid timezone issues
+    // Date inputs send YYYY-MM-DD format, we need to parse them as UTC dates at midnight
+    let parsedInstallDate = null
+    let parsedOrderDate = null
+    let parsedDeliveryDate = null
+
+    if (installDate) {
+      // Parse as UTC date at midnight to avoid timezone conversion
+      const [year, month, day] = installDate.split('-').map(Number)
+      parsedInstallDate = new Date(Date.UTC(year, month - 1, day))
+    }
+
+    if (orderDate) {
+      const [year, month, day] = orderDate.split('-').map(Number)
+      parsedOrderDate = new Date(Date.UTC(year, month - 1, day))
+    }
+
+    if (deliveryDate) {
+      const [year, month, day] = deliveryDate.split('-').map(Number)
+      parsedDeliveryDate = new Date(Date.UTC(year, month - 1, day))
+    }
+
     const job = new Job({
       customer,
       salesRep: salesRep || null,
@@ -192,9 +214,9 @@ exports.create = async (req, res) => {
       isSale: isSaleForm, // Mark as sale if created from sale form
       installer: installer || null,
       store: store || null,
-      installDate: installDate || null,
-      orderDate: orderDate || null,
-      deliveryDate: deliveryDate || null,
+      installDate: parsedInstallDate,
+      orderDate: parsedOrderDate,
+      deliveryDate: parsedDeliveryDate,
       status: status || 'scheduled',
       notes: notes || '',
       installCost: installCost ? parseFloat(installCost) : 0,
@@ -358,14 +380,36 @@ exports.update = async (req, res) => {
       return res.redirect(`/jobs/${req.params.id}/edit`)
     }
 
+    // Parse dates to avoid timezone issues
+    // Date inputs send YYYY-MM-DD format, we need to parse them as UTC dates at midnight
+    let parsedInstallDate = null
+    let parsedOrderDate = null
+    let parsedDeliveryDate = null
+
+    if (installDate) {
+      // Parse as UTC date at midnight to avoid timezone conversion
+      const [year, month, day] = installDate.split('-').map(Number)
+      parsedInstallDate = new Date(Date.UTC(year, month - 1, day))
+    }
+
+    if (orderDate) {
+      const [year, month, day] = orderDate.split('-').map(Number)
+      parsedOrderDate = new Date(Date.UTC(year, month - 1, day))
+    }
+
+    if (deliveryDate) {
+      const [year, month, day] = deliveryDate.split('-').map(Number)
+      parsedDeliveryDate = new Date(Date.UTC(year, month - 1, day))
+    }
+
     job.customer = customer
     job.salesRep = salesRep || null
     job.soldByOwner = soldByOwner === 'on' || soldByOwner === 'true'
     job.installer = installer || null
     job.store = store || null
-    job.installDate = installDate || null
-    job.orderDate = orderDate || null
-    job.deliveryDate = deliveryDate || null
+    job.installDate = parsedInstallDate
+    job.orderDate = parsedOrderDate
+    job.deliveryDate = parsedDeliveryDate
     job.status = status || 'scheduled'
     job.notes = notes || ''
     job.installCost = installCost ? parseFloat(installCost) : 0

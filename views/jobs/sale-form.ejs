@@ -666,6 +666,20 @@
     const quantityInput = itemRow.querySelector('.quantity-input');
     const removeBtn = itemRow.querySelector('.remove-item');
 
+    // Visual feedback: highlight the new row and scroll to it
+    itemRow.style.transition = 'all 0.3s ease';
+    itemRow.style.backgroundColor = '#d4edda'; // Light green background
+    itemRow.style.border = '2px solid #28a745'; // Green border
+    
+    // Scroll to the new item smoothly
+    itemRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    
+    // Remove highlight after 2 seconds
+    setTimeout(function() {
+      itemRow.style.backgroundColor = '';
+      itemRow.style.border = '';
+    }, 2000);
+
     // Initialize search functionality for this row
     initProductSearch(searchWrapper, searchInput, productIdInput, typeFilter, dropdown, priceInput, taxableCheckbox);
 
@@ -681,8 +695,10 @@
       removeItem(itemRow);
     });
     
-    // Focus on the search input for better UX
-    searchInput.focus();
+    // Focus on the search input for better UX (with slight delay to ensure smooth scroll completes)
+    setTimeout(function() {
+      searchInput.focus();
+    }, 100);
   });
 
   document.getElementById('saleForm').addEventListener('submit', function(e) {

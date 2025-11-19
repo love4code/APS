@@ -53,9 +53,9 @@
               <p><strong>Store:</strong> <%= job.store ? job.store.name : 'No store selected' %></p>
             </div>
             <div class="col-md-6">
-              <p><strong>Install Date:</strong> <%= job.installDate ? new Date(job.installDate).toLocaleDateString() : 'Not scheduled' %></p>
-              <p><strong>Pool Order Date:</strong> <%= job.orderDate ? new Date(job.orderDate).toLocaleDateString() : 'Not ordered' %></p>
-              <p><strong>Pool Delivery Date:</strong> <%= job.deliveryDate ? new Date(job.deliveryDate).toLocaleDateString() : 'Not delivered' %></p>
+              <p><strong>Install Date:</strong> <%= job.installDate ? (() => { const d = new Date(job.installDate); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); })() : 'Not scheduled' %></p>
+              <p><strong>Pool Order Date:</strong> <%= job.orderDate ? (() => { const d = new Date(job.orderDate); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); })() : 'Not ordered' %></p>
+              <p><strong>Pool Delivery Date:</strong> <%= job.deliveryDate ? (() => { const d = new Date(job.deliveryDate); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); })() : 'Not delivered' %></p>
               <p><strong>Created:</strong> <%= new Date(job.createdAt).toLocaleDateString() %></p>
               <p><strong>Created By:</strong> <%= job.createdBy ? job.createdBy.name : 'Unknown' %></p>
             </div>

@@ -138,12 +138,12 @@
           </p>
           <% if (sale.orderDate) { %>
           <p class="card-text small mb-1">
-            <strong>Order Date:</strong> <%= new Date(sale.orderDate).toLocaleDateString() %>
+            <strong>Order Date:</strong> <%= (() => { const d = new Date(sale.orderDate); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); })() %>
           </p>
           <% } %>
           <% if (sale.deliveryDate) { %>
           <p class="card-text small mb-1">
-            <strong>Delivery Date:</strong> <%= new Date(sale.deliveryDate).toLocaleDateString() %>
+            <strong>Delivery Date:</strong> <%= (() => { const d = new Date(sale.deliveryDate); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); })() %>
           </p>
           <% } else if (sale.orderDate) { %>
           <p class="card-text small mb-2 text-warning">
@@ -199,7 +199,7 @@
           </p>
           <% if (job.installDate) { %>
           <p class="card-text small mb-2">
-            <strong>Install Date:</strong> <%= new Date(job.installDate).toLocaleDateString() %>
+            <strong>Install Date:</strong> <%= (() => { const d = new Date(job.installDate); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); })() %>
           </p>
           <% } %>
           <a
