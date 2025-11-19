@@ -11,7 +11,7 @@
         <a href="/invoices/new" class="btn btn-sm btn-outline-secondary ms-2">Create Blank Invoice Instead</a>
       </div>
       <% } %>
-      <% if (selectedCustomer && !selectedJob) { %>
+      <% if (typeof selectedCustomer !== 'undefined' && selectedCustomer && !selectedJob) { %>
       <div class="alert alert-info">
         <strong>Creating invoice for Customer:</strong> <%= selectedCustomer.name %>
         <a href="/invoices/new" class="btn btn-sm btn-outline-secondary ms-2">Create Blank Invoice Instead</a>

@@ -265,7 +265,8 @@ exports.editForm = async (req, res) => {
       products,
       salesReps,
       installers,
-      stores
+      stores,
+      selectedCustomer: null // Not needed for edit, but required by view
     })
   } catch (error) {
     req.flash('error', 'Error loading job')
@@ -474,8 +475,11 @@ exports.myInstalls = async (req, res) => {
 // Calendar view
 exports.calendar = async (req, res) => {
   try {
-    // Get all jobs with install dates
-    const jobs = await Job.find({ installDate: { $exists: true, $ne: null } })
+    // Get all jobs with install dates (exclude sales)
+    const jobs = await Job.find({ 
+      installDate: { $exists: true, $ne: null },
+      isSale: { $ne: true } // Exclude sales
+    })
       .populate('customer', 'name')
       .populate('store', 'name')
       .populate('installer', 'name')
@@ -526,7 +530,11 @@ exports.calendar = async (req, res) => {
 // API endpoint for calendar events (JSON)
 exports.calendarEvents = async (req, res) => {
   try {
-    let query = { installDate: { $exists: true, $ne: null } }
+    // Only show jobs (not sales) on calendar
+    let query = { 
+      installDate: { $exists: true, $ne: null },
+      isSale: { $ne: true } // Exclude sales
+    }
     
     // Filter by store if token provided
     if (req.query.storeToken) {

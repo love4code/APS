@@ -247,7 +247,8 @@ exports.editForm = async (req, res) => {
       salesReps,
       stores,
       invoiceNumber: invoice.invoiceNumber,
-      selectedJob: null
+      selectedJob: null,
+      selectedCustomer: null // Not needed for edit, but required by view
     })
   } catch (error) {
     console.error('Invoice edit form error:', error)

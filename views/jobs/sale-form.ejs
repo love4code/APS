@@ -1,5 +1,38 @@
 <%- include('../partials/header', { title: 'New Sale' }) %>
 
+<style>
+  .product-search-wrapper {
+    position: relative;
+  }
+  .product-dropdown {
+    position: absolute;
+    z-index: 1000;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    width: 100%;
+    margin-top: 2px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  .product-option {
+    cursor: pointer;
+    padding: 8px 12px;
+    border-bottom: 1px solid #eee;
+  }
+  .product-option:hover {
+    background-color: #f8f9fa;
+  }
+  .product-option:last-child {
+    border-bottom: none;
+  }
+  .product-option .badge {
+    font-size: 0.7rem;
+    margin-left: 8px;
+  }
+</style>
+
 <div class="container-fluid">
   <div class="row">
     <div class="col-md-12">
@@ -332,19 +365,25 @@
     itemRow.className = 'card mb-2 item-row';
     itemRow.setAttribute('data-index', itemIndex);
 
-    let optionsHtml = '<option value="">Select product...</option>';
-    products.forEach(function(p) {
-      optionsHtml += '<option value="' + p._id + '" data-price="' + p.basePrice + '" data-taxable="' + p.isTaxable + '">' + p.name + ' - $' + p.basePrice.toFixed(2) + '</option>';
-    });
+    // No longer need optionsHtml - using searchable input instead
 
     itemRow.innerHTML =
       '<div class="card-body">' +
         '<div class="row align-items-end">' +
           '<div class="col-md-5">' +
             '<label class="form-label small">Product</label>' +
-            '<select class="form-select form-select-sm product-select" name="items[' + itemIndex + '][productId]" required>' +
-              optionsHtml +
-            '</select>' +
+            '<div class="product-search-wrapper" data-index="' + itemIndex + '">' +
+              '<div class="input-group">' +
+                '<select class="form-select form-select-sm product-type-filter" style="max-width: 100px;" title="Filter by type">' +
+                  '<option value="all">All</option>' +
+                  '<option value="product">Products</option>' +
+                  '<option value="service">Services</option>' +
+                '</select>' +
+                '<input type="text" class="form-control form-control-sm product-search-input" placeholder="Search products/services..." autocomplete="off">' +
+                '<input type="hidden" class="product-id-input" name="items[' + itemIndex + '][productId]" required>' +
+                '<div class="product-dropdown" style="display: none; position: absolute; z-index: 1000; background: white; border: 1px solid #ccc; border-radius: 4px; max-height: 200px; overflow-y: auto; width: 100%; margin-top: 2px;"></div>' +
+              '</div>' +
+            '</div>' +
           '</div>' +
           '<div class="col-md-2">' +
             '<label class="form-label small">Qty</label>' +
@@ -370,21 +409,18 @@
     container.appendChild(itemRow);
     itemIndex++;
 
-    const select = itemRow.querySelector('.product-select');
+    const searchWrapper = itemRow.querySelector('.product-search-wrapper');
+    const searchInput = itemRow.querySelector('.product-search-input');
+    const productIdInput = itemRow.querySelector('.product-id-input');
+    const typeFilter = itemRow.querySelector('.product-type-filter');
+    const dropdown = itemRow.querySelector('.product-dropdown');
     const priceInput = itemRow.querySelector('.price-input');
     const taxableCheckbox = itemRow.querySelector('.taxable-checkbox');
     const quantityInput = itemRow.querySelector('.quantity-input');
     const removeBtn = itemRow.querySelector('.remove-item');
 
-    // Product select change handler
-    select.addEventListener('change', function() {
-      if (this.value) {
-        const option = this.options[this.selectedIndex];
-        priceInput.value = option.getAttribute('data-price');
-        taxableCheckbox.checked = option.getAttribute('data-taxable') === 'true';
-        calculateTotals();
-      }
-    });
+    // Initialize search functionality for this row
+    initProductSearch(searchWrapper, searchInput, productIdInput, typeFilter, dropdown, priceInput, taxableCheckbox);
 
     // Quantity and price change handlers
     quantityInput.addEventListener('change', calculateTotals);
@@ -398,14 +434,14 @@
       removeItem(itemRow);
     });
     
-    // Focus on the product select for better UX
-    select.focus();
+    // Focus on the search input for better UX
+    searchInput.focus();
   });
 
   document.getElementById('saleForm').addEventListener('submit', function(e) {
     const items = [];
     document.querySelectorAll('.item-row').forEach(row => {
-      const productId = row.querySelector('.product-select').value;
+      const productId = row.querySelector('.product-id-input').value;
       const quantity = row.querySelector('.quantity-input').value;
       const unitPrice = row.querySelector('.price-input').value;
       const isTaxable = row.querySelector('.taxable-checkbox').checked;
@@ -487,15 +523,7 @@
       // Add new product to products array
       products.push(result.product);
       
-      // Update all product selects
-      document.querySelectorAll('.product-select').forEach(select => {
-        const option = document.createElement('option');
-        option.value = result.product._id;
-        option.setAttribute('data-price', result.product.basePrice);
-        option.setAttribute('data-taxable', result.product.isTaxable);
-        option.textContent = result.product.name + ' - $' + result.product.basePrice.toFixed(2);
-        select.appendChild(option);
-      });
+      // Note: New products will appear in search results automatically
       
       // Close modal and reset form
       const modal = bootstrap.Modal.getInstance(document.getElementById('newProductModal'));
@@ -538,12 +566,24 @@
       installCostInput.addEventListener('input', calculateTotals);
     }
 
-    // Add handlers to existing item rows (if editing)
+    // Initialize product search for existing rows
+    document.querySelectorAll('.product-search-wrapper').forEach(wrapper => {
+      const searchInput = wrapper.querySelector('.product-search-input');
+      const productIdInput = wrapper.querySelector('.product-id-input');
+      const typeFilter = wrapper.querySelector('.product-type-filter');
+      const dropdown = wrapper.querySelector('.product-dropdown');
+      const row = wrapper.closest('.item-row');
+      const priceInput = row.querySelector('.price-input');
+      const taxableCheckbox = row.querySelector('.taxable-checkbox');
+      
+      initProductSearch(wrapper, searchInput, productIdInput, typeFilter, dropdown, priceInput, taxableCheckbox);
+    });
+
+    // Add handlers to existing item rows for calculations
     document.querySelectorAll('.item-row').forEach(row => {
       const quantityInput = row.querySelector('.quantity-input');
       const priceInput = row.querySelector('.price-input');
       const taxableCheckbox = row.querySelector('.taxable-checkbox');
-      const select = row.querySelector('.product-select');
       const removeBtn = row.querySelector('.remove-item');
 
       if (quantityInput) {
@@ -556,18 +596,6 @@
       }
       if (taxableCheckbox) {
         taxableCheckbox.addEventListener('change', calculateTotals);
-      }
-      if (select) {
-        select.addEventListener('change', function() {
-          if (this.value) {
-            const option = this.options[this.selectedIndex];
-            const priceInput = this.closest('.item-row').querySelector('.price-input');
-            const taxableCheckbox = this.closest('.item-row').querySelector('.taxable-checkbox');
-            if (priceInput) priceInput.value = option.getAttribute('data-price');
-            if (taxableCheckbox) taxableCheckbox.checked = option.getAttribute('data-taxable') === 'true';
-            calculateTotals();
-          }
-        });
       }
       if (removeBtn) {
         removeBtn.addEventListener('click', function() {

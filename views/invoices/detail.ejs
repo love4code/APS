@@ -19,6 +19,11 @@
       </button>
       <% } %>
       <a href="/invoices/<%= invoice._id %>/edit" class="btn btn-outline-primary">Edit</a>
+      <form action="/invoices/<%= invoice._id %>/delete" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this invoice? This action cannot be undone.');">
+        <button type="submit" class="btn btn-outline-danger">
+          <i class="bi bi-trash"></i> Delete
+        </button>
+      </form>
       <a href="/invoices" class="btn btn-outline-secondary">Back to Invoices</a>
     </div>
   </div>

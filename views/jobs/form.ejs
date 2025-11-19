@@ -1,5 +1,38 @@
 <%- include('../partials/header', { title: job ? 'Edit Job' : 'New Job' }) %>
 
+<style>
+  .product-search-wrapper {
+    position: relative;
+  }
+  .product-dropdown {
+    position: absolute;
+    z-index: 1000;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    width: 100%;
+    margin-top: 2px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  .product-option {
+    cursor: pointer;
+    padding: 8px 12px;
+    border-bottom: 1px solid #eee;
+  }
+  .product-option:hover {
+    background-color: #f8f9fa;
+  }
+  .product-option:last-child {
+    border-bottom: none;
+  }
+  .product-option .badge {
+    font-size: 0.7rem;
+    margin-left: 8px;
+  }
+</style>
+
 <div class="container-fluid">
   <div class="row">
     <div class="col-md-10 mx-auto">
@@ -12,12 +45,12 @@
             <select class="form-select" id="customer" name="customer" required>
               <option value="">Select customer...</option>
               <% customers.forEach(c => { %>
-                <option value="<%= c._id %>" <%= (job && job.customer && job.customer.toString() === c._id.toString()) || (selectedCustomer && selectedCustomer._id.toString() === c._id.toString()) ? 'selected' : '' %>>
+                <option value="<%= c._id %>" <%= (job && job.customer && (typeof job.customer === 'object' ? job.customer._id.toString() : job.customer.toString()) === c._id.toString()) || (typeof selectedCustomer !== 'undefined' && selectedCustomer && selectedCustomer._id && selectedCustomer._id.toString() === c._id.toString()) ? 'selected' : '' %>>
                   <%= c.name %>
                 </option>
               <% }) %>
             </select>
-            <% if (selectedCustomer) { %>
+            <% if (typeof selectedCustomer !== 'undefined' && selectedCustomer) { %>
             <small class="form-text text-muted">Pre-selected from customer page</small>
             <% } %>
           </div>
@@ -113,14 +146,18 @@
                     <div class="row align-items-end">
                       <div class="col-md-4">
                         <label class="form-label">Product/Service</label>
-                        <select class="form-select product-select" name="items[<%= index %>][productId]" required>
-                          <option value="">Select...</option>
-                          <% products.forEach(p => { %>
-                            <option value="<%= p._id %>" data-price="<%= p.basePrice %>" data-taxable="<%= p.isTaxable %>" <%= item.product && item.product._id.toString() === p._id.toString() ? 'selected' : '' %>>
-                              <%= p.name %> - $<%= p.basePrice.toFixed(2) %>
-                            </option>
-                          <% }) %>
-                        </select>
+                        <div class="product-search-wrapper" data-index="<%= index %>">
+                          <div class="input-group">
+                            <select class="form-select form-select-sm product-type-filter" style="max-width: 100px;" title="Filter by type">
+                              <option value="all">All</option>
+                              <option value="product">Products</option>
+                              <option value="service">Services</option>
+                            </select>
+                            <input type="text" class="form-control product-search-input" placeholder="Search products/services..." autocomplete="off" data-selected-id="<%= item.product ? item.product._id.toString() : '' %>" data-selected-name="<%= item.product ? item.product.name : '' %>" value="<%= item.product ? item.product.name + ' - $' + item.unitPrice.toFixed(2) : '' %>">
+                            <input type="hidden" class="product-id-input" name="items[<%= index %>][productId]" value="<%= item.product ? item.product._id.toString() : '' %>" required>
+                            <div class="product-dropdown" style="display: none;"></div>
+                          </div>
+                        </div>
                       </div>
                       <div class="col-md-2">
                         <label class="form-label">Quantity</label>
@@ -237,19 +274,23 @@
     itemRow.className = 'card mb-2 item-row';
     itemRow.setAttribute('data-index', itemIndex);
     
-    let optionsHtml = '<option value="">Select...</option>';
-    products.forEach(function(p) {
-      optionsHtml += '<option value="' + p._id + '" data-price="' + p.basePrice + '" data-taxable="' + p.isTaxable + '">' + p.name + ' - $' + p.basePrice.toFixed(2) + '</option>';
-    });
-    
     itemRow.innerHTML = 
       '<div class="card-body">' +
         '<div class="row align-items-end">' +
           '<div class="col-md-4">' +
             '<label class="form-label">Product/Service</label>' +
-            '<select class="form-select product-select" name="items[' + itemIndex + '][productId]" required>' +
-              optionsHtml +
-            '</select>' +
+            '<div class="product-search-wrapper" data-index="' + itemIndex + '">' +
+              '<div class="input-group">' +
+                '<select class="form-select form-select-sm product-type-filter" style="max-width: 100px;" title="Filter by type">' +
+                  '<option value="all">All</option>' +
+                  '<option value="product">Products</option>' +
+                  '<option value="service">Services</option>' +
+                '</select>' +
+                '<input type="text" class="form-control product-search-input" placeholder="Search products/services..." autocomplete="off">' +
+                '<input type="hidden" class="product-id-input" name="items[' + itemIndex + '][productId]" required>' +
+                '<div class="product-dropdown" style="display: none; position: absolute; z-index: 1000; background: white; border: 1px solid #ccc; border-radius: 4px; max-height: 200px; overflow-y: auto; width: 100%; margin-top: 2px;"></div>' +
+              '</div>' +
+            '</div>' +
           '</div>' +
           '<div class="col-md-2">' +
             '<label class="form-label">Quantity</label>' +
@@ -276,17 +317,16 @@
     itemIndex++;
 
     // Add event listeners to new row
-    const select = itemRow.querySelector('.product-select');
+    const searchWrapper = itemRow.querySelector('.product-search-wrapper');
+    const searchInput = itemRow.querySelector('.product-search-input');
+    const productIdInput = itemRow.querySelector('.product-id-input');
+    const typeFilter = itemRow.querySelector('.product-type-filter');
+    const dropdown = itemRow.querySelector('.product-dropdown');
     const priceInput = itemRow.querySelector('.price-input');
     const taxableCheckbox = itemRow.querySelector('.taxable-checkbox');
-
-    select.addEventListener('change', function() {
-      if (this.value) {
-        const option = this.options[this.selectedIndex];
-        priceInput.value = option.getAttribute('data-price');
-        taxableCheckbox.checked = option.getAttribute('data-taxable') === 'true';
-      }
-    });
+    
+    // Initialize search functionality for this row
+    initProductSearch(searchWrapper, searchInput, productIdInput, typeFilter, dropdown, priceInput, taxableCheckbox);
 
     itemRow.querySelector('.remove-item').addEventListener('click', function() {
       itemRow.remove();
@@ -300,8 +340,107 @@
       }
     });
     
-    // Focus on the product select for better UX
-    select.focus();
+    // Focus on the search input for better UX
+    searchInput.focus();
+  }
+
+  // Product search functionality
+  function initProductSearch(wrapper, searchInput, productIdInput, typeFilter, dropdown, priceInput, taxableCheckbox) {
+    let selectedProduct = null;
+    
+    function filterProducts() {
+      const searchTerm = searchInput.value.toLowerCase().trim();
+      const typeFilterValue = typeFilter.value;
+      
+      // Filter products based on search term and type
+      const filtered = products.filter(p => {
+        const matchesSearch = p.name.toLowerCase().includes(searchTerm);
+        const matchesType = typeFilterValue === 'all' || p.type === typeFilterValue;
+        return matchesSearch && matchesType;
+      });
+      
+      // Show/hide dropdown
+      if (searchTerm.length > 0 && filtered.length > 0) {
+        dropdown.style.display = 'block';
+        dropdown.innerHTML = filtered.map(p => {
+          const typeBadge = p.type === 'product' ? '<span class="badge bg-primary">Product</span>' : '<span class="badge bg-info">Service</span>';
+          return `<div class="product-option p-2 border-bottom" style="cursor: pointer;" data-id="${p._id}" data-price="${p.basePrice}" data-taxable="${p.isTaxable}" data-name="${p.name}">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <strong>${p.name}</strong> ${typeBadge}
+              </div>
+              <div class="text-muted">$${p.basePrice.toFixed(2)}</div>
+            </div>
+          </div>`;
+        }).join('');
+        
+        // Position dropdown
+        const rect = searchInput.getBoundingClientRect();
+        dropdown.style.position = 'absolute';
+        dropdown.style.top = (rect.bottom - rect.top + 2) + 'px';
+        dropdown.style.left = '0';
+        dropdown.style.width = searchInput.offsetWidth + 'px';
+      } else {
+        dropdown.style.display = 'none';
+      }
+    }
+    
+    // Search input event
+    searchInput.addEventListener('input', filterProducts);
+    searchInput.addEventListener('focus', function() {
+      if (this.value.length > 0) {
+        filterProducts();
+      }
+    });
+    
+    // Type filter change
+    typeFilter.addEventListener('change', function() {
+      if (searchInput.value.length > 0) {
+        filterProducts();
+      }
+    });
+    
+    // Dropdown option click
+    dropdown.addEventListener('click', function(e) {
+      const option = e.target.closest('.product-option');
+      if (option) {
+        const productId = option.getAttribute('data-id');
+        const productName = option.getAttribute('data-name');
+        const price = option.getAttribute('data-price');
+        const taxable = option.getAttribute('data-taxable') === 'true';
+        
+        // Find the product object
+        selectedProduct = products.find(p => p._id === productId);
+        
+        // Update inputs
+        productIdInput.value = productId;
+        searchInput.value = productName + ' - $' + parseFloat(price).toFixed(2);
+        priceInput.value = price;
+        taxableCheckbox.checked = taxable;
+        
+        // Hide dropdown
+        dropdown.style.display = 'none';
+      }
+    });
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+      if (!wrapper.contains(e.target)) {
+        dropdown.style.display = 'none';
+      }
+    });
+    
+    // Handle existing selected product (for edit mode)
+    if (searchInput.getAttribute('data-selected-id')) {
+      const selectedId = searchInput.getAttribute('data-selected-id');
+      const selectedName = searchInput.getAttribute('data-selected-name');
+      const selectedProd = products.find(p => p._id === selectedId);
+      if (selectedProd) {
+        productIdInput.value = selectedId;
+        priceInput.value = selectedProd.basePrice;
+        taxableCheckbox.checked = selectedProd.isTaxable;
+      }
+    }
   }
 
   // Wait for DOM to be ready
@@ -317,18 +456,17 @@
       console.error('Add item button not found!');
     }
 
-    // Add event listeners to existing product selects
-    document.querySelectorAll('.product-select').forEach(select => {
-      select.addEventListener('change', function() {
-        const row = this.closest('.item-row');
-        const priceInput = row.querySelector('.price-input');
-        const taxableCheckbox = row.querySelector('.taxable-checkbox');
-        if (this.value) {
-          const option = this.options[this.selectedIndex];
-          priceInput.value = option.getAttribute('data-price');
-          taxableCheckbox.checked = option.getAttribute('data-taxable') === 'true';
-        }
-      });
+    // Initialize product search for existing rows
+    document.querySelectorAll('.product-search-wrapper').forEach(wrapper => {
+      const searchInput = wrapper.querySelector('.product-search-input');
+      const productIdInput = wrapper.querySelector('.product-id-input');
+      const typeFilter = wrapper.querySelector('.product-type-filter');
+      const dropdown = wrapper.querySelector('.product-dropdown');
+      const row = wrapper.closest('.item-row');
+      const priceInput = row.querySelector('.price-input');
+      const taxableCheckbox = row.querySelector('.taxable-checkbox');
+      
+      initProductSearch(wrapper, searchInput, productIdInput, typeFilter, dropdown, priceInput, taxableCheckbox);
     });
 
     // Remove item buttons
@@ -361,18 +499,7 @@
       });
     }
 
-    document.querySelectorAll('.product-select').forEach(select => {
-      select.addEventListener('change', function() {
-        const row = this.closest('.item-row');
-        const priceInput = row.querySelector('.price-input');
-        const taxableCheckbox = row.querySelector('.taxable-checkbox');
-        if (this.value) {
-          const option = this.options[this.selectedIndex];
-          priceInput.value = option.getAttribute('data-price');
-          taxableCheckbox.checked = option.getAttribute('data-taxable') === 'true';
-        }
-      });
-    });
+    // Product search is initialized above, no need for select listeners
 
     document.querySelectorAll('.remove-item').forEach(btn => {
       btn.addEventListener('click', function() {
@@ -435,15 +562,7 @@
       // Add new product to products array
       products.push(result.product);
       
-      // Update all product selects
-      document.querySelectorAll('.product-select').forEach(select => {
-        const option = document.createElement('option');
-        option.value = result.product._id;
-        option.setAttribute('data-price', result.product.basePrice);
-        option.setAttribute('data-taxable', result.product.isTaxable);
-        option.textContent = result.product.name + ' - $' + result.product.basePrice.toFixed(2);
-        select.appendChild(option);
-      });
+      // Note: New products will appear in search results automatically
       
       // Close modal and reset form
       const modal = bootstrap.Modal.getInstance(document.getElementById('newProductModal'));
@@ -481,7 +600,7 @@
   document.getElementById('jobForm').addEventListener('submit', function(e) {
     const items = [];
     document.querySelectorAll('.item-row').forEach(row => {
-      const productId = row.querySelector('.product-select').value;
+      const productId = row.querySelector('.product-id-input').value;
       const quantity = row.querySelector('.quantity-input').value;
       const unitPrice = row.querySelector('.price-input').value;
       const isTaxable = row.querySelector('.taxable-checkbox').checked;

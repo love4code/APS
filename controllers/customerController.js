@@ -118,12 +118,19 @@ exports.detail = async (req, res) => {
       return res.redirect('/customers')
     }
 
-    const jobs = await Job.find({ customer: customer._id })
+    // Separate jobs and sales
+    const allJobs = await Job.find({ customer: customer._id })
       .populate('salesRep', 'name')
       .populate('installer', 'name')
       .populate('store', 'name')
       .populate('createdBy', 'name')
       .sort({ createdAt: -1 })
+
+    // Filter jobs (exclude sales)
+    const jobs = allJobs.filter(job => !job.isSale)
+    
+    // Filter sales (only isSale = true)
+    const sales = allJobs.filter(job => job.isSale === true)
 
     const invoices = await Invoice.find({ customer: customer._id })
       .populate('job', 'status')
@@ -134,6 +141,7 @@ exports.detail = async (req, res) => {
       title: customer.name, 
       customer, 
       jobs,
+      sales,
       invoices 
     })
   } catch (error) {
