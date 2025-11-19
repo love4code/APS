@@ -118,7 +118,7 @@
                 <div class="card mb-2 item-row" data-index="<%= index %>">
                   <div class="card-body">
                     <div class="row align-items-end">
-                      <div class="col-md-5">
+                      <div class="col-md-4">
                         <label class="form-label">Description</label>
                         <input type="text" class="form-control item-description" name="items[<%= index %>][description]" value="<%= item.product ? item.product.name : 'Product' %>" required>
                       </div>
@@ -131,9 +131,15 @@
                         <input type="number" class="form-control item-price" name="items[<%= index %>][unitPrice]" value="<%= item.unitPrice %>" step="0.01" min="0" required>
                       </div>
                       <div class="col-md-2">
+                        <label class="form-label">Extended Price</label>
+                        <div class="form-control-plaintext item-extended-price" style="font-weight: bold; color: #0d6efd;">
+                          $<%= ((item.quantity || 0) * (item.unitPrice || 0)).toFixed(2) %>
+                        </div>
+                      </div>
+                      <div class="col-md-1">
                         <div class="form-check mt-4">
                           <input class="form-check-input item-taxable" type="checkbox" name="items[<%= index %>][isTaxable]" <%= item.isTaxable ? 'checked' : '' %>>
-                          <label class="form-check-label">Taxable</label>
+                          <label class="form-check-label small">Taxable</label>
                         </div>
                       </div>
                       <div class="col-md-1">
@@ -148,7 +154,7 @@
                 <div class="card mb-2 item-row" data-index="<%= index %>">
                   <div class="card-body">
                     <div class="row align-items-end">
-                      <div class="col-md-5">
+                      <div class="col-md-4">
                         <label class="form-label">Description</label>
                         <input type="text" class="form-control item-description" name="items[<%= index %>][description]" value="<%= item.description %>" required>
                       </div>
@@ -161,9 +167,15 @@
                         <input type="number" class="form-control item-price" name="items[<%= index %>][unitPrice]" value="<%= item.unitPrice %>" step="0.01" min="0" required>
                       </div>
                       <div class="col-md-2">
+                        <label class="form-label">Extended Price</label>
+                        <div class="form-control-plaintext item-extended-price" style="font-weight: bold; color: #0d6efd;">
+                          $<%= ((item.quantity || 0) * (item.unitPrice || 0)).toFixed(2) %>
+                        </div>
+                      </div>
+                      <div class="col-md-1">
                         <div class="form-check mt-4">
                           <input class="form-check-input item-taxable" type="checkbox" name="items[<%= index %>][isTaxable]" <%= item.isTaxable ? 'checked' : '' %>>
-                          <label class="form-check-label">Taxable</label>
+                          <label class="form-check-label small">Taxable</label>
                         </div>
                       </div>
                       <div class="col-md-1">
@@ -226,7 +238,7 @@
     itemRow.innerHTML = 
       '<div class="card-body">' +
         '<div class="row align-items-end">' +
-          '<div class="col-md-5">' +
+          '<div class="col-md-4">' +
             '<label class="form-label">Description</label>' +
             '<input type="text" class="form-control item-description" name="items[' + itemIndex + '][description]" required>' +
           '</div>' +
@@ -239,9 +251,13 @@
             '<input type="number" class="form-control item-price" name="items[' + itemIndex + '][unitPrice]" step="0.01" min="0" required>' +
           '</div>' +
           '<div class="col-md-2">' +
+            '<label class="form-label">Extended Price</label>' +
+            '<div class="form-control-plaintext item-extended-price" style="font-weight: bold; color: #0d6efd;">$0.00</div>' +
+          '</div>' +
+          '<div class="col-md-1">' +
             '<div class="form-check mt-4">' +
               '<input class="form-check-input item-taxable" type="checkbox" name="items[' + itemIndex + '][isTaxable]" checked>' +
-              '<label class="form-check-label">Taxable</label>' +
+              '<label class="form-check-label small">Taxable</label>' +
             '</div>' +
           '</div>' +
           '<div class="col-md-1">' +
@@ -251,6 +267,26 @@
       '</div>';
     container.appendChild(itemRow);
     itemIndex++;
+
+    // Add event listeners for real-time extended price calculation
+    const quantityInput = itemRow.querySelector('.item-quantity');
+    const priceInput = itemRow.querySelector('.item-price');
+    const extendedPriceDiv = itemRow.querySelector('.item-extended-price');
+    
+    function updateExtendedPrice() {
+      const quantity = parseFloat(quantityInput.value) || 0;
+      const unitPrice = parseFloat(priceInput.value) || 0;
+      const extendedPrice = quantity * unitPrice;
+      extendedPriceDiv.textContent = '$' + extendedPrice.toFixed(2);
+    }
+    
+    quantityInput.addEventListener('input', updateExtendedPrice);
+    quantityInput.addEventListener('change', updateExtendedPrice);
+    priceInput.addEventListener('input', updateExtendedPrice);
+    priceInput.addEventListener('change', updateExtendedPrice);
+    
+    // Initial calculation
+    updateExtendedPrice();
 
     itemRow.querySelector('.remove-item').addEventListener('click', function() {
       itemRow.remove();
@@ -262,6 +298,44 @@
     btn.addEventListener('click', function() {
       this.closest('.item-row').remove();
     });
+  });
+
+  // Add real-time extended price calculation for existing items
+  function updateItemExtendedPrice(row) {
+    const quantityInput = row.querySelector('.item-quantity');
+    const priceInput = row.querySelector('.item-price');
+    const extendedPriceDiv = row.querySelector('.item-extended-price');
+    
+    if (quantityInput && priceInput && extendedPriceDiv) {
+      const quantity = parseFloat(quantityInput.value) || 0;
+      const unitPrice = parseFloat(priceInput.value) || 0;
+      const extendedPrice = quantity * unitPrice;
+      extendedPriceDiv.textContent = '$' + extendedPrice.toFixed(2);
+    }
+  }
+
+  // Add event listeners to existing item rows for real-time calculation
+  document.querySelectorAll('.item-row').forEach(row => {
+    const quantityInput = row.querySelector('.item-quantity');
+    const priceInput = row.querySelector('.item-price');
+    
+    if (quantityInput && priceInput) {
+      quantityInput.addEventListener('input', function() {
+        updateItemExtendedPrice(row);
+      });
+      quantityInput.addEventListener('change', function() {
+        updateItemExtendedPrice(row);
+      });
+      priceInput.addEventListener('input', function() {
+        updateItemExtendedPrice(row);
+      });
+      priceInput.addEventListener('change', function() {
+        updateItemExtendedPrice(row);
+      });
+      
+      // Initial calculation for existing items
+      updateItemExtendedPrice(row);
+    }
   });
 
   // Convert items array to JSON before submit
