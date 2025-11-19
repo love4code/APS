@@ -1,0 +1,78 @@
+<%- include('../partials/header', { title: title || 'Sales' }) %>
+
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3"><%= title || 'All Sales' %></h1>
+    <a href="/sales/new" class="btn btn-primary">
+      <i class="bi bi-plus-circle"></i> New Sale
+    </a>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>Customer</th>
+          <th>Status</th>
+          <th>Payment</th>
+          <th>Sold By</th>
+          <th>Order Date</th>
+          <th>Delivery Date</th>
+          <th>Total</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (sales && sales.length > 0) { %> <% sales.forEach(sale => { %>
+        <tr>
+          <td><%= sale.customer ? sale.customer.name : 'Unknown' %></td>
+          <td>
+            <span
+              class="badge bg-<%= sale.status === 'complete' ? 'success' : sale.status === 'delayed' ? 'warning' : sale.status === 'delivered' ? 'info' : 'secondary' %>"
+            >
+              <%= sale.status %>
+            </span>
+          </td>
+          <td>
+            <span class="badge bg-<%= sale.isPaid ? 'success' : 'danger' %>">
+              <%= sale.isPaid ? 'Paid' : 'Unpaid' %>
+            </span>
+          </td>
+          <td>
+            <%= sale.soldByOwner ? 'Owner' : (sale.salesRep ? sale.salesRep.name :
+            'N/A') %>
+          </td>
+          <td>
+            <%= sale.orderDate ? new Date(sale.orderDate).toLocaleDateString()
+            : '-' %>
+          </td>
+          <td>
+            <%= sale.deliveryDate ? new Date(sale.deliveryDate).toLocaleDateString()
+            : '-' %>
+          </td>
+          <td>$<%= (sale.totalPrice || 0).toFixed(2) %></td>
+          <td>
+            <a
+              href="/jobs/<%= sale._id %>"
+              class="btn btn-sm btn-outline-primary"
+              >View</a
+            >
+            <a
+              href="/jobs/<%= sale._id %>/edit"
+              class="btn btn-sm btn-outline-secondary"
+              >Edit</a
+            >
+          </td>
+        </tr>
+        <% }) %> <% } else { %>
+        <tr>
+          <td colspan="8" class="text-center text-muted">No sales found</td>
+        </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>
+

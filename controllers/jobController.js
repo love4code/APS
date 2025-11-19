@@ -9,7 +9,8 @@ const emailService = require('../services/emailService')
 
 exports.list = async (req, res) => {
   try {
-    const jobs = await Job.find()
+    // Exclude sales from jobs list - only show actual jobs
+    const jobs = await Job.find({ isSale: { $ne: true } })
       .populate('customer', 'name')
       .populate('salesRep', 'name')
       .populate('installer', 'name')
@@ -19,6 +20,23 @@ exports.list = async (req, res) => {
     res.render('jobs/list', { title: 'All Jobs', jobs, user: req.user })
   } catch (error) {
     req.flash('error', 'Error loading jobs')
+    res.redirect('/')
+  }
+}
+
+exports.salesList = async (req, res) => {
+  try {
+    // Only show sales
+    const sales = await Job.find({ isSale: true })
+      .populate('customer', 'name')
+      .populate('salesRep', 'name')
+      .populate('installer', 'name')
+      .populate('items.product')
+      .sort({ createdAt: -1 })
+
+    res.render('sales/list', { title: 'All Sales', sales, user: req.user })
+  } catch (error) {
+    req.flash('error', 'Error loading sales')
     res.redirect('/')
   }
 }
@@ -421,7 +439,7 @@ exports.delete = async (req, res) => {
     await Job.findByIdAndDelete(req.params.id)
 
     req.flash('success', 'Job deleted successfully')
-    
+
     // Redirect to customer page if customerId is provided, otherwise jobs list
     if (req.query.customerId || customerId) {
       res.redirect(`/customers/${req.query.customerId || customerId}`)
@@ -473,7 +491,9 @@ exports.updatePayment = async (req, res) => {
 
 exports.mySales = async (req, res) => {
   try {
+    // Only show sales (isSale: true) for this user
     const jobs = await Job.find({
+      isSale: true,
       $or: [
         { salesRep: req.user._id },
         { soldByOwner: true, createdBy: req.user._id }
@@ -499,7 +519,11 @@ exports.mySales = async (req, res) => {
 
 exports.myInstalls = async (req, res) => {
   try {
-    const jobs = await Job.find({ installer: req.user._id })
+    // Exclude sales from installs - installers only install jobs, not sales
+    const jobs = await Job.find({
+      installer: req.user._id,
+      isSale: { $ne: true }
+    })
       .populate('customer', 'name')
       .populate('salesRep', 'name')
       .populate('items.product')
@@ -521,7 +545,7 @@ exports.myInstalls = async (req, res) => {
 exports.calendar = async (req, res) => {
   try {
     // Get all jobs with install dates (exclude sales)
-    const jobs = await Job.find({ 
+    const jobs = await Job.find({
       installDate: { $exists: true, $ne: null },
       isSale: { $ne: true } // Exclude sales
     })
@@ -550,7 +574,7 @@ exports.calendar = async (req, res) => {
       '#ffc107', // Warning yellow
       '#dc3545', // Danger red
       '#0d6efd', // Primary blue
-      '#6c757d'  // Secondary gray
+      '#6c757d' // Secondary gray
     ]
 
     // Create store color mapping
@@ -576,36 +600,38 @@ exports.calendar = async (req, res) => {
 exports.calendarEvents = async (req, res) => {
   try {
     // Only show jobs (not sales) on calendar
-    let query = { 
+    let query = {
       installDate: { $exists: true, $ne: null },
       isSale: { $ne: true } // Exclude sales
     }
-    
+
     // Filter by store if token provided
     if (req.query.storeToken) {
-      const store = await Store.findOne({ calendarShareToken: req.query.storeToken })
+      const store = await Store.findOne({
+        calendarShareToken: req.query.storeToken
+      })
       if (store) {
         query.store = store._id
       }
     }
-    
+
     // Filter by installer if token provided
     if (req.query.installerToken) {
-      const installer = await User.findOne({ 
+      const installer = await User.findOne({
         calendarShareToken: req.query.installerToken,
-        isInstaller: true 
+        isInstaller: true
       })
       if (installer) {
         query.installer = installer._id
       }
     }
-    
+
     // Sales rep token shows ALL jobs (no filter) - they can see everything
     // We still validate the token but don't filter the query
     if (req.query.salesRepToken) {
-      const salesRep = await User.findOne({ 
+      const salesRep = await User.findOne({
         calendarShareToken: req.query.salesRepToken,
-        isSalesRep: true 
+        isSalesRep: true
       })
       if (!salesRep) {
         return res.status(403).json({ error: 'Invalid sales rep token' })
@@ -623,9 +649,21 @@ exports.calendarEvents = async (req, res) => {
     const stores = await Store.find({ isActive: true }).sort({ name: 1 })
 
     const colors = [
-      '#0d6efd', '#198754', '#dc3545', '#ffc107', '#6f42c1',
-      '#fd7e14', '#20c997', '#e83e8c', '#6610f2', '#0dcaf0',
-      '#198754', '#ffc107', '#dc3545', '#0d6efd', '#6c757d'
+      '#0d6efd',
+      '#198754',
+      '#dc3545',
+      '#ffc107',
+      '#6f42c1',
+      '#fd7e14',
+      '#20c997',
+      '#e83e8c',
+      '#6610f2',
+      '#0dcaf0',
+      '#198754',
+      '#ffc107',
+      '#dc3545',
+      '#0d6efd',
+      '#6c757d'
     ]
 
     const storeColorMap = {}
@@ -637,10 +675,12 @@ exports.calendarEvents = async (req, res) => {
     const events = jobs.map(job => {
       const storeId = job.store ? job.store._id.toString() : 'no-store'
       const color = job.store ? storeColorMap[storeId] : '#6c757d' // Gray for jobs without store
-      
+
       return {
         id: job._id.toString(),
-        title: `${job.customer ? job.customer.name : 'Unknown Customer'}${job.store ? ' - ' + job.store.name : ''}`,
+        title: `${job.customer ? job.customer.name : 'Unknown Customer'}${
+          job.store ? ' - ' + job.store.name : ''
+        }`,
         start: job.installDate.toISOString().split('T')[0],
         backgroundColor: color,
         borderColor: color,
@@ -650,7 +690,11 @@ exports.calendarEvents = async (req, res) => {
           customer: job.customer ? job.customer.name : 'Unknown',
           store: job.store ? job.store.name : 'No Store',
           installer: job.installer ? job.installer.name : 'Not assigned',
-          salesRep: job.soldByOwner ? 'Owner' : (job.salesRep ? job.salesRep.name : 'N/A'),
+          salesRep: job.soldByOwner
+            ? 'Owner'
+            : job.salesRep
+            ? job.salesRep.name
+            : 'N/A',
           status: job.status,
           totalPrice: job.totalPrice || 0
         }
@@ -681,33 +725,45 @@ exports.getJobDetails = async (req, res) => {
     // Format job data for display
     const jobData = {
       id: job._id.toString(),
-      customer: job.customer ? {
-        name: job.customer.name,
-        phone: job.customer.phone || 'N/A',
-        email: job.customer.email || 'N/A',
-        address: job.customer.address || 'N/A'
-      } : null,
+      customer: job.customer
+        ? {
+            name: job.customer.name,
+            phone: job.customer.phone || 'N/A',
+            email: job.customer.email || 'N/A',
+            address: job.customer.address || 'N/A'
+          }
+        : null,
       status: job.status,
       soldByOwner: job.soldByOwner,
-      salesRep: job.salesRep ? {
-        name: job.salesRep.name,
-        email: job.salesRep.email || 'N/A'
-      } : null,
-      installer: job.installer ? {
-        name: job.installer.name,
-        email: job.installer.email || 'N/A'
-      } : null,
+      salesRep: job.salesRep
+        ? {
+            name: job.salesRep.name,
+            email: job.salesRep.email || 'N/A'
+          }
+        : null,
+      installer: job.installer
+        ? {
+            name: job.installer.name,
+            email: job.installer.email || 'N/A'
+          }
+        : null,
       store: job.store ? job.store.name : 'No store selected',
-      installDate: job.installDate ? new Date(job.installDate).toLocaleDateString() : 'Not scheduled',
+      installDate: job.installDate
+        ? new Date(job.installDate).toLocaleDateString()
+        : 'Not scheduled',
       createdAt: new Date(job.createdAt).toLocaleDateString(),
-      items: job.items ? job.items.map(item => ({
-        product: item.product ? item.product.name : 'Unknown',
-        quantity: item.quantity || 0,
-        unitPrice: item.unitPrice || 0,
-        isTaxable: item.isTaxable || false,
-        itemTotal: (item.quantity || 0) * (item.unitPrice || 0),
-        itemTax: item.isTaxable ? ((item.quantity || 0) * (item.unitPrice || 0)) * 0.0625 : 0
-      })) : [],
+      items: job.items
+        ? job.items.map(item => ({
+            product: item.product ? item.product.name : 'Unknown',
+            quantity: item.quantity || 0,
+            unitPrice: item.unitPrice || 0,
+            isTaxable: item.isTaxable || false,
+            itemTotal: (item.quantity || 0) * (item.unitPrice || 0),
+            itemTax: item.isTaxable
+              ? (item.quantity || 0) * (item.unitPrice || 0) * 0.0625
+              : 0
+          }))
+        : [],
       subtotal: job.subtotal || 0,
       taxTotal: job.taxTotal || 0,
       installCost: job.installCost || 0,
@@ -729,42 +785,55 @@ exports.sharedCalendar = async (req, res) => {
     const { token, type } = req.query
     let entity = null
     let title = 'Job Calendar'
-    
+
     if (type === 'store' && token) {
       entity = await Store.findOne({ calendarShareToken: token })
       if (entity) {
         title = `${entity.name} - Job Calendar`
       }
     } else if (type === 'installer' && token) {
-      entity = await User.findOne({ 
+      entity = await User.findOne({
         calendarShareToken: token,
-        isInstaller: true 
+        isInstaller: true
       })
       if (entity) {
         title = `${entity.name} - Installation Calendar`
       }
     } else if (type === 'salesrep' && token) {
-      entity = await User.findOne({ 
+      entity = await User.findOne({
         calendarShareToken: token,
-        isSalesRep: true 
+        isSalesRep: true
       })
       if (entity) {
         title = `${entity.name} - All Jobs Calendar`
       }
     }
-    
+
     if (!entity) {
       return res.status(404).render('error', {
         title: 'Calendar Not Found',
-        message: 'Invalid or expired calendar link. Please contact the administrator for a new link.'
+        message:
+          'Invalid or expired calendar link. Please contact the administrator for a new link.'
       })
     }
 
     const stores = await Store.find({ isActive: true }).sort({ name: 1 })
     const colors = [
-      '#0d6efd', '#198754', '#dc3545', '#ffc107', '#6f42c1',
-      '#fd7e14', '#20c997', '#e83e8c', '#6610f2', '#0dcaf0',
-      '#198754', '#ffc107', '#dc3545', '#0d6efd', '#6c757d'
+      '#0d6efd',
+      '#198754',
+      '#dc3545',
+      '#ffc107',
+      '#6f42c1',
+      '#fd7e14',
+      '#20c997',
+      '#e83e8c',
+      '#6610f2',
+      '#0dcaf0',
+      '#198754',
+      '#ffc107',
+      '#dc3545',
+      '#0d6efd',
+      '#6c757d'
     ]
     const storeColorMap = {}
     stores.forEach((store, index) => {
@@ -806,7 +875,13 @@ exports.downloadInvoice = async (req, res) => {
     const pdfBuffer = await invoiceService.generateInvoicePDF(job)
 
     res.setHeader('Content-Type', 'application/pdf')
-    res.setHeader('Content-Disposition', `attachment; filename="Invoice-${job._id.toString().slice(-8).toUpperCase()}.pdf"`)
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="Invoice-${job._id
+        .toString()
+        .slice(-8)
+        .toUpperCase()}.pdf"`
+    )
     res.send(pdfBuffer)
   } catch (error) {
     console.error('Invoice generation error:', error)
@@ -831,12 +906,18 @@ exports.sendInvoice = async (req, res) => {
     }
 
     if (!job.customer || !job.customer.email) {
-      req.flash('error', 'Customer email not found. Please add an email address to the customer.')
+      req.flash(
+        'error',
+        'Customer email not found. Please add an email address to the customer.'
+      )
       return res.redirect(`/jobs/${req.params.id}`)
     }
 
     if (!emailService.isEmailConfigured()) {
-      req.flash('error', 'Email service is not configured. Please set SMTP_USER and SMTP_PASS environment variables.')
+      req.flash(
+        'error',
+        'Email service is not configured. Please set SMTP_USER and SMTP_PASS environment variables.'
+      )
       return res.redirect(`/jobs/${req.params.id}`)
     }
 

@@ -97,14 +97,14 @@
     </div>
   </div>
 
-  <!-- Pool Sales Row -->
+  <!-- Recent Sales Row -->
   <div class="mb-4">
-    <h2 class="h5 mb-3">Recent Pool Sales</h2>
+    <h2 class="h5 mb-3">Recent Sales</h2>
     <div
       class="d-flex flex-row flex-nowrap overflow-auto pb-3"
       style="gap: 1rem"
     >
-      <% if (poolSales && poolSales.length > 0) { %> <% poolSales.forEach(sale => { %> <% if (sale && sale._id) { %>
+      <% if (recentSales && recentSales.length > 0) { %> <% recentSales.forEach(sale => { %> <% if (sale && sale._id) { %>
       <div class="card" style="min-width: 320px">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start mb-2">
@@ -159,7 +159,7 @@
       </div>
       <% } %> <% }) %> <% } else { %>
       <div class="card" style="min-width: 320px">
-        <div class="card-body text-muted">No pool sales found</div>
+        <div class="card-body text-muted">No sales found</div>
       </div>
       <% } %>
     </div>
