@@ -63,13 +63,26 @@
             >
               <button
                 type="submit"
-                class="btn btn-sm btn-outline-danger"
+                class="btn btn-sm btn-outline-warning"
                 onclick="return confirm('Deactivate this user?')"
               >
                 Deactivate
               </button>
             </form>
             <% } %>
+            <form
+              action="/admin/users/<%= u._id %>/delete"
+              method="POST"
+              class="d-inline"
+            >
+              <button
+                type="submit"
+                class="btn btn-sm btn-outline-danger"
+                onclick="return confirm('Are you sure you want to permanently delete this user? This action cannot be undone.')"
+              >
+                Delete
+              </button>
+            </form>
           </td>
         </tr>
         <% }) %> <% } else { %>

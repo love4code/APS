@@ -1,23 +1,24 @@
 const Store = require('../models/Store')
+const emailService = require('../services/emailService')
 
 // List all stores
 exports.list = async (req, res) => {
   try {
     const stores = await Store.find().sort({ name: 1 })
-    
+
     // Ensure all stores have share tokens
     for (const store of stores) {
       if (!store.calendarShareToken) {
         await store.save() // This will trigger the pre-save hook to generate token
       }
     }
-    
+
     // Re-fetch to get updated tokens
     const updatedStores = await Store.find().sort({ name: 1 })
 
     // Generate base URL for share links
     const baseUrl = req.protocol + '://' + req.get('host')
-    
+
     res.render('stores/list', {
       title: 'Stores',
       stores: updatedStores,
@@ -47,7 +48,17 @@ exports.newForm = async (req, res) => {
 // Create new store
 exports.create = async (req, res) => {
   try {
-    const { name, address, city, state, zipCode, phone, email, notes, isActive } = req.body
+    const {
+      name,
+      address,
+      city,
+      state,
+      zipCode,
+      phone,
+      email,
+      notes,
+      isActive
+    } = req.body
 
     if (!name || !name.trim()) {
       req.flash('error', 'Store name is required')
@@ -101,7 +112,18 @@ exports.editForm = async (req, res) => {
 // Update store
 exports.update = async (req, res) => {
   try {
-    const { name, address, city, state, zipCode, phone, email, notes, isActive, regenerateToken } = req.body
+    const {
+      name,
+      address,
+      city,
+      state,
+      zipCode,
+      phone,
+      email,
+      notes,
+      isActive,
+      regenerateToken
+    } = req.body
 
     const store = await Store.findById(req.params.id)
 
@@ -124,7 +146,7 @@ exports.update = async (req, res) => {
     store.email = email ? email.trim() : ''
     store.notes = notes ? notes.trim() : ''
     store.isActive = isActive === 'on' || isActive === true
-    
+
     // Regenerate share token if requested
     if (regenerateToken === 'on' || regenerateToken === 'true') {
       const crypto = require('crypto')
@@ -150,16 +172,83 @@ exports.regenerateToken = async (req, res) => {
       req.flash('error', 'Store not found')
       return res.redirect('/stores')
     }
-    
+
     const crypto = require('crypto')
     store.calendarShareToken = crypto.randomBytes(32).toString('hex')
     await store.save()
-    
-    req.flash('success', 'Calendar share token regenerated. Old links will no longer work.')
+
+    req.flash(
+      'success',
+      'Calendar share token regenerated. Old links will no longer work.'
+    )
     res.redirect('/stores')
   } catch (error) {
     console.error('Regenerate token error:', error)
     req.flash('error', 'Error regenerating token')
+    res.redirect('/stores')
+  }
+}
+
+// Send calendar invite
+exports.sendInvite = async (req, res) => {
+  try {
+    const { email, name } = req.body
+    const store = await Store.findById(req.params.id)
+
+    if (!store) {
+      req.flash('error', 'Store not found')
+      return res.redirect('/stores')
+    }
+
+    if (!email || !email.trim()) {
+      req.flash('error', 'Email is required')
+      return res.redirect('/stores')
+    }
+
+    if (!emailService.isEmailConfigured()) {
+      req.flash(
+        'error',
+        'Email service is not configured. Please set SMTP_USER and SMTP_PASS environment variables.'
+      )
+      return res.redirect('/stores')
+    }
+
+    const CalendarInvite = require('../models/CalendarInvite')
+    const baseUrl = req.protocol + '://' + req.get('host')
+
+    // Create invite
+    const invite = new CalendarInvite({
+      email: email.toLowerCase().trim(),
+      name: name || '',
+      inviteType: 'store',
+      entityId: store._id,
+      entityModel: 'Store',
+      createdBy: req.user._id
+    })
+    await invite.save()
+
+    // Send email
+    await emailService.sendCalendarInvite({
+      to: email,
+      name: name || email,
+      inviteToken: invite.inviteToken,
+      inviteType: 'store',
+      entityName: store.name,
+      baseUrl
+    })
+
+    req.flash('success', `Calendar invite sent to ${email}`)
+    res.redirect('/stores')
+  } catch (error) {
+    console.error('Send invite error:', error)
+    if (error.code === 11000) {
+      req.flash(
+        'error',
+        'An invite has already been sent to this email address'
+      )
+    } else {
+      req.flash('error', error.message || 'Error sending invite')
+    }
     res.redirect('/stores')
   }
 }
@@ -184,4 +273,3 @@ exports.delete = async (req, res) => {
     res.redirect('/stores')
   }
 }
-

@@ -203,3 +203,32 @@ exports.deactivate = async (req, res) => {
     res.redirect('/admin/users')
   }
 }
+
+exports.delete = async (req, res) => {
+  try {
+    if (!req.params.id || req.params.id === 'undefined') {
+      req.flash('error', 'Invalid user ID')
+      return res.redirect('/admin/users')
+    }
+
+    const user = await User.findById(req.params.id)
+    if (!user) {
+      req.flash('error', 'User not found')
+      return res.redirect('/admin/users')
+    }
+
+    // Prevent deleting yourself
+    if (user._id.toString() === req.user._id.toString()) {
+      req.flash('error', 'You cannot delete your own account')
+      return res.redirect('/admin/users')
+    }
+
+    await User.findByIdAndDelete(req.params.id)
+    req.flash('success', 'User deleted successfully')
+    res.redirect('/admin/users')
+  } catch (error) {
+    console.error('Error deleting user:', error)
+    req.flash('error', 'Error deleting user: ' + error.message)
+    res.redirect('/admin/users')
+  }
+}

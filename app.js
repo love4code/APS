@@ -213,6 +213,7 @@ app.use('/settings', require('./routes/settingsRoutes'))
 app.use('/invoices', require('./routes/invoiceRoutes'))
 app.use('/jobs', require('./routes/jobRoutes'))
 app.use('/my', require('./routes/jobRoutes')) // For /my/sales and /my/installs
+app.use('/invite', require('./routes/inviteRoutes'))
 
 // 404 handler
 app.use((req, res) => {

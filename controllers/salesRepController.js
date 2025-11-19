@@ -99,13 +99,13 @@ exports.detail = async (req, res) => {
     if (!salesRep.calendarShareToken) {
       await salesRep.save() // This will trigger the pre-save hook to generate token
     }
-    
+
     // Re-fetch to get updated token
     const updatedSalesRep = await User.findById(req.params.id)
-    
+
     // Generate base URL for share links
     const baseUrl = req.protocol + '://' + req.get('host')
-    
+
     res.render('salesReps/detail', {
       title: `Sales Rep: ${salesRep.name}`,
       salesRep: updatedSalesRep,
@@ -129,16 +129,84 @@ exports.regenerateToken = async (req, res) => {
       req.flash('error', 'Sales rep not found')
       return res.redirect('/sales-reps')
     }
-    
+
     const crypto = require('crypto')
     salesRep.calendarShareToken = crypto.randomBytes(32).toString('hex')
     await salesRep.save()
-    
-    req.flash('success', 'Calendar share token regenerated. Old links will no longer work.')
+
+    req.flash(
+      'success',
+      'Calendar share token regenerated. Old links will no longer work.'
+    )
     res.redirect(`/sales-reps/${req.params.id}`)
   } catch (error) {
     console.error('Regenerate token error:', error)
     req.flash('error', 'Error regenerating token')
     res.redirect('/sales-reps')
+  }
+}
+
+// Send calendar invite
+exports.sendInvite = async (req, res) => {
+  try {
+    const { email, name } = req.body
+    const salesRep = await User.findById(req.params.id)
+
+    if (!salesRep || !salesRep.isSalesRep) {
+      req.flash('error', 'Sales rep not found')
+      return res.redirect('/sales-reps')
+    }
+
+    if (!email || !email.trim()) {
+      req.flash('error', 'Email is required')
+      return res.redirect(`/sales-reps/${req.params.id}`)
+    }
+
+    const emailService = require('../services/emailService')
+    if (!emailService.isEmailConfigured()) {
+      req.flash(
+        'error',
+        'Email service is not configured. Please set SMTP_USER and SMTP_PASS environment variables.'
+      )
+      return res.redirect(`/sales-reps/${req.params.id}`)
+    }
+
+    const CalendarInvite = require('../models/CalendarInvite')
+    const baseUrl = req.protocol + '://' + req.get('host')
+
+    // Create invite
+    const invite = new CalendarInvite({
+      email: email.toLowerCase().trim(),
+      name: name || '',
+      inviteType: 'salesrep',
+      entityId: salesRep._id,
+      entityModel: 'User',
+      createdBy: req.user._id
+    })
+    await invite.save()
+
+    // Send email
+    await emailService.sendCalendarInvite({
+      to: email,
+      name: name || email,
+      inviteToken: invite.inviteToken,
+      inviteType: 'salesrep',
+      entityName: salesRep.name,
+      baseUrl
+    })
+
+    req.flash('success', `Calendar invite sent to ${email}`)
+    res.redirect(`/sales-reps/${req.params.id}`)
+  } catch (error) {
+    console.error('Send invite error:', error)
+    if (error.code === 11000) {
+      req.flash(
+        'error',
+        'An invite has already been sent to this email address'
+      )
+    } else {
+      req.flash('error', error.message || 'Error sending invite')
+    }
+    res.redirect(`/sales-reps/${req.params.id}`)
   }
 }

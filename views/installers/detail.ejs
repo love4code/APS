@@ -109,14 +109,47 @@
               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-              <p>Share this calendar link with <strong><%= installer.name %></strong>:</p>
-              <div class="input-group mb-3">
-                <input type="text" class="form-control" id="installerShareLink" value="<%= baseUrl %>/jobs/calendar/shared?type=installer&token=<%= installer.calendarShareToken || 'generating...' %>" readonly>
-                <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('installerShareLink', this)">
-                  <i class="bi bi-clipboard"></i> Copy
-                </button>
+              <ul class="nav nav-tabs mb-3" id="shareTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link active" id="link-tab" data-bs-toggle="tab" data-bs-target="#link-pane" type="button" role="tab">
+                    <i class="bi bi-link-45deg"></i> Share Link
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="invite-tab" data-bs-toggle="tab" data-bs-target="#invite-pane" type="button" role="tab">
+                    <i class="bi bi-envelope"></i> Send Invite
+                  </button>
+                </li>
+              </ul>
+              <div class="tab-content" id="shareTabContent">
+                <div class="tab-pane fade show active" id="link-pane" role="tabpanel">
+                  <p>Share this calendar link with <strong><%= installer.name %></strong>:</p>
+                  <div class="input-group mb-3">
+                    <input type="text" class="form-control" id="installerShareLink" value="<%= baseUrl %>/jobs/calendar/shared?type=installer&token=<%= installer.calendarShareToken || 'generating...' %>" readonly>
+                    <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('installerShareLink', this)">
+                      <i class="bi bi-clipboard"></i> Copy
+                    </button>
+                  </div>
+                  <small class="text-muted">Anyone with this link can view the installation calendar for <%= installer.name %>.</small>
+                </div>
+                <div class="tab-pane fade" id="invite-pane" role="tabpanel">
+                  <p>Send a calendar invite that requires login credentials:</p>
+                  <form action="/installers/<%= installer._id %>/send-invite" method="POST">
+                    <div class="mb-3">
+                      <label for="inviteEmail" class="form-label">Email Address *</label>
+                      <input type="email" class="form-control" id="inviteEmail" name="email" required>
+                    </div>
+                    <div class="mb-3">
+                      <label for="inviteName" class="form-label">Name (optional)</label>
+                      <input type="text" class="form-control" id="inviteName" name="name">
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                      <i class="bi bi-send"></i> Send Invite
+                    </button>
+                  </form>
+                  <small class="text-muted d-block mt-2">The recipient will receive an email with a link to create an account and view the calendar.</small>
+                </div>
               </div>
-              <small class="text-muted">Anyone with this link can view the installation calendar for <%= installer.name %>.</small>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>

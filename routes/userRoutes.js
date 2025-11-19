@@ -14,5 +14,6 @@ router.post(
   requireAdmin,
   userController.deactivate
 )
+router.post('/:id/delete', requireAuth, requireAdmin, userController.delete)
 
 module.exports = router
