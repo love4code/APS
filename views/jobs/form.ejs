@@ -47,18 +47,23 @@
       <h1 class="h3 mb-4"><%= job ? 'Edit Job' : 'New Job' %></h1>
 
       <form method="POST" action="<%= job ? `/jobs/${job._id}` : '/jobs' %>" id="jobForm">
+        <% if (typeof selectedCustomer !== 'undefined' && selectedCustomer && selectedCustomer._id) { %>
+        <input type="hidden" name="customerId" value="<%= selectedCustomer._id.toString() %>">
+        <% } else if (typeof customerId !== 'undefined' && customerId) { %>
+        <input type="hidden" name="customerId" value="<%= customerId %>">
+        <% } %>
         <div class="row">
           <div class="col-md-6 mb-3">
             <label for="customer" class="form-label">Customer *</label>
             <select class="form-select" id="customer" name="customer" required>
               <option value="">Select customer...</option>
               <% customers.forEach(c => { %>
-                <option value="<%= c._id %>" <%= (job && job.customer && (typeof job.customer === 'object' ? job.customer._id.toString() : job.customer.toString()) === c._id.toString()) || (typeof selectedCustomer !== 'undefined' && selectedCustomer && selectedCustomer._id && selectedCustomer._id.toString() === c._id.toString()) ? 'selected' : '' %>>
+                <option value="<%= c._id %>" <%= (job && job.customer && (typeof job.customer === 'object' ? job.customer._id.toString() : job.customer.toString()) === c._id.toString()) || (typeof selectedCustomer !== 'undefined' && selectedCustomer && selectedCustomer._id && selectedCustomer._id.toString() === c._id.toString()) || (typeof customerId !== 'undefined' && customerId && customerId.toString() === c._id.toString()) ? 'selected' : '' %>>
                   <%= c.name %>
                 </option>
               <% }) %>
             </select>
-            <% if (typeof selectedCustomer !== 'undefined' && selectedCustomer) { %>
+            <% if ((typeof selectedCustomer !== 'undefined' && selectedCustomer) || (typeof customerId !== 'undefined' && customerId)) { %>
             <small class="form-text text-muted">Pre-selected from customer page</small>
             <% } %>
           </div>
@@ -136,6 +141,12 @@
         </div>
 
         <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="invoicedDate" class="form-label">Invoiced Date</label>
+            <input type="date" class="form-control" id="invoicedDate" name="invoicedDate" value="<%= job && typeof job.invoicedDate !== 'undefined' && job.invoicedDate ? new Date(job.invoicedDate).toISOString().split('T')[0] : '' %>">
+            <small class="form-text text-muted">Date when invoice was created</small>
+          </div>
+
           <div class="col-md-6 mb-3">
             <label for="status" class="form-label">Status</label>
             <select class="form-select" id="status" name="status">

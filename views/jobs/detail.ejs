@@ -56,6 +56,7 @@
               <p><strong>Install Date:</strong> <%= job.installDate ? (() => { const d = new Date(job.installDate); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); })() : 'Not scheduled' %></p>
               <p><strong>Pool Order Date:</strong> <%= job.orderDate ? (() => { const d = new Date(job.orderDate); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); })() : 'Not ordered' %></p>
               <p><strong>Pool Delivery Date:</strong> <%= job.deliveryDate ? (() => { const d = new Date(job.deliveryDate); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); })() : 'Not delivered' %></p>
+              <p><strong>Invoiced Date:</strong> <%= (typeof job.invoicedDate !== 'undefined' && job.invoicedDate) ? (() => { const d = new Date(job.invoicedDate); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); })() : 'Not invoiced' %></p>
               <p><strong>Created:</strong> <%= new Date(job.createdAt).toLocaleDateString() %></p>
               <p><strong>Created By:</strong> <%= job.createdBy ? job.createdBy.name : 'Unknown' %></p>
             </div>

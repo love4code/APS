@@ -92,7 +92,8 @@ exports.getDashboard = async (req, res, next) => {
         totalPrice: job.totalPrice || 0,
         status: job.status || 'pending',
         isPaid: job.isPaid || false,
-        installDate: job.installDate || null
+        installDate: job.installDate || null,
+        invoicedDate: job.invoicedDate || null
       }))
     } catch (err) {
       console.error('Error fetching jobs:', err)
@@ -177,6 +178,7 @@ exports.getDashboard = async (req, res, next) => {
         totalPrice: sale.totalPrice || 0,
         orderDate: sale.orderDate || null,
         deliveryDate: sale.deliveryDate || null,
+        invoicedDate: sale.invoicedDate || null,
         status: sale.status || 'pending'
       }))
     } catch (err) {

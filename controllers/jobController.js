@@ -73,7 +73,8 @@ exports.newForm = async (req, res) => {
       salesReps,
       installers,
       stores,
-      selectedCustomer
+      selectedCustomer,
+      customerId: customerId
     })
   } catch (error) {
     req.flash('error', 'Error loading form data')
@@ -113,7 +114,8 @@ exports.newSaleForm = async (req, res) => {
       salesReps,
       installers,
       stores,
-      selectedCustomer
+      selectedCustomer,
+      customerId: customerId
     })
   } catch (error) {
     req.flash('error', 'Error loading form data')
@@ -132,6 +134,7 @@ exports.create = async (req, res) => {
       installDate,
       orderDate,
       deliveryDate,
+      invoicedDate,
       status,
       notes,
       items,
@@ -143,7 +146,12 @@ exports.create = async (req, res) => {
 
     if (!customer) {
       req.flash('error', 'Customer is required')
-      return res.redirect(isSaleForm ? '/sales/new' : '/jobs/new')
+      const customerId = req.query.customerId || req.body.customerId
+      const redirectUrl = isSaleForm ? '/sales/new' : '/jobs/new'
+      if (customerId) {
+        return res.redirect(`${redirectUrl}?customerId=${customerId}`)
+      }
+      return res.redirect(redirectUrl)
     }
 
     // Parse items if it's a string
@@ -182,7 +190,12 @@ exports.create = async (req, res) => {
     // Validate that we have at least one valid item (only if items were provided)
     if (items && itemsArray.length > 0 && validItems.length === 0) {
       req.flash('error', 'Please add at least one valid product to the sale.')
-      return res.redirect(isSaleForm ? '/sales/new' : '/jobs/new')
+      const customerId = req.query.customerId || req.body.customerId
+      const redirectUrl = isSaleForm ? '/sales/new' : '/jobs/new'
+      if (customerId) {
+        return res.redirect(`${redirectUrl}?customerId=${customerId}`)
+      }
+      return res.redirect(redirectUrl)
     }
 
     // Parse dates to avoid timezone issues
@@ -190,6 +203,7 @@ exports.create = async (req, res) => {
     let parsedInstallDate = null
     let parsedOrderDate = null
     let parsedDeliveryDate = null
+    let parsedInvoicedDate = null
 
     if (installDate) {
       // Parse as UTC date at midnight to avoid timezone conversion
@@ -207,6 +221,15 @@ exports.create = async (req, res) => {
       parsedDeliveryDate = new Date(Date.UTC(year, month - 1, day))
     }
 
+    if (
+      invoicedDate &&
+      typeof invoicedDate === 'string' &&
+      invoicedDate.trim() !== ''
+    ) {
+      const [year, month, day] = invoicedDate.split('-').map(Number)
+      parsedInvoicedDate = new Date(Date.UTC(year, month - 1, day))
+    }
+
     const job = new Job({
       customer,
       salesRep: salesRep || null,
@@ -217,6 +240,7 @@ exports.create = async (req, res) => {
       installDate: parsedInstallDate,
       orderDate: parsedOrderDate,
       deliveryDate: parsedDeliveryDate,
+      invoicedDate: parsedInvoicedDate,
       status: status || 'scheduled',
       notes: notes || '',
       installCost: installCost ? parseFloat(installCost) : 0,
@@ -236,13 +260,29 @@ exports.create = async (req, res) => {
     })
 
     req.flash('success', 'Job created successfully')
+
+    // Check if we should redirect back to customer page
+    const customerId =
+      req.query.customerId ||
+      req.body.customerId ||
+      (job.customer ? job.customer.toString() : null)
+    if (customerId) {
+      return res.redirect(`/customers/${customerId}`)
+    }
+
     res.redirect(`/jobs/${job._id}`)
   } catch (error) {
     console.error('Create job error:', error)
     req.flash('error', error.message || 'Error creating job')
     // Determine redirect based on where the request came from
     const isSaleForm = req.originalUrl && req.originalUrl.includes('/sales')
-    res.redirect(isSaleForm ? '/sales/new' : '/jobs/new')
+    const customerId = req.query.customerId || req.body.customerId
+    const redirectUrl = isSaleForm ? '/sales/new' : '/jobs/new'
+    // Preserve customerId if it was provided
+    if (customerId) {
+      return res.redirect(`${redirectUrl}?customerId=${customerId}`)
+    }
+    res.redirect(redirectUrl)
   }
 }
 
@@ -329,6 +369,7 @@ exports.update = async (req, res) => {
       installDate,
       orderDate,
       deliveryDate,
+      invoicedDate,
       status,
       notes,
       items,
@@ -385,6 +426,7 @@ exports.update = async (req, res) => {
     let parsedInstallDate = null
     let parsedOrderDate = null
     let parsedDeliveryDate = null
+    let parsedInvoicedDate = null
 
     if (installDate) {
       // Parse as UTC date at midnight to avoid timezone conversion
@@ -402,6 +444,15 @@ exports.update = async (req, res) => {
       parsedDeliveryDate = new Date(Date.UTC(year, month - 1, day))
     }
 
+    if (
+      invoicedDate &&
+      typeof invoicedDate === 'string' &&
+      invoicedDate.trim() !== ''
+    ) {
+      const [year, month, day] = invoicedDate.split('-').map(Number)
+      parsedInvoicedDate = new Date(Date.UTC(year, month - 1, day))
+    }
+
     job.customer = customer
     job.salesRep = salesRep || null
     job.soldByOwner = soldByOwner === 'on' || soldByOwner === 'true'
@@ -410,6 +461,7 @@ exports.update = async (req, res) => {
     job.installDate = parsedInstallDate
     job.orderDate = parsedOrderDate
     job.deliveryDate = parsedDeliveryDate
+    job.invoicedDate = parsedInvoicedDate
     job.status = status || 'scheduled'
     job.notes = notes || ''
     job.installCost = installCost ? parseFloat(installCost) : 0

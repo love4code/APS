@@ -47,6 +47,11 @@
       <h1 class="h3 mb-4">New Sale</h1>
 
       <form method="POST" action="/sales" id="saleForm">
+        <% if (typeof selectedCustomer !== 'undefined' && selectedCustomer && selectedCustomer._id) { %>
+        <input type="hidden" name="customerId" value="<%= selectedCustomer._id.toString() %>">
+        <% } else if (typeof customerId !== 'undefined' && customerId) { %>
+        <input type="hidden" name="customerId" value="<%= customerId %>">
+        <% } %>
         <div class="row">
           <!-- Left Column: Customer & Details -->
           <div class="col-md-6">
@@ -154,6 +159,17 @@
                     name="deliveryDate"
                   />
                   <small class="form-text text-muted">Date when pool was delivered</small>
+                </div>
+
+                <div class="mb-3">
+                  <label for="invoicedDate" class="form-label">Invoiced Date</label>
+                  <input
+                    type="date"
+                    class="form-control"
+                    id="invoicedDate"
+                    name="invoicedDate"
+                  />
+                  <small class="form-text text-muted">Date when invoice was created</small>
                 </div>
 
                 <div class="mb-3">
