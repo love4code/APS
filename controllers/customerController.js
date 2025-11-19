@@ -1,5 +1,6 @@
 const Customer = require('../models/Customer')
 const Job = require('../models/Job')
+const Invoice = require('../models/Invoice')
 const User = require('../models/User')
 
 exports.list = async (req, res) => {
@@ -120,10 +121,21 @@ exports.detail = async (req, res) => {
     const jobs = await Job.find({ customer: customer._id })
       .populate('salesRep', 'name')
       .populate('installer', 'name')
+      .populate('store', 'name')
       .populate('createdBy', 'name')
       .sort({ createdAt: -1 })
 
-    res.render('customers/detail', { title: customer.name, customer, jobs })
+    const invoices = await Invoice.find({ customer: customer._id })
+      .populate('job', 'status')
+      .sort({ createdAt: -1 })
+      .limit(10)
+
+    res.render('customers/detail', { 
+      title: customer.name, 
+      customer, 
+      jobs,
+      invoices 
+    })
   } catch (error) {
     req.flash('error', 'Error loading customer')
     res.redirect('/customers')

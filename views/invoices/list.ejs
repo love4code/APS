@@ -1,0 +1,94 @@
+<%- include('../partials/header', { title: 'Invoices' }) %>
+
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3"><%= customer ? 'Invoices - ' + customer.name : 'Invoices' %></h1>
+    <div class="d-flex gap-2">
+      <% if (customer) { %>
+      <a href="/customers/<%= customer._id %>" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Customer
+      </a>
+      <a href="/invoices/new?customerId=<%= customer._id %>" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> New Invoice
+      </a>
+      <% } else { %>
+      <a href="/invoices/new" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> New Invoice
+      </a>
+      <% } %>
+    </div>
+  </div>
+
+  <% if (invoices && invoices.length > 0) { %>
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th>Invoice #</th>
+            <th>Customer</th>
+            <th>Date</th>
+            <th>Due Date</th>
+            <th>Job/Sale</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% invoices.forEach(invoice => { %>
+            <tr>
+              <td><strong><%= invoice.invoiceNumber %></strong></td>
+              <td>
+                <% if (invoice.customer) { %>
+                  <a href="/customers/<%= invoice.customer._id %>"><%= invoice.customer.name %></a>
+                <% } else { %>
+                  N/A
+                <% } %>
+              </td>
+              <td><%= new Date(invoice.issueDate).toLocaleDateString() %></td>
+              <td><%= invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : '-' %></td>
+              <td>
+                <% if (invoice.job) { %>
+                  <a href="/jobs/<%= invoice.job._id %>">Job #<%= invoice.job._id.toString().slice(-6) %></a>
+                <% } else { %>
+                  <span class="text-muted">-</span>
+                <% } %>
+              </td>
+              <td><strong>$<%= (invoice.totalPrice || 0).toFixed(2) %></strong></td>
+              <td>
+                <% 
+                  let statusClass = 'secondary'
+                  if (invoice.status === 'paid') statusClass = 'success'
+                  else if (invoice.status === 'sent') statusClass = 'info'
+                  else if (invoice.status === 'overdue') statusClass = 'danger'
+                  else if (invoice.status === 'draft') statusClass = 'warning'
+                %>
+                <span class="badge bg-<%= statusClass %>"><%= invoice.status.toUpperCase() %></span>
+              </td>
+              <td>
+                <div class="btn-group btn-group-sm">
+                  <a href="/invoices/<%= invoice._id %>" class="btn btn-outline-primary">
+                    <i class="bi bi-eye"></i> View
+                  </a>
+                  <a href="/invoices/<%= invoice._id %>/invoice" class="btn btn-outline-success" target="_blank">
+                    <i class="bi bi-file-pdf"></i> PDF
+                  </a>
+                  <a href="/invoices/<%= invoice._id %>/edit" class="btn btn-outline-secondary">
+                    <i class="bi bi-pencil"></i> Edit
+                  </a>
+                </div>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } else { %>
+    <div class="alert alert-info">
+      <p class="mb-0">No invoices found. <a href="/invoices/new">Create your first invoice</a></p>
+    </div>
+  <% } %>
+</div>
+
+<%- include('../partials/footer') %>
+

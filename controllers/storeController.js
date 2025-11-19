@@ -4,10 +4,24 @@ const Store = require('../models/Store')
 exports.list = async (req, res) => {
   try {
     const stores = await Store.find().sort({ name: 1 })
+    
+    // Ensure all stores have share tokens
+    for (const store of stores) {
+      if (!store.calendarShareToken) {
+        await store.save() // This will trigger the pre-save hook to generate token
+      }
+    }
+    
+    // Re-fetch to get updated tokens
+    const updatedStores = await Store.find().sort({ name: 1 })
 
+    // Generate base URL for share links
+    const baseUrl = req.protocol + '://' + req.get('host')
+    
     res.render('stores/list', {
       title: 'Stores',
-      stores
+      stores: updatedStores,
+      baseUrl
     })
   } catch (error) {
     console.error('Store list error:', error)
@@ -87,7 +101,7 @@ exports.editForm = async (req, res) => {
 // Update store
 exports.update = async (req, res) => {
   try {
-    const { name, address, city, state, zipCode, phone, email, notes, isActive } = req.body
+    const { name, address, city, state, zipCode, phone, email, notes, isActive, regenerateToken } = req.body
 
     const store = await Store.findById(req.params.id)
 
@@ -110,6 +124,12 @@ exports.update = async (req, res) => {
     store.email = email ? email.trim() : ''
     store.notes = notes ? notes.trim() : ''
     store.isActive = isActive === 'on' || isActive === true
+    
+    // Regenerate share token if requested
+    if (regenerateToken === 'on' || regenerateToken === 'true') {
+      const crypto = require('crypto')
+      store.calendarShareToken = crypto.randomBytes(32).toString('hex')
+    }
 
     await store.save()
 
@@ -119,6 +139,28 @@ exports.update = async (req, res) => {
     console.error('Update store error:', error)
     req.flash('error', error.message || 'Error updating store')
     res.redirect(`/stores/${req.params.id}/edit`)
+  }
+}
+
+// Regenerate share token
+exports.regenerateToken = async (req, res) => {
+  try {
+    const store = await Store.findById(req.params.id)
+    if (!store) {
+      req.flash('error', 'Store not found')
+      return res.redirect('/stores')
+    }
+    
+    const crypto = require('crypto')
+    store.calendarShareToken = crypto.randomBytes(32).toString('hex')
+    await store.save()
+    
+    req.flash('success', 'Calendar share token regenerated. Old links will no longer work.')
+    res.redirect('/stores')
+  } catch (error) {
+    console.error('Regenerate token error:', error)
+    req.flash('error', 'Error regenerating token')
+    res.redirect('/stores')
   }
 }
 

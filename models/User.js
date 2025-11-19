@@ -35,10 +35,24 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  calendarShareToken: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
   createdAt: {
     type: Date,
     default: Date.now
   }
+})
+
+// Generate share token for installers before saving
+userSchema.pre('save', async function (next) {
+  if (this.isInstaller && !this.calendarShareToken) {
+    const crypto = require('crypto')
+    this.calendarShareToken = crypto.randomBytes(32).toString('hex')
+  }
+  next()
 })
 
 // Hash password before saving

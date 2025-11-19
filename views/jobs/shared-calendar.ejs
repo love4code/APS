@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet" />
+  <style>
+    body {
+      background-color: #f8f9fa;
+    }
+    .fc-event {
+      cursor: pointer;
+    }
+    .fc-event:hover {
+      opacity: 0.8;
+    }
+    .fc-toolbar-title {
+      font-size: 1.5rem;
+    }
+    .header-info {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 2rem;
+      border-radius: 10px;
+      margin-bottom: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container-fluid py-4">
+    <div class="header-info text-center">
+      <h1 class="h2 mb-2"><%= entity.name %></h1>
+      <p class="mb-0">
+        <% if (entityType === 'store') { %>
+          <i class="bi bi-shop"></i> Store Calendar
+        <% } else { %>
+          <i class="bi bi-tools"></i> Installer Calendar
+        <% } %>
+      </p>
+    </div>
+
+    <!-- Store Legend -->
+    <% if (stores && stores.length > 0) { %>
+    <div class="card mb-4">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Store Colors</h5>
+        <div class="row">
+          <% stores.forEach((store, index) => { %>
+            <% 
+              const color = storeColorMap[store._id.toString()] || '#6c757d'
+            %>
+            <div class="col-md-3 col-sm-4 col-6 mb-2">
+              <div class="d-flex align-items-center">
+                <span class="badge me-2" style="background-color: <%= color %>; width: 20px; height: 20px; display: inline-block;"></span>
+                <span><%= store.name %></span>
+              </div>
+            </div>
+          <% }) %>
+          <div class="col-md-3 col-sm-4 col-6 mb-2">
+            <div class="d-flex align-items-center">
+              <span class="badge me-2" style="background-color: #6c757d; width: 20px; height: 20px; display: inline-block;"></span>
+              <span>No Store</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <% } %>
+
+    <!-- Calendar -->
+    <div class="card">
+      <div class="card-body">
+        <div id="calendar"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const calendarEl = document.getElementById('calendar')
+      const token = '<%= token %>'
+      const type = '<%= entityType %>'
+      
+      // Build events URL with token
+      let eventsUrl = '/jobs/calendar/events?'
+      if (type === 'store') {
+        eventsUrl += 'storeToken=' + token
+      } else if (type === 'installer') {
+        eventsUrl += 'installerToken=' + token
+      }
+      
+      const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+          left: 'prev,next today',
+          center: 'title',
+          right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+        },
+        events: eventsUrl,
+        eventClick: function(info) {
+          // Show job details in a modal or alert (can't navigate to job detail without auth)
+          const props = info.event.extendedProps
+          const details = `
+            <strong>Customer:</strong> ${props.customer}<br>
+            <strong>Store:</strong> ${props.store}<br>
+            <strong>Installer:</strong> ${props.installer}<br>
+            <strong>Sales Rep:</strong> ${props.salesRep}<br>
+            <strong>Status:</strong> ${props.status}<br>
+            <strong>Total:</strong> $${props.totalPrice.toFixed(2)}
+          `
+          alert(details)
+        },
+        eventMouseEnter: function(info) {
+          const tooltip = document.createElement('div')
+          tooltip.className = 'fc-event-tooltip'
+          tooltip.style.cssText = 'position: absolute; z-index: 1000; background: #333; color: white; padding: 8px; border-radius: 4px; font-size: 12px; pointer-events: none; max-width: 250px;'
+          tooltip.innerHTML = `
+            <strong>${info.event.extendedProps.customer}</strong><br>
+            Store: ${info.event.extendedProps.store}<br>
+            Installer: ${info.event.extendedProps.installer}<br>
+            Sales Rep: ${info.event.extendedProps.salesRep}<br>
+            Status: ${info.event.extendedProps.status}<br>
+            Total: $${info.event.extendedProps.totalPrice.toFixed(2)}
+          `
+          document.body.appendChild(tooltip)
+          
+          const updateTooltip = (e) => {
+            tooltip.style.left = e.pageX + 10 + 'px'
+            tooltip.style.top = e.pageY + 10 + 'px'
+          }
+          
+          document.addEventListener('mousemove', updateTooltip)
+          info.el.addEventListener('mouseleave', () => {
+            if (document.body.contains(tooltip)) {
+              document.body.removeChild(tooltip)
+            }
+            document.removeEventListener('mousemove', updateTooltip)
+          })
+        }
+      })
+      
+      calendar.render()
+    })
+  </script>
+</body>
+</html>
+

@@ -84,16 +84,51 @@ exports.detail = async (req, res) => {
       paymentCount: payments.length
     }
 
+    // Ensure installer has share token
+    if (!installer.calendarShareToken) {
+      await installer.save() // This will trigger the pre-save hook to generate token
+      await installer.populate() // Re-populate if needed
+    }
+    
+    // Re-fetch to get updated token
+    const updatedInstaller = await User.findById(req.params.id)
+    
+    // Generate base URL for share links
+    const baseUrl = req.protocol + '://' + req.get('host')
+    
     res.render('installers/detail', {
       title: `Installer: ${installer.name}`,
-      installer,
+      installer: updatedInstaller,
       jobs,
       payments,
-      stats
+      stats,
+      baseUrl
     })
   } catch (error) {
     console.error('Installer detail error:', error)
     req.flash('error', 'Error loading installer details')
+    res.redirect('/installers')
+  }
+}
+
+// Regenerate installer share token
+exports.regenerateToken = async (req, res) => {
+  try {
+    const installer = await User.findById(req.params.id)
+    if (!installer || !installer.isInstaller) {
+      req.flash('error', 'Installer not found')
+      return res.redirect('/installers')
+    }
+    
+    const crypto = require('crypto')
+    installer.calendarShareToken = crypto.randomBytes(32).toString('hex')
+    await installer.save()
+    
+    req.flash('success', 'Calendar share token regenerated. Old links will no longer work.')
+    res.redirect(`/installers/${req.params.id}`)
+  } catch (error) {
+    console.error('Regenerate token error:', error)
+    req.flash('error', 'Error regenerating token')
     res.redirect('/installers')
   }
 }

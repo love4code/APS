@@ -88,6 +88,40 @@
               <%= installer.isActive ? 'Active' : 'Inactive' %>
             </span>
           </p>
+          <hr>
+          <button type="button" class="btn btn-outline-info btn-sm w-100 mb-2" data-bs-toggle="modal" data-bs-target="#shareCalendarModal">
+            <i class="bi bi-share"></i> Share Calendar
+          </button>
+          <form action="/installers/<%= installer._id %>/regenerate-token" method="POST" onsubmit="return confirm('Regenerating the token will invalidate the current share link. Continue?');">
+            <button type="submit" class="btn btn-outline-warning btn-sm w-100">
+              <i class="bi bi-arrow-clockwise"></i> Regenerate Link
+            </button>
+          </form>
+        </div>
+      </div>
+      
+      <!-- Share Calendar Modal -->
+      <div class="modal fade" id="shareCalendarModal" tabindex="-1" aria-labelledby="shareCalendarModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="shareCalendarModalLabel">Share Calendar - <%= installer.name %></h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <p>Share this calendar link with <strong><%= installer.name %></strong>:</p>
+              <div class="input-group mb-3">
+                <input type="text" class="form-control" id="installerShareLink" value="<%= baseUrl %>/jobs/calendar/shared?type=installer&token=<%= installer.calendarShareToken || 'generating...' %>" readonly>
+                <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('installerShareLink', this)">
+                  <i class="bi bi-clipboard"></i> Copy
+                </button>
+              </div>
+              <small class="text-muted">Anyone with this link can view the installation calendar for <%= installer.name %>.</small>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -241,5 +275,26 @@
     </div>
   </div>
 </div>
+
+<script>
+  function copyToClipboard(inputId, button) {
+    const input = document.getElementById(inputId);
+    input.select();
+    input.setSelectionRange(0, 99999); // For mobile devices
+    document.execCommand('copy');
+    
+    // Update button text temporarily
+    const originalHTML = button.innerHTML;
+    button.innerHTML = '<i class="bi bi-check"></i> Copied!';
+    button.classList.add('btn-success');
+    button.classList.remove('btn-outline-secondary');
+    
+    setTimeout(() => {
+      button.innerHTML = originalHTML;
+      button.classList.remove('btn-success');
+      button.classList.add('btn-outline-secondary');
+    }, 2000);
+  }
+</script>
 
 <%- include('../partials/footer') %>

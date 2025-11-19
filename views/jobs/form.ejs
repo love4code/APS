@@ -12,11 +12,14 @@
             <select class="form-select" id="customer" name="customer" required>
               <option value="">Select customer...</option>
               <% customers.forEach(c => { %>
-                <option value="<%= c._id %>" <%= job && job.customer && job.customer.toString() === c._id.toString() ? 'selected' : '' %>>
+                <option value="<%= c._id %>" <%= (job && job.customer && job.customer.toString() === c._id.toString()) || (selectedCustomer && selectedCustomer._id.toString() === c._id.toString()) ? 'selected' : '' %>>
                   <%= c.name %>
                 </option>
               <% }) %>
             </select>
+            <% if (selectedCustomer) { %>
+            <small class="form-text text-muted">Pre-selected from customer page</small>
+            <% } %>
           </div>
 
           <div class="col-md-6 mb-3">
@@ -91,7 +94,17 @@
         </div>
 
         <div class="mb-4">
-          <h5 class="mb-3">Items</h5>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Items</h5>
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#newProductModal">
+                <i class="bi bi-plus-circle"></i> New Product/Service
+              </button>
+              <button type="button" class="btn btn-outline-primary btn-sm" id="add-item-btn">
+                <i class="bi bi-plus-circle"></i> Add Item
+              </button>
+            </div>
+          </div>
           <div id="items-container">
             <% if (job && job.items && job.items.length > 0) { %>
               <% job.items.forEach((item, index) => { %>
@@ -124,19 +137,18 @@
                         </div>
                       </div>
                       <div class="col-md-2">
-                        <button type="button" class="btn btn-danger btn-sm remove-item">Remove</button>
+                        <button type="button" class="btn btn-danger btn-sm remove-item" title="Remove this item">
+                          <i class="bi bi-trash"></i> Remove
+                        </button>
                       </div>
                     </div>
                   </div>
                 </div>
               <% }) %>
             <% } else { %>
-              <p class="text-muted">No items added yet. Click "Add Item" below.</p>
+              <p class="text-muted" id="no-items-message">No items added yet. Click "Add Item" above to add products or services.</p>
             <% } %>
           </div>
-          <button type="button" class="btn btn-outline-primary mt-2" id="add-item-btn">
-            <i class="bi bi-plus-circle"></i> Add Item
-          </button>
         </div>
 
         <div class="mb-3">
@@ -153,12 +165,74 @@
   </div>
 </div>
 
+<!-- New Product/Service Modal -->
+<div class="modal fade" id="newProductModal" tabindex="-1" aria-labelledby="newProductModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="newProductModalLabel">New Product/Service</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="newProductForm">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="productName" class="form-label">Name *</label>
+            <input type="text" class="form-control" id="productName" name="name" required>
+          </div>
+          <div class="mb-3">
+            <label for="productDescription" class="form-label">Description</label>
+            <textarea class="form-control" id="productDescription" name="description" rows="2"></textarea>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="productBasePrice" class="form-label">Base Price *</label>
+              <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="number" class="form-control" id="productBasePrice" name="basePrice" step="0.01" min="0" required>
+              </div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="productType" class="form-label">Type *</label>
+              <select class="form-select" id="productType" name="type" required>
+                <option value="">Select...</option>
+                <option value="product">Product</option>
+                <option value="service">Service</option>
+              </select>
+            </div>
+          </div>
+          <div class="mb-3">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="productIsTaxable" name="isTaxable" checked>
+              <label class="form-check-label" for="productIsTaxable">Taxable (6.25% tax will be applied)</label>
+            </div>
+          </div>
+          <div id="productFormError" class="alert alert-danger d-none" role="alert"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <span id="productSubmitSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+            Create & Add to Job
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <script>
   let itemIndex = <%= job && job.items ? job.items.length : 0 %>;
-  const products = <%- JSON.stringify(products) %>;
+  let products = <%- JSON.stringify(products) %>;
 
-  document.getElementById('add-item-btn').addEventListener('click', function() {
+  function addItemRow() {
     const container = document.getElementById('items-container');
+    
+    // Remove "no items" message if it exists
+    const noItemsMsg = container.querySelector('#no-items-message');
+    if (noItemsMsg) {
+      noItemsMsg.remove();
+    }
+    
     const itemRow = document.createElement('div');
     itemRow.className = 'card mb-2 item-row';
     itemRow.setAttribute('data-index', itemIndex);
@@ -192,7 +266,9 @@
             '</div>' +
           '</div>' +
           '<div class="col-md-2">' +
-            '<button type="button" class="btn btn-danger btn-sm remove-item">Remove</button>' +
+            '<button type="button" class="btn btn-danger btn-sm remove-item" title="Remove this item">' +
+              '<i class="bi bi-trash"></i> Remove' +
+            '</button>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -214,28 +290,191 @@
 
     itemRow.querySelector('.remove-item').addEventListener('click', function() {
       itemRow.remove();
-    });
-  });
-
-  // Add event listeners to existing product selects
-  document.querySelectorAll('.product-select').forEach(select => {
-    select.addEventListener('change', function() {
-      const row = this.closest('.item-row');
-      const priceInput = row.querySelector('.price-input');
-      const taxableCheckbox = row.querySelector('.taxable-checkbox');
-      if (this.value) {
-        const option = this.options[this.selectedIndex];
-        priceInput.value = option.getAttribute('data-price');
-        taxableCheckbox.checked = option.getAttribute('data-taxable') === 'true';
+      // Show "no items" message if no items remain
+      if (container.querySelectorAll('.item-row').length === 0) {
+        const noItemsMsg = document.createElement('p');
+        noItemsMsg.className = 'text-muted';
+        noItemsMsg.id = 'no-items-message';
+        noItemsMsg.textContent = 'No items added yet. Click "Add Item" below.';
+        container.appendChild(noItemsMsg);
       }
     });
+    
+    // Focus on the product select for better UX
+    select.focus();
+  }
+
+  // Wait for DOM to be ready
+  document.addEventListener('DOMContentLoaded', function() {
+    // Add item button
+    const addItemBtn = document.getElementById('add-item-btn');
+    if (addItemBtn) {
+      addItemBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        addItemRow();
+      });
+    } else {
+      console.error('Add item button not found!');
+    }
+
+    // Add event listeners to existing product selects
+    document.querySelectorAll('.product-select').forEach(select => {
+      select.addEventListener('change', function() {
+        const row = this.closest('.item-row');
+        const priceInput = row.querySelector('.price-input');
+        const taxableCheckbox = row.querySelector('.taxable-checkbox');
+        if (this.value) {
+          const option = this.options[this.selectedIndex];
+          priceInput.value = option.getAttribute('data-price');
+          taxableCheckbox.checked = option.getAttribute('data-taxable') === 'true';
+        }
+      });
+    });
+
+    // Remove item buttons
+    document.querySelectorAll('.remove-item').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const container = document.getElementById('items-container');
+        this.closest('.item-row').remove();
+        // Show "no items" message if no items remain
+        if (container.querySelectorAll('.item-row').length === 0) {
+          const noItemsMsg = document.createElement('p');
+          noItemsMsg.className = 'text-muted';
+          noItemsMsg.id = 'no-items-message';
+          noItemsMsg.textContent = 'No items added yet. Click "Add Item" below.';
+          container.appendChild(noItemsMsg);
+        }
+      });
+    });
   });
 
-  // Remove item buttons
-  document.querySelectorAll('.remove-item').forEach(btn => {
-    btn.addEventListener('click', function() {
-      this.closest('.item-row').remove();
+  // Also try immediately in case DOM is already loaded (for scripts at end of body)
+  if (document.readyState === 'loading') {
+    // DOM hasn't finished loading yet, wait for DOMContentLoaded
+  } else {
+    // DOM is already loaded, attach listeners immediately
+    const addItemBtn = document.getElementById('add-item-btn');
+    if (addItemBtn) {
+      addItemBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        addItemRow();
+      });
+    }
+
+    document.querySelectorAll('.product-select').forEach(select => {
+      select.addEventListener('change', function() {
+        const row = this.closest('.item-row');
+        const priceInput = row.querySelector('.price-input');
+        const taxableCheckbox = row.querySelector('.taxable-checkbox');
+        if (this.value) {
+          const option = this.options[this.selectedIndex];
+          priceInput.value = option.getAttribute('data-price');
+          taxableCheckbox.checked = option.getAttribute('data-taxable') === 'true';
+        }
+      });
     });
+
+    document.querySelectorAll('.remove-item').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const container = document.getElementById('items-container');
+        this.closest('.item-row').remove();
+        if (container.querySelectorAll('.item-row').length === 0) {
+          const noItemsMsg = document.createElement('p');
+          noItemsMsg.className = 'text-muted';
+          noItemsMsg.id = 'no-items-message';
+          noItemsMsg.textContent = 'No items added yet. Click "Add Item" below.';
+          container.appendChild(noItemsMsg);
+        }
+      });
+    });
+  }
+
+  // Handle new product form submission
+  document.getElementById('newProductForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const form = this;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const spinner = document.getElementById('productSubmitSpinner');
+    const errorDiv = document.getElementById('productFormError');
+    
+    // Hide previous errors
+    errorDiv.classList.add('d-none');
+    errorDiv.textContent = '';
+    
+    // Show loading state
+    submitBtn.disabled = true;
+    spinner.classList.remove('d-none');
+    
+    // Get form data
+    const formData = new FormData(form);
+    const data = {
+      name: formData.get('name'),
+      description: formData.get('description') || '',
+      basePrice: parseFloat(formData.get('basePrice')),
+      type: formData.get('type'),
+      isTaxable: formData.get('isTaxable') === 'on' ? 'true' : 'false'
+    };
+    
+    try {
+      const response = await fetch('/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Error creating product');
+      }
+      
+      // Add new product to products array
+      products.push(result.product);
+      
+      // Update all product selects
+      document.querySelectorAll('.product-select').forEach(select => {
+        const option = document.createElement('option');
+        option.value = result.product._id;
+        option.setAttribute('data-price', result.product.basePrice);
+        option.setAttribute('data-taxable', result.product.isTaxable);
+        option.textContent = result.product.name + ' - $' + result.product.basePrice.toFixed(2);
+        select.appendChild(option);
+      });
+      
+      // Close modal and reset form
+      const modal = bootstrap.Modal.getInstance(document.getElementById('newProductModal'));
+      modal.hide();
+      form.reset();
+      
+      // Show success message
+      const successAlert = document.createElement('div');
+      successAlert.className = 'alert alert-success alert-dismissible fade show';
+      successAlert.innerHTML = '<strong>Success!</strong> Product "' + result.product.name + '" created and added to dropdown.';
+      successAlert.innerHTML += '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+      document.querySelector('.container-fluid').insertBefore(successAlert, document.querySelector('.container-fluid').firstChild);
+      
+      // Auto-dismiss after 3 seconds
+      setTimeout(() => {
+        successAlert.remove();
+      }, 3000);
+      
+    } catch (error) {
+      errorDiv.textContent = error.message || 'Error creating product. Please try again.';
+      errorDiv.classList.remove('d-none');
+    } finally {
+      submitBtn.disabled = false;
+      spinner.classList.add('d-none');
+    }
+  });
+  
+  // Reset modal form when closed
+  document.getElementById('newProductModal').addEventListener('hidden.bs.modal', function() {
+    document.getElementById('newProductForm').reset();
+    document.getElementById('productFormError').classList.add('d-none');
   });
 
   // Convert items array to JSON before submit

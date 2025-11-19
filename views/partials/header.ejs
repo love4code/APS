@@ -58,6 +58,11 @@
                 <li><a class="dropdown-item" href="/installers"><i class="bi bi-tools"></i> Installers</a></li>
               </ul>
             </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/invoices">
+                <i class="bi bi-receipt"></i> Invoices
+              </a>
+            </li>
             <li class="nav-item dropdown">
               <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                 <i class="bi bi-gear"></i> Settings
@@ -66,6 +71,8 @@
                 <li><a class="dropdown-item" href="/products"><i class="bi bi-box"></i> Products</a></li>
                 <li><a class="dropdown-item" href="/stores"><i class="bi bi-shop"></i> Stores</a></li>
                 <li><a class="dropdown-item" href="/payments"><i class="bi bi-cash-coin"></i> Payments</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="/settings"><i class="bi bi-building"></i> Company Settings</a></li>
                 <% if (typeof user !== 'undefined' && user && user.role === 'admin') { %>
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item" href="/admin/users"><i class="bi bi-person-gear"></i> Users</a></li>

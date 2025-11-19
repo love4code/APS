@@ -3,10 +3,19 @@
 <div class="container-fluid">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="h3"><%= customer.name %></h1>
-    <div>
+    <div class="d-flex gap-2">
+      <a href="/jobs/new?customerId=<%= customer._id %>" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> New Job
+      </a>
+      <a href="/sales/new?customerId=<%= customer._id %>" class="btn btn-success">
+        <i class="bi bi-cart-plus"></i> New Sale
+      </a>
+      <a href="/invoices/new?customerId=<%= customer._id %>" class="btn btn-outline-primary">
+        <i class="bi bi-receipt"></i> Create Invoice
+      </a>
       <a
         href="/customers/<%= customer._id %>/edit"
-        class="btn btn-outline-primary"
+        class="btn btn-outline-secondary"
         >Edit</a
       >
       <form
@@ -39,24 +48,36 @@
     </div>
 
     <div class="col-md-6">
-      <div class="card">
+      <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Jobs (<%= jobs ? jobs.length : 0 %>)</h5>
+          <div>
+            <a href="/jobs/new?customerId=<%= customer._id %>" class="btn btn-sm btn-primary">
+              <i class="bi bi-plus-circle"></i> New Job
+            </a>
+            <a href="/sales/new?customerId=<%= customer._id %>" class="btn btn-sm btn-success">
+              <i class="bi bi-cart-plus"></i> New Sale
+            </a>
+          </div>
+        </div>
         <div class="card-body">
-          <h5 class="card-title">Jobs (<%= jobs ? jobs.length : 0 %>)</h5>
           <% if (jobs && jobs.length > 0) { %>
           <div class="list-group">
             <% jobs.forEach(job => { %>
-            <a
-              href="/jobs/<%= job._id %>"
-              class="list-group-item list-group-item-action"
-            >
-              <div class="d-flex justify-content-between">
+            <div class="list-group-item">
+              <div class="d-flex justify-content-between align-items-center">
                 <div>
-                  <strong>Job #<%= job._id.toString().slice(-6) %></strong>
+                  <a href="/jobs/<%= job._id %>" class="text-decoration-none">
+                    <strong>Job #<%= job._id.toString().slice(-6) %></strong>
+                  </a>
                   <span
-                    class="badge bg-<%= job.status === 'complete' ? 'success' : job.status === 'delayed' ? 'warning' : 'secondary' %> ms-2"
+                    class="badge bg-<%= job.status === 'complete' ? 'success' : job.status === 'delayed' ? 'warning' : job.status === 'delivered' ? 'info' : 'secondary' %> ms-2"
                   >
                     <%= job.status %>
                   </span>
+                  <% if (job.isSale) { %>
+                  <span class="badge bg-primary ms-1">Sale</span>
+                  <% } %>
                 </div>
                 <div class="text-end">
                   <div>$<%= (job.totalPrice || 0).toFixed(2) %></div>
@@ -65,7 +86,15 @@
                   >
                 </div>
               </div>
-            </a>
+              <div class="mt-2">
+                <a href="/invoices/new?jobId=<%= job._id %>" class="btn btn-sm btn-outline-primary">
+                  <i class="bi bi-receipt"></i> Invoice
+                </a>
+                <a href="/jobs/<%= job._id %>" class="btn btn-sm btn-outline-secondary">
+                  <i class="bi bi-eye"></i> View
+                </a>
+              </div>
+            </div>
             <% }) %>
           </div>
           <% } else { %>
@@ -73,6 +102,61 @@
           <% } %>
         </div>
       </div>
+
+      <% if (invoices && invoices.length > 0) { %>
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Recent Invoices (<%= invoices.length %>)</h5>
+          <a href="/invoices/new?customerId=<%= customer._id %>" class="btn btn-sm btn-primary">
+            <i class="bi bi-plus-circle"></i> New Invoice
+          </a>
+        </div>
+        <div class="card-body">
+          <div class="list-group">
+            <% invoices.forEach(invoice => { %>
+            <div class="list-group-item">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <a href="/invoices/<%= invoice._id %>" class="text-decoration-none">
+                    <strong><%= invoice.invoiceNumber %></strong>
+                  </a>
+                  <% 
+                    let statusClass = 'secondary'
+                    if (invoice.status === 'paid') statusClass = 'success'
+                    else if (invoice.status === 'sent') statusClass = 'info'
+                    else if (invoice.status === 'overdue') statusClass = 'danger'
+                    else if (invoice.status === 'draft') statusClass = 'warning'
+                  %>
+                  <span class="badge bg-<%= statusClass %> ms-2"><%= invoice.status.toUpperCase() %></span>
+                  <% if (invoice.job) { %>
+                  <span class="badge bg-primary ms-1">Job #<%= invoice.job._id.toString().slice(-6) %></span>
+                  <% } %>
+                </div>
+                <div class="text-end">
+                  <div><strong>$<%= (invoice.totalPrice || 0).toFixed(2) %></strong></div>
+                  <small class="text-muted"><%= new Date(invoice.issueDate).toLocaleDateString() %></small>
+                </div>
+              </div>
+            </div>
+            <% }) %>
+          </div>
+          <div class="mt-2 text-center">
+            <a href="/invoices?customerId=<%= customer._id %>" class="btn btn-sm btn-outline-secondary">
+              View All Invoices
+            </a>
+          </div>
+        </div>
+      </div>
+      <% } else { %>
+      <div class="card">
+        <div class="card-body text-center">
+          <p class="text-muted mb-2">No invoices for this customer</p>
+          <a href="/invoices/new?customerId=<%= customer._id %>" class="btn btn-sm btn-primary">
+            <i class="bi bi-plus-circle"></i> Create First Invoice
+          </a>
+        </div>
+      </div>
+      <% } %>
     </div>
   </div>
 </div>

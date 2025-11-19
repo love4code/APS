@@ -4,6 +4,8 @@ const Product = require('../models/Product')
 const User = require('../models/User')
 const Store = require('../models/Store')
 const ActivityLog = require('../models/ActivityLog')
+const invoiceService = require('../services/invoiceService')
+const emailService = require('../services/emailService')
 
 exports.list = async (req, res) => {
   try {
@@ -38,6 +40,13 @@ exports.newForm = async (req, res) => {
     }).sort({ name: 1 })
     const stores = await Store.find({ isActive: true }).sort({ name: 1 })
 
+    // Check if creating from a customer
+    const customerId = req.query.customerId || null
+    let selectedCustomer = null
+    if (customerId) {
+      selectedCustomer = await Customer.findById(customerId)
+    }
+
     res.render('jobs/form', {
       title: 'New Job',
       job: null,
@@ -45,7 +54,8 @@ exports.newForm = async (req, res) => {
       products,
       salesReps,
       installers,
-      stores
+      stores,
+      selectedCustomer
     })
   } catch (error) {
     req.flash('error', 'Error loading form data')
@@ -70,6 +80,13 @@ exports.newSaleForm = async (req, res) => {
     }).sort({ name: 1 })
     const stores = await Store.find({ isActive: true }).sort({ name: 1 })
 
+    // Check if creating from a customer
+    const customerId = req.query.customerId || null
+    let selectedCustomer = null
+    if (customerId) {
+      selectedCustomer = await Customer.findById(customerId)
+    }
+
     res.render('jobs/sale-form', {
       title: 'New Sale',
       job: null,
@@ -77,7 +94,8 @@ exports.newSaleForm = async (req, res) => {
       products,
       salesReps,
       installers,
-      stores
+      stores,
+      selectedCustomer
     })
   } catch (error) {
     req.flash('error', 'Error loading form data')
@@ -508,7 +526,28 @@ exports.calendar = async (req, res) => {
 // API endpoint for calendar events (JSON)
 exports.calendarEvents = async (req, res) => {
   try {
-    const jobs = await Job.find({ installDate: { $exists: true, $ne: null } })
+    let query = { installDate: { $exists: true, $ne: null } }
+    
+    // Filter by store if token provided
+    if (req.query.storeToken) {
+      const store = await Store.findOne({ calendarShareToken: req.query.storeToken })
+      if (store) {
+        query.store = store._id
+      }
+    }
+    
+    // Filter by installer if token provided
+    if (req.query.installerToken) {
+      const installer = await User.findOne({ 
+        calendarShareToken: req.query.installerToken,
+        isInstaller: true 
+      })
+      if (installer) {
+        query.installer = installer._id
+      }
+    }
+
+    const jobs = await Job.find(query)
       .populate('customer', 'name')
       .populate('store', 'name')
       .populate('installer', 'name')
@@ -556,5 +595,142 @@ exports.calendarEvents = async (req, res) => {
   } catch (error) {
     console.error('Calendar events error:', error)
     res.status(500).json({ error: 'Error loading calendar events' })
+  }
+}
+
+// Shared calendar view (public, token-based)
+exports.sharedCalendar = async (req, res) => {
+  try {
+    const { token, type } = req.query
+    let entity = null
+    let title = 'Job Calendar'
+    
+    if (type === 'store' && token) {
+      entity = await Store.findOne({ calendarShareToken: token })
+      if (entity) {
+        title = `${entity.name} - Job Calendar`
+      }
+    } else if (type === 'installer' && token) {
+      entity = await User.findOne({ 
+        calendarShareToken: token,
+        isInstaller: true 
+      })
+      if (entity) {
+        title = `${entity.name} - Installation Calendar`
+      }
+    }
+    
+    if (!entity) {
+      return res.status(404).render('error', {
+        title: 'Calendar Not Found',
+        message: 'Invalid or expired calendar link. Please contact the administrator for a new link.'
+      })
+    }
+
+    const stores = await Store.find({ isActive: true }).sort({ name: 1 })
+    const colors = [
+      '#0d6efd', '#198754', '#dc3545', '#ffc107', '#6f42c1',
+      '#fd7e14', '#20c997', '#e83e8c', '#6610f2', '#0dcaf0',
+      '#198754', '#ffc107', '#dc3545', '#0d6efd', '#6c757d'
+    ]
+    const storeColorMap = {}
+    stores.forEach((store, index) => {
+      storeColorMap[store._id.toString()] = colors[index % colors.length]
+    })
+
+    res.render('jobs/shared-calendar', {
+      title,
+      entity,
+      entityType: type,
+      token,
+      stores,
+      storeColorMap
+    })
+  } catch (error) {
+    console.error('Shared calendar error:', error)
+    res.status(500).render('error', {
+      title: 'Error',
+      message: 'Error loading calendar. Please try again later.'
+    })
+  }
+}
+
+// Generate and download PDF invoice
+exports.downloadInvoice = async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id)
+      .populate('customer')
+      .populate('installer', 'name')
+      .populate('store', 'name')
+      .populate('salesRep', 'name')
+      .populate('items.product')
+
+    if (!job) {
+      req.flash('error', 'Job not found')
+      return res.redirect('/jobs')
+    }
+
+    const pdfBuffer = await invoiceService.generateInvoicePDF(job)
+
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `attachment; filename="Invoice-${job._id.toString().slice(-8).toUpperCase()}.pdf"`)
+    res.send(pdfBuffer)
+  } catch (error) {
+    console.error('Invoice generation error:', error)
+    req.flash('error', 'Error generating invoice')
+    res.redirect(`/jobs/${req.params.id}`)
+  }
+}
+
+// Send invoice via email
+exports.sendInvoice = async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id)
+      .populate('customer')
+      .populate('installer', 'name')
+      .populate('store', 'name')
+      .populate('salesRep', 'name')
+      .populate('items.product')
+
+    if (!job) {
+      req.flash('error', 'Job not found')
+      return res.redirect('/jobs')
+    }
+
+    if (!job.customer || !job.customer.email) {
+      req.flash('error', 'Customer email not found. Please add an email address to the customer.')
+      return res.redirect(`/jobs/${req.params.id}`)
+    }
+
+    if (!emailService.isEmailConfigured()) {
+      req.flash('error', 'Email service is not configured. Please set SMTP_USER and SMTP_PASS environment variables.')
+      return res.redirect(`/jobs/${req.params.id}`)
+    }
+
+    // Generate PDF
+    const pdfBuffer = await invoiceService.generateInvoicePDF(job)
+
+    // Send email
+    await emailService.sendInvoiceEmail({
+      to: job.customer.email,
+      customerName: job.customer.name || 'Valued Customer',
+      pdfBuffer: pdfBuffer,
+      jobId: job._id.toString()
+    })
+
+    // Log activity
+    await ActivityLog.create({
+      job: job._id,
+      user: req.user._id,
+      action: 'invoice_sent',
+      details: `Invoice sent to ${job.customer.email}`
+    })
+
+    req.flash('success', `Invoice sent successfully to ${job.customer.email}`)
+    res.redirect(`/jobs/${req.params.id}`)
+  } catch (error) {
+    console.error('Send invoice error:', error)
+    req.flash('error', error.message || 'Error sending invoice')
+    res.redirect(`/jobs/${req.params.id}`)
   }
 }

@@ -1,0 +1,313 @@
+<%- include('../partials/header', { title: invoice ? 'Edit Invoice' : 'New Invoice' }) %>
+
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-md-10 mx-auto">
+      <h1 class="h3 mb-4"><%= invoice ? 'Edit Invoice' : 'New Invoice' %></h1>
+
+      <% if (selectedJob) { %>
+      <div class="alert alert-info">
+        <strong>Creating invoice from Job:</strong> This invoice will be linked to Job #<%= selectedJob._id.toString().slice(-6) %>
+        <a href="/invoices/new" class="btn btn-sm btn-outline-secondary ms-2">Create Blank Invoice Instead</a>
+      </div>
+      <% } %>
+      <% if (selectedCustomer && !selectedJob) { %>
+      <div class="alert alert-info">
+        <strong>Creating invoice for Customer:</strong> <%= selectedCustomer.name %>
+        <a href="/invoices/new" class="btn btn-sm btn-outline-secondary ms-2">Create Blank Invoice Instead</a>
+      </div>
+      <% } %>
+
+      <form method="POST" action="<%= invoice ? `/invoices/${invoice._id}` : '/invoices' %>" id="invoiceForm">
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="invoiceNumber" class="form-label">Invoice Number *</label>
+            <input type="text" class="form-control" id="invoiceNumber" name="invoiceNumber" value="<%= invoice ? invoice.invoiceNumber : invoiceNumber %>" required>
+          </div>
+
+          <div class="col-md-6 mb-3">
+            <label for="customer" class="form-label">Customer *</label>
+            <select class="form-select" id="customer" name="customer" required>
+              <option value="">Select customer...</option>
+              <% customers.forEach(c => { %>
+                <option value="<%= c._id %>" <%= (invoice && invoice.customer && invoice.customer.toString() === c._id.toString()) || (selectedJob && selectedJob.customer && selectedJob.customer._id.toString() === c._id.toString()) ? 'selected' : '' %>>
+                  <%= c.name %>
+                </option>
+              <% }) %>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="job" class="form-label">Link to Job/Sale (Optional)</label>
+            <select class="form-select" id="job" name="job">
+              <option value="">No job/sale linked</option>
+              <% jobs.forEach(j => { %>
+                <option value="<%= j._id %>" <%= (invoice && invoice.job && invoice.job.toString() === j._id.toString()) || (selectedJob && selectedJob._id.toString() === j._id.toString()) ? 'selected' : '' %>>
+                  Job #<%= j._id.toString().slice(-6) %> - <%= j.customer ? j.customer.name : 'Unknown' %> - $<%= (j.totalPrice || 0).toFixed(2) %>
+                </option>
+              <% }) %>
+            </select>
+            <% if (selectedJob) { %>
+            <small class="form-text text-muted">Pre-selected from job link</small>
+            <% } %>
+          </div>
+
+          <div class="col-md-6 mb-3">
+            <label for="store" class="form-label">Store</label>
+            <select class="form-select" id="store" name="store">
+              <option value="">No store selected</option>
+              <% stores.forEach(s => { %>
+                <option value="<%= s._id %>" <%= (invoice && invoice.store && invoice.store.toString() === s._id.toString()) || (selectedJob && selectedJob.store && selectedJob.store.toString() === s._id.toString()) ? 'selected' : '' %>>
+                  <%= s.name %>
+                </option>
+              <% }) %>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="salesRep" class="form-label">Sales Rep</label>
+            <select class="form-select" id="salesRep" name="salesRep">
+              <option value="">Not assigned</option>
+              <% salesReps.forEach(rep => { %>
+                <option value="<%= rep._id %>" <%= (invoice && invoice.salesRep && invoice.salesRep.toString() === rep._id.toString()) || (selectedJob && selectedJob.salesRep && selectedJob.salesRep.toString() === rep._id.toString()) ? 'selected' : '' %>>
+                  <%= rep.name %>
+                </option>
+              <% }) %>
+            </select>
+          </div>
+
+          <div class="col-md-6 mb-3">
+            <div class="form-check mt-4">
+              <input class="form-check-input" type="checkbox" id="soldByOwner" name="soldByOwner" <%= (invoice && invoice.soldByOwner) || (selectedJob && selectedJob.soldByOwner) ? 'checked' : '' %>>
+              <label class="form-check-label" for="soldByOwner">Sold by Owner</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-4 mb-3">
+            <label for="issueDate" class="form-label">Issue Date</label>
+            <input type="date" class="form-control" id="issueDate" name="issueDate" value="<%= invoice ? new Date(invoice.issueDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0] %>">
+          </div>
+
+          <div class="col-md-4 mb-3">
+            <label for="dueDate" class="form-label">Due Date</label>
+            <input type="date" class="form-control" id="dueDate" name="dueDate" value="<%= invoice && invoice.dueDate ? new Date(invoice.dueDate).toISOString().split('T')[0] : '' %>">
+          </div>
+
+          <div class="col-md-4 mb-3">
+            <label for="status" class="form-label">Status</label>
+            <select class="form-select" id="status" name="status">
+              <option value="draft" <%= invoice && invoice.status === 'draft' ? 'selected' : '' %>>Draft</option>
+              <option value="sent" <%= invoice && invoice.status === 'sent' ? 'selected' : '' %>>Sent</option>
+              <option value="paid" <%= invoice && invoice.status === 'paid' ? 'selected' : '' %>>Paid</option>
+              <option value="overdue" <%= invoice && invoice.status === 'overdue' ? 'selected' : '' %>>Overdue</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <h5 class="mb-3">Invoice Items</h5>
+          <div id="items-container">
+            <% if (selectedJob && selectedJob.items && selectedJob.items.length > 0) { %>
+              <% selectedJob.items.forEach((item, index) => { %>
+                <div class="card mb-2 item-row" data-index="<%= index %>">
+                  <div class="card-body">
+                    <div class="row align-items-end">
+                      <div class="col-md-5">
+                        <label class="form-label">Description</label>
+                        <input type="text" class="form-control item-description" name="items[<%= index %>][description]" value="<%= item.product ? item.product.name : 'Product' %>" required>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label">Quantity</label>
+                        <input type="number" class="form-control item-quantity" name="items[<%= index %>][quantity]" value="<%= item.quantity %>" min="1" step="0.01" required>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label">Unit Price</label>
+                        <input type="number" class="form-control item-price" name="items[<%= index %>][unitPrice]" value="<%= item.unitPrice %>" step="0.01" min="0" required>
+                      </div>
+                      <div class="col-md-2">
+                        <div class="form-check mt-4">
+                          <input class="form-check-input item-taxable" type="checkbox" name="items[<%= index %>][isTaxable]" <%= item.isTaxable ? 'checked' : '' %>>
+                          <label class="form-check-label">Taxable</label>
+                        </div>
+                      </div>
+                      <div class="col-md-1">
+                        <button type="button" class="btn btn-danger btn-sm remove-item">Remove</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              <% }) %>
+            <% } else if (invoice && invoice.items && invoice.items.length > 0) { %>
+              <% invoice.items.forEach((item, index) => { %>
+                <div class="card mb-2 item-row" data-index="<%= index %>">
+                  <div class="card-body">
+                    <div class="row align-items-end">
+                      <div class="col-md-5">
+                        <label class="form-label">Description</label>
+                        <input type="text" class="form-control item-description" name="items[<%= index %>][description]" value="<%= item.description %>" required>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label">Quantity</label>
+                        <input type="number" class="form-control item-quantity" name="items[<%= index %>][quantity]" value="<%= item.quantity %>" min="1" step="0.01" required>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label">Unit Price</label>
+                        <input type="number" class="form-control item-price" name="items[<%= index %>][unitPrice]" value="<%= item.unitPrice %>" step="0.01" min="0" required>
+                      </div>
+                      <div class="col-md-2">
+                        <div class="form-check mt-4">
+                          <input class="form-check-input item-taxable" type="checkbox" name="items[<%= index %>][isTaxable]" <%= item.isTaxable ? 'checked' : '' %>>
+                          <label class="form-check-label">Taxable</label>
+                        </div>
+                      </div>
+                      <div class="col-md-1">
+                        <button type="button" class="btn btn-danger btn-sm remove-item">Remove</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              <% }) %>
+            <% } else { %>
+              <p class="text-muted">No items added yet. Click "Add Item" below.</p>
+            <% } %>
+          </div>
+          <button type="button" class="btn btn-outline-primary mt-2" id="add-item-btn">
+            <i class="bi bi-plus-circle"></i> Add Item
+          </button>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="discount" class="form-label">Discount Amount</label>
+            <input type="number" class="form-control" id="discount" name="discount" value="<%= invoice ? invoice.discount : 0 %>" step="0.01" min="0">
+          </div>
+
+          <div class="col-md-6 mb-3">
+            <label for="taxRate" class="form-label">Tax Rate (%)</label>
+            <input type="number" class="form-control" id="taxRate" name="taxRate" value="<%= invoice ? (invoice.taxRate * 100) : 6.25 %>" step="0.01" min="0" max="100">
+            <small class="form-text text-muted">Enter as percentage (e.g., 6.25 for 6.25%)</small>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label for="terms" class="form-label">Payment Terms</label>
+          <input type="text" class="form-control" id="terms" name="terms" value="<%= invoice ? invoice.terms : 'Payment due within 30 days' %>">
+        </div>
+
+        <div class="mb-3">
+          <label for="notes" class="form-label">Notes</label>
+          <textarea class="form-control" id="notes" name="notes" rows="4"><%= invoice ? invoice.notes : '' %></textarea>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary">Save Invoice</button>
+          <a href="<%= invoice ? `/invoices/${invoice._id}` : '/invoices' %>" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  let itemIndex = <%= invoice && invoice.items ? invoice.items.length : (selectedJob && selectedJob.items ? selectedJob.items.length : 0) %>;
+
+  document.getElementById('add-item-btn').addEventListener('click', function() {
+    const container = document.getElementById('items-container');
+    const itemRow = document.createElement('div');
+    itemRow.className = 'card mb-2 item-row';
+    itemRow.setAttribute('data-index', itemIndex);
+    
+    itemRow.innerHTML = 
+      '<div class="card-body">' +
+        '<div class="row align-items-end">' +
+          '<div class="col-md-5">' +
+            '<label class="form-label">Description</label>' +
+            '<input type="text" class="form-control item-description" name="items[' + itemIndex + '][description]" required>' +
+          '</div>' +
+          '<div class="col-md-2">' +
+            '<label class="form-label">Quantity</label>' +
+            '<input type="number" class="form-control item-quantity" name="items[' + itemIndex + '][quantity]" value="1" min="1" step="0.01" required>' +
+          '</div>' +
+          '<div class="col-md-2">' +
+            '<label class="form-label">Unit Price</label>' +
+            '<input type="number" class="form-control item-price" name="items[' + itemIndex + '][unitPrice]" step="0.01" min="0" required>' +
+          '</div>' +
+          '<div class="col-md-2">' +
+            '<div class="form-check mt-4">' +
+              '<input class="form-check-input item-taxable" type="checkbox" name="items[' + itemIndex + '][isTaxable]" checked>' +
+              '<label class="form-check-label">Taxable</label>' +
+            '</div>' +
+          '</div>' +
+          '<div class="col-md-1">' +
+            '<button type="button" class="btn btn-danger btn-sm remove-item">Remove</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    container.appendChild(itemRow);
+    itemIndex++;
+
+    itemRow.querySelector('.remove-item').addEventListener('click', function() {
+      itemRow.remove();
+    });
+  });
+
+  // Remove item buttons
+  document.querySelectorAll('.remove-item').forEach(btn => {
+    btn.addEventListener('click', function() {
+      this.closest('.item-row').remove();
+    });
+  });
+
+  // Convert items array to JSON before submit
+  document.getElementById('invoiceForm').addEventListener('submit', function(e) {
+    const items = [];
+    document.querySelectorAll('.item-row').forEach(row => {
+      const description = row.querySelector('.item-description').value;
+      const quantity = row.querySelector('.item-quantity').value;
+      const unitPrice = row.querySelector('.item-price').value;
+      const isTaxable = row.querySelector('.item-taxable').checked;
+
+      if (description && 
+          quantity && 
+          !isNaN(parseFloat(quantity)) && 
+          parseFloat(quantity) > 0 &&
+          unitPrice && 
+          !isNaN(parseFloat(unitPrice)) && 
+          parseFloat(unitPrice) >= 0) {
+        items.push({
+          description: description.trim(),
+          quantity: parseFloat(quantity),
+          unitPrice: parseFloat(unitPrice),
+          isTaxable: isTaxable.toString()
+        });
+      }
+    });
+
+    if (items.length === 0) {
+      e.preventDefault();
+      alert('Please add at least one item to the invoice.');
+      return false;
+    }
+
+    // Remove all native form field names for items to prevent double submission
+    document.querySelectorAll('.item-row input').forEach(field => {
+      field.removeAttribute('name');
+    });
+
+    // Add hidden input with JSON
+    const hiddenInput = document.createElement('input');
+    hiddenInput.type = 'hidden';
+    hiddenInput.name = 'items';
+    hiddenInput.value = JSON.stringify(items);
+    this.appendChild(hiddenInput);
+  });
+</script>
+
+<%- include('../partials/footer') %>
+

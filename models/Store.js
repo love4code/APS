@@ -44,6 +44,11 @@ const storeSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  calendarShareToken: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
   createdAt: {
     type: Date,
     default: Date.now
@@ -54,7 +59,12 @@ const storeSchema = new mongoose.Schema({
   }
 })
 
-storeSchema.pre('save', function (next) {
+// Generate share token and update timestamp before saving
+storeSchema.pre('save', async function (next) {
+  if (!this.calendarShareToken) {
+    const crypto = require('crypto')
+    this.calendarShareToken = crypto.randomBytes(32).toString('hex')
+  }
   this.updatedAt = Date.now()
   next()
 })

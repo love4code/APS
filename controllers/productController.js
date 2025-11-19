@@ -19,21 +19,43 @@ exports.create = async (req, res) => {
     const { name, description, basePrice, isTaxable, type } = req.body
 
     if (!name || !basePrice || !type) {
+      // Check if this is an AJAX request
+      if (req.headers['x-requested-with'] === 'XMLHttpRequest' || req.headers.accept?.includes('application/json')) {
+        return res.status(400).json({ error: 'Name, base price, and type are required' })
+      }
       req.flash('error', 'Name, base price, and type are required')
       return res.redirect('/products/new')
     }
 
-    await Product.create({
+    const product = await Product.create({
       name,
       description: description || '',
       basePrice: parseFloat(basePrice),
-      isTaxable: isTaxable === 'on',
+      isTaxable: isTaxable === 'on' || isTaxable === 'true',
       type
     })
+
+    // Check if this is an AJAX request
+    if (req.headers['x-requested-with'] === 'XMLHttpRequest' || req.headers.accept?.includes('application/json')) {
+      return res.status(201).json({
+        success: true,
+        product: {
+          _id: product._id.toString(),
+          name: product.name,
+          basePrice: product.basePrice,
+          isTaxable: product.isTaxable,
+          type: product.type
+        }
+      })
+    }
 
     req.flash('success', 'Product/Service created successfully')
     res.redirect('/products')
   } catch (error) {
+    // Check if this is an AJAX request
+    if (req.headers['x-requested-with'] === 'XMLHttpRequest' || req.headers.accept?.includes('application/json')) {
+      return res.status(400).json({ error: error.message || 'Error creating product' })
+    }
     req.flash('error', error.message || 'Error creating product')
     res.redirect('/products/new')
   }

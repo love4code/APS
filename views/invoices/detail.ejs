@@ -1,0 +1,200 @@
+<%- include('../partials/header', { title: 'Invoice ' + invoice.invoiceNumber }) %>
+
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3">Invoice: <%= invoice.invoiceNumber %></h1>
+    <div class="d-flex gap-2">
+      <a href="/invoices/<%= invoice._id %>/invoice" class="btn btn-outline-success" target="_blank">
+        <i class="bi bi-file-pdf"></i> Download PDF
+      </a>
+      <% if (invoice.customer && invoice.customer.email) { %>
+      <form action="/invoices/<%= invoice._id %>/invoice/send" method="POST" class="d-inline">
+        <button type="submit" class="btn btn-success" onclick="return confirm('Send invoice to <%= invoice.customer.email %>?');">
+          <i class="bi bi-envelope"></i> Email Invoice
+        </button>
+      </form>
+      <% } else { %>
+      <button type="button" class="btn btn-success" disabled title="Customer email not available">
+        <i class="bi bi-envelope"></i> Email Invoice
+      </button>
+      <% } %>
+      <a href="/invoices/<%= invoice._id %>/edit" class="btn btn-outline-primary">Edit</a>
+      <a href="/invoices" class="btn btn-outline-secondary">Back to Invoices</a>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-8">
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5 class="card-title">Customer Information</h5>
+          <% if (invoice.customer) { %>
+            <p><strong>Name:</strong> <a href="/customers/<%= invoice.customer._id %>"><%= invoice.customer.name %></a></p>
+            <p><strong>Email:</strong> <%= invoice.customer.email || 'N/A' %></p>
+            <p><strong>Phone:</strong> <%= invoice.customer.phone || 'N/A' %></p>
+            <p><strong>Address:</strong> <%= invoice.customer.address || 'N/A' %></p>
+          <% } else { %>
+            <p class="text-muted">No customer assigned</p>
+          <% } %>
+        </div>
+      </div>
+
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5 class="card-title">Invoice Items</h5>
+          <div class="table-responsive">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Description</th>
+                  <th>Quantity</th>
+                  <th>Unit Price</th>
+                  <th>Taxable</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (invoice.items && invoice.items.length > 0) { %>
+                  <% invoice.items.forEach(item => { %>
+                    <% const itemTotal = (item.quantity || 0) * (item.unitPrice || 0) %>
+                    <tr>
+                      <td><%= item.description %></td>
+                      <td><%= item.quantity %></td>
+                      <td>$<%= (item.unitPrice || 0).toFixed(2) %></td>
+                      <td><%= item.isTaxable ? 'Yes' : 'No' %></td>
+                      <td>$<%= itemTotal.toFixed(2) %></td>
+                    </tr>
+                  <% }) %>
+                <% } else { %>
+                  <tr>
+                    <td colspan="5" class="text-center text-muted">No items</td>
+                  </tr>
+                <% } %>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="4" class="text-end"><strong>Subtotal:</strong></td>
+                  <td><strong>$<%= (invoice.subtotal || 0).toFixed(2) %></strong></td>
+                </tr>
+                <% if (invoice.discount > 0) { %>
+                <tr>
+                  <td colspan="4" class="text-end"><strong>Discount:</strong></td>
+                  <td><strong>-$<%= invoice.discount.toFixed(2) %></strong></td>
+                </tr>
+                <% } %>
+                <% if (invoice.taxTotal > 0) { %>
+                <tr>
+                  <td colspan="4" class="text-end"><strong>Tax (<%= ((invoice.taxRate || 0.0625) * 100).toFixed(2) %>%):</strong></td>
+                  <td><strong>$<%= (invoice.taxTotal || 0).toFixed(2) %></strong></td>
+                </tr>
+                <% } %>
+                <tr class="table-primary">
+                  <td colspan="4" class="text-end"><strong>Total:</strong></td>
+                  <td><strong>$<%= (invoice.totalPrice || 0).toFixed(2) %></strong></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <% if (invoice.notes) { %>
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5 class="card-title">Notes</h5>
+          <p><%= invoice.notes %></p>
+        </div>
+      </div>
+      <% } %>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5 class="card-title">Invoice Details</h5>
+          <p><strong>Invoice Number:</strong> <%= invoice.invoiceNumber %></p>
+          <p><strong>Issue Date:</strong> <%= new Date(invoice.issueDate).toLocaleDateString() %></p>
+          <% if (invoice.dueDate) { %>
+            <p><strong>Due Date:</strong> <%= new Date(invoice.dueDate).toLocaleDateString() %></p>
+          <% } %>
+          <p><strong>Status:</strong> 
+            <% 
+              let statusClass = 'secondary'
+              if (invoice.status === 'paid') statusClass = 'success'
+              else if (invoice.status === 'sent') statusClass = 'info'
+              else if (invoice.status === 'overdue') statusClass = 'danger'
+              else if (invoice.status === 'draft') statusClass = 'warning'
+            %>
+            <span class="badge bg-<%= statusClass %>"><%= invoice.status.toUpperCase() %></span>
+          </p>
+          <% if (invoice.job) { %>
+            <p><strong>Linked Job:</strong> <a href="/jobs/<%= invoice.job._id %>">View Job</a></p>
+          <% } %>
+          <% if (invoice.store) { %>
+            <p><strong>Store:</strong> <%= invoice.store.name %></p>
+          <% } %>
+          <% if (invoice.salesRep) { %>
+            <p><strong>Sales Rep:</strong> <%= invoice.salesRep.name %></p>
+          <% } else if (invoice.soldByOwner) { %>
+            <p><strong>Sold By:</strong> Owner</p>
+          <% } %>
+          <% if (invoice.terms) { %>
+            <hr>
+            <p><strong>Payment Terms:</strong></p>
+            <p class="small"><%= invoice.terms %></p>
+          <% } %>
+        </div>
+      </div>
+
+      <% if (invoice.status !== 'paid') { %>
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5 class="card-title">Mark as Paid</h5>
+          <form action="/invoices/<%= invoice._id %>/paid" method="POST">
+            <div class="mb-3">
+              <label for="datePaid" class="form-label">Payment Date</label>
+              <input type="date" class="form-control" id="datePaid" name="datePaid" value="<%= new Date().toISOString().split('T')[0] %>" required>
+            </div>
+            <div class="mb-3">
+              <label for="paymentMethod" class="form-label">Payment Method</label>
+              <select class="form-select" id="paymentMethod" name="paymentMethod">
+                <option value="">Select method...</option>
+                <option value="cash">Cash</option>
+                <option value="check">Check</option>
+                <option value="credit_card">Credit Card</option>
+                <option value="bank_transfer">Bank Transfer</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-success w-100">
+              <i class="bi bi-check-circle"></i> Mark as Paid
+            </button>
+          </form>
+        </div>
+      </div>
+      <% } else { %>
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5 class="card-title">Payment Information</h5>
+          <p><strong>Paid Date:</strong> <%= invoice.datePaid ? new Date(invoice.datePaid).toLocaleDateString() : 'N/A' %></p>
+          <% if (invoice.paymentMethod) { %>
+            <% 
+              const methodNames = {
+                cash: 'Cash',
+                check: 'Check',
+                credit_card: 'Credit Card',
+                bank_transfer: 'Bank Transfer',
+                other: 'Other'
+              }
+            %>
+            <p><strong>Payment Method:</strong> <%= methodNames[invoice.paymentMethod] || invoice.paymentMethod %></p>
+          <% } %>
+        </div>
+      </div>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>
+

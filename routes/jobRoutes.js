@@ -10,9 +10,14 @@ router.get('/installs', requireAuth, jobController.myInstalls)
 // Job CRUD (mounted at /jobs)
 router.get('/', requireAuth, jobController.list)
 router.get('/calendar', requireAuth, jobController.calendar)
-router.get('/calendar/events', requireAuth, jobController.calendarEvents)
+router.get('/calendar/events', jobController.calendarEvents) // Public for shared calendars
+router.get('/calendar/shared', jobController.sharedCalendar) // Public shared calendar
 router.get('/new', requireAuth, jobController.newForm)
 router.post('/', requireAuth, jobController.create)
+// Invoice routes (must be before /:id routes)
+router.get('/:id/invoice', requireAuth, jobController.downloadInvoice)
+router.post('/:id/invoice/send', requireAuth, jobController.sendInvoice)
+// Job detail and edit routes
 router.get('/:id', requireAuth, jobController.detail)
 router.get('/:id/edit', requireAuth, jobController.editForm)
 router.post('/:id', requireAuth, jobController.update)
