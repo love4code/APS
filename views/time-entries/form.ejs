@@ -1,0 +1,135 @@
+<%- include('../partials/header', { title: timeEntry ? 'Edit Time Entry' : 'New Time Entry' }) %>
+
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-md-8 mx-auto">
+      <h1 class="h3 mb-4"><%= timeEntry ? 'Edit Time Entry' : 'New Time Entry' %></h1>
+
+      <form method="POST" action="<%= timeEntry ? `/time-entries/${timeEntry._id}` : '/time-entries' %>" id="timeEntryForm">
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="employee" class="form-label">Employee *</label>
+            <select class="form-select" id="employee" name="employee" required>
+              <option value="">Select employee...</option>
+              <% if (employees && employees.length > 0) { %>
+                <% employees.forEach(emp => { %>
+                  <option value="<%= emp._id %>" <%= (timeEntry && timeEntry.employee && timeEntry.employee._id.toString() === emp._id.toString()) || (selectedEmployeeId && selectedEmployeeId.toString() === emp._id.toString()) ? 'selected' : '' %>>
+                    <%= emp.firstName %> <%= emp.lastName %>
+                  </option>
+                <% }) %>
+              <% } %>
+            </select>
+          </div>
+          <div class="col-md-6 mb-3">
+            <label for="date" class="form-label">Date *</label>
+            <input type="date" class="form-control" id="date" name="date" value="<%= timeEntry && timeEntry.date ? new Date(timeEntry.date).toISOString().split('T')[0] : '' %>" required>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="startTime" class="form-label">Start Time</label>
+            <input type="time" class="form-control" id="startTime" name="startTime" value="<%= timeEntry && timeEntry.startTime ? new Date(timeEntry.startTime).toTimeString().slice(0,5) : '' %>" onchange="calculateHours()">
+            <small class="form-text text-muted">Optional: Leave blank to enter hours directly</small>
+          </div>
+          <div class="col-md-6 mb-3">
+            <label for="endTime" class="form-label">End Time</label>
+            <input type="time" class="form-control" id="endTime" name="endTime" value="<%= timeEntry && timeEntry.endTime ? new Date(timeEntry.endTime).toTimeString().slice(0,5) : '' %>" onchange="calculateHours()">
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-4 mb-3">
+            <label for="hoursWorked" class="form-label">Hours Worked *</label>
+            <input type="number" class="form-control" id="hoursWorked" name="hoursWorked" step="0.25" min="0" value="<%= timeEntry ? (timeEntry.hoursWorked || 0) : '' %>" required onchange="calculateOvertime()">
+          </div>
+          <div class="col-md-4 mb-3">
+            <label for="breakMinutes" class="form-label">Break Minutes</label>
+            <input type="number" class="form-control" id="breakMinutes" name="breakMinutes" min="0" value="<%= timeEntry ? (timeEntry.breakMinutes || 0) : '0' %>" onchange="calculateHours()">
+          </div>
+          <div class="col-md-4 mb-3">
+            <label for="overtimeHours" class="form-label">Overtime Hours</label>
+            <input type="number" class="form-control" id="overtimeHours" name="overtimeHours" step="0.25" min="0" value="<%= timeEntry ? (timeEntry.overtimeHours || 0) : '0' %>">
+            <small class="form-text text-muted">Auto-calculated if > 8 hours</small>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="type" class="form-label">Type *</label>
+            <select class="form-select" id="type" name="type" required onchange="calculateOvertime()">
+              <option value="regular" <%= timeEntry && timeEntry.type === 'regular' ? 'selected' : '' %>>Regular</option>
+              <option value="overtime" <%= timeEntry && timeEntry.type === 'overtime' ? 'selected' : '' %>>Overtime</option>
+              <option value="pto" <%= timeEntry && timeEntry.type === 'pto' ? 'selected' : '' %>>PTO</option>
+              <option value="sick" <%= timeEntry && timeEntry.type === 'sick' ? 'selected' : '' %>>Sick</option>
+              <option value="holiday" <%= timeEntry && timeEntry.type === 'holiday' ? 'selected' : '' %>>Holiday</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="jobName" class="form-label">Job/Project Name</label>
+            <input type="text" class="form-control" id="jobName" name="jobName" value="<%= timeEntry ? (timeEntry.jobName || '') : '' %>" placeholder="Optional">
+          </div>
+          <div class="col-md-6 mb-3">
+            <label for="projectOrJobId" class="form-label">Job/Project ID</label>
+            <input type="text" class="form-control" id="projectOrJobId" name="projectOrJobId" value="<%= timeEntry ? (timeEntry.projectOrJobId || '') : '' %>" placeholder="Optional">
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label for="notes" class="form-label">Notes</label>
+          <textarea class="form-control" id="notes" name="notes" rows="3"><%= timeEntry ? (timeEntry.notes || '') : '' %></textarea>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary">Save Time Entry</button>
+          <a href="<%= timeEntry ? `/time-entries/${timeEntry._id}` : '/time-entries' %>" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  function calculateHours() {
+    const startTime = document.getElementById('startTime').value;
+    const endTime = document.getElementById('endTime').value;
+    const breakMinutes = parseFloat(document.getElementById('breakMinutes').value) || 0;
+    
+    if (startTime && endTime) {
+      const [startHour, startMin] = startTime.split(':').map(Number);
+      const [endHour, endMin] = endTime.split(':').map(Number);
+      
+      let startTotal = startHour * 60 + startMin;
+      let endTotal = endHour * 60 + endMin;
+      
+      // Handle next day
+      if (endTotal < startTotal) {
+        endTotal += 24 * 60;
+      }
+      
+      const diffMinutes = endTotal - startTotal - breakMinutes;
+      const diffHours = Math.max(0, diffMinutes / 60);
+      
+      document.getElementById('hoursWorked').value = diffHours.toFixed(2);
+      calculateOvertime();
+    }
+  }
+  
+  function calculateOvertime() {
+    const hoursWorked = parseFloat(document.getElementById('hoursWorked').value) || 0;
+    const type = document.getElementById('type').value;
+    
+    if (type === 'regular' && hoursWorked > 8) {
+      const overtime = hoursWorked - 8;
+      document.getElementById('overtimeHours').value = overtime.toFixed(2);
+    } else if (type !== 'regular') {
+      document.getElementById('overtimeHours').value = '0';
+    }
+  }
+</script>
+
+<%- include('../partials/footer') %>
+

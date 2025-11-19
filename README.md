@@ -27,6 +27,12 @@ A comprehensive Customer Relationship Management (CRM) system for tracking pool 
   - [14. Company Settings](#14-company-settings)
   - [15. Personal Views](#15-personal-views)
   - [16. Admin: Managing Users](#16-admin-managing-users)
+  - [17. Employee Management & Payroll](#17-employee-management--payroll)
+    - [17.1. Managing Employees](#171-managing-employees)
+    - [17.2. Recording Time Entries](#172-recording-time-entries)
+    - [17.3. Managing Pay Periods](#173-managing-pay-periods)
+    - [17.4. Processing Payroll](#174-processing-payroll)
+    - [17.5. Exporting Payroll Data](#175-exporting-payroll-data)
 - [Tax Calculation](#-tax-calculation)
 - [Email Configuration](#-email-configuration)
 - [Technical Details](#-technical-details)
@@ -774,6 +780,247 @@ The calendar invite system allows you to send email invitations that require rec
 
 **Note**: Sales reps and installers don't need passwords - they're just for tracking. Regular users need passwords to log in.
 
+### 17. Employee Management & Payroll
+
+The Employee Management & Payroll system allows you to track employee information, record time worked, manage pay periods, calculate payroll, and export data for accounting.
+
+#### 17.1. Managing Employees
+
+**Access**: Click **"People"** → **"Employees"** in the navigation menu.
+
+**Creating a New Employee**:
+
+1. Click **"New Employee"** button
+2. Fill in required information:
+   - **First Name** and **Last Name** (required)
+   - **Email** (required, must be unique)
+   - **Phone** (optional)
+   - **Position** (e.g., Installer, Sales Rep, Manager)
+   - **Department** (e.g., Sales, Installations, Admin)
+   - **Status**: Active, Inactive, Terminated, or On Leave
+   - **Hire Date** (required)
+   - **Termination Date** (optional, auto-set if status is "Terminated")
+   - **Pay Type**: Hourly or Salary (required)
+   - **Hourly Rate** (required if Pay Type is Hourly)
+   - **Annual Salary** (required if Pay Type is Salary)
+   - **Overtime Multiplier** (default: 1.5 for time and a half)
+   - **Notes** (optional)
+3. Click **"Save Employee"**
+
+**Viewing Employee Details**:
+
+- Click on any employee name to view their detail page
+- The detail page shows:
+  - Employee information
+  - This month's summary (total hours, overtime, PTO)
+  - Recent time entries
+  - Recent payroll records
+  - Quick actions (Add Time Entry, Mark Inactive, Terminate)
+
+**Editing an Employee**:
+
+1. Go to employee detail page
+2. Click **"Edit"** button
+3. Update any fields
+4. Click **"Save Employee"**
+
+**Changing Employee Status**:
+
+- **Mark Inactive**: From employee detail page, click **"Mark Inactive"** (employee remains in system but is filtered out of active lists)
+- **Terminate**: Click **"Terminate"** button (sets status to "Terminated" and records termination date)
+
+**Filtering Employees**:
+
+- Use the search box to find employees by name or email
+- Filter by **Status** (Active, Inactive, Terminated, On Leave)
+- Filter by **Department**
+
+#### 17.2. Recording Time Entries
+
+**Access**: Click **"Payroll"** → **"Time Entries"** in the navigation menu.
+
+**Creating a Time Entry**:
+
+1. Click **"New Time Entry"** button
+2. Fill in the form:
+   - **Employee** (required): Select from dropdown
+   - **Date** (required)
+   - **Start Time** and **End Time** (optional): If provided, hours will be auto-calculated
+   - **Hours Worked** (required): Enter directly or auto-calculated from start/end time
+   - **Break Minutes**: Time taken for breaks (subtracted from total hours)
+   - **Overtime Hours**: Auto-calculated if hours > 8 in a day (can be manually adjusted)
+   - **Type**: Regular, Overtime, PTO, Sick, or Holiday
+   - **Job/Project Name** (optional): Link to a specific job or project
+   - **Job/Project ID** (optional): Reference ID
+   - **Notes** (optional)
+3. Click **"Save Time Entry"**
+
+**Time Calculation Rules**:
+
+- If **Start Time** and **End Time** are provided:
+  - Hours = (End Time - Start Time) - Break Minutes
+  - Automatically calculated when times are entered
+- **Overtime Calculation**:
+  - For "Regular" type entries: Hours over 8 in a day are counted as overtime
+  - Weekly overtime (over 40 hours) is tracked but not auto-calculated in the UI
+  - Overtime multiplier is applied during payroll processing
+
+**Approving Time Entries**:
+
+- Time entries start as **"Pending"** status
+- **Admins** can approve time entries:
+  1. Go to time entry detail page
+  2. Click **"Approve"** button
+  3. Entry is marked as approved and can be included in payroll processing
+
+**Editing Time Entries**:
+
+- Time entries can be edited if:
+  - They are not yet approved, OR
+  - The pay period they belong to is not locked
+- Once a pay period is locked, time entries cannot be edited (prevents payroll errors)
+
+**Filtering Time Entries**:
+
+- Filter by **Employee**
+- Filter by **Date Range** (From/To dates)
+- Filter by **Type** (Regular, Overtime, PTO, Sick, Holiday)
+- Filter by **Approval Status** (All, Approved, Pending)
+
+#### 17.3. Managing Pay Periods
+
+**Access**: Click **"Payroll"** → **"Pay Periods"** in the navigation menu.
+
+**Creating a Pay Period**:
+
+1. Click **"New Pay Period"** button
+2. Fill in:
+   - **Name** (required): e.g., "Pay Period 2025-01-01 to 2025-01-15"
+   - **Start Date** (required)
+   - **End Date** (required, must be after start date)
+   - **Notes** (optional)
+3. Click **"Create Pay Period"**
+
+**Pay Period Statuses**:
+
+- **Open**: Pay period is active, time entries can be added/edited
+- **Locked**: Pay period is locked, time entries cannot be edited (prevents changes before processing)
+- **Processed**: Payroll has been calculated and payroll records created
+
+**Viewing Pay Period Details**:
+
+- Click on any pay period name to view details
+- The detail page shows:
+  - Summary cards: Total employees, Regular hours, Overtime hours, Total gross pay
+  - Employee time summary (if not processed)
+  - Payroll records (if processed)
+
+**Locking a Pay Period**:
+
+1. Go to pay period detail page
+2. Click **"Lock Period"** button
+3. Confirm the action
+4. This prevents further edits to time entries in this period
+
+**Note**: Once locked, time entries in this period cannot be edited until the period is unlocked (requires manual database change or admin override).
+
+#### 17.4. Processing Payroll
+
+**Processing a Pay Period**:
+
+1. Ensure the pay period is **Locked** (see above)
+2. Go to pay period detail page
+3. Click **"Process Payroll"** button
+4. Confirm the action
+5. The system will:
+   - Fetch all approved time entries within the pay period date range
+   - Group entries by employee
+   - Calculate totals:
+     - Total Regular Hours
+     - Total Overtime Hours
+     - Total PTO Hours
+   - Calculate gross pay for each employee:
+     - **Hourly Employees**: (Regular Hours × Hourly Rate) + (Overtime Hours × Hourly Rate × Overtime Multiplier) + (PTO Hours × Hourly Rate)
+     - **Salaried Employees**: (Annual Salary / 365) × Days in Pay Period
+   - Create or update PayrollRecord for each employee
+   - Mark pay period as **"Processed"**
+
+**Payroll Calculation Details**:
+
+- **Overtime Multiplier**: Default is 1.5 (time and a half), can be customized per employee
+- **Daily Overtime**: Hours over 8 in a day are counted as overtime
+- **Weekly Overtime**: Currently tracked but not auto-calculated in UI (can be manually adjusted)
+- **PTO/Sick Time**: Paid at regular rate for hourly employees, included in salary for salaried employees
+
+**Viewing Payroll Records**:
+
+- Access via **"Payroll"** → **"Payroll Records"** in navigation
+- Shows all processed payroll records
+- Filter by:
+  - **Employee**
+  - **Pay Period**
+  - **Payment Status** (Unpaid, Scheduled, Paid)
+
+**Marking Payroll as Paid**:
+
+1. Go to payroll record detail page
+2. Fill in payment information:
+   - **Payment Status**: Unpaid, Scheduled, or Paid
+   - **Payment Date**
+   - **Payment Method**: Check, Direct Deposit, Cash, or Other
+   - **Transaction Reference**: Check number, transaction ID, etc.
+   - **Notes** (optional)
+3. Click **"Update Payment Information"**
+
+#### 17.5. Exporting Payroll Data
+
+**Exporting to CSV**:
+
+1. Go to a processed pay period detail page
+2. Click **"Export CSV"** button
+3. CSV file will download with columns:
+   - Employee Name
+   - Email
+   - Pay Period
+   - Regular Hours
+   - Overtime Hours
+   - PTO Hours
+   - Gross Pay
+   - Payment Status
+   - Payment Date
+   - Payment Method
+
+**CSV Export Use Cases**:
+
+- Import into accounting software (QuickBooks, Xero, etc.)
+- Generate payroll reports
+- Archive payroll data
+- Share with accountants
+
+**Data Models**:
+
+- **Employee**: Stores employee information, pay rates, status
+- **TimeEntry**: Records hours worked, breaks, overtime, type (regular/PTO/sick/holiday)
+- **PayPeriod**: Defines payroll windows (start/end dates, status)
+- **PayrollRecord**: Calculated payroll for each employee per pay period, includes payment tracking
+
+**Permissions**:
+
+- All authenticated users can view employees, time entries, and pay periods
+- All authenticated users can create time entries
+- **Admins** can approve time entries
+- **Admins** can lock/process pay periods
+- **Admins** can mark payroll as paid
+
+**Best Practices**:
+
+1. **Record Time Daily**: Enter time entries daily or weekly to avoid backlog
+2. **Approve Promptly**: Approve time entries before processing payroll
+3. **Lock Before Processing**: Always lock pay periods before processing to prevent data changes
+4. **Review Before Processing**: Check time entry summaries on pay period detail page before processing
+5. **Export After Processing**: Export CSV files for accounting after each pay period is processed
+6. **Mark Paid After Payment**: Update payment status immediately after issuing payments
+
 ## 💰 Tax Calculation
 
 - Taxable items are charged **6.25%** tax (configurable in Company Settings)
@@ -840,7 +1087,11 @@ APS/
 │   ├── jobs/        # Job views (including calendar)
 │   ├── invoices/    # Invoice views
 │   ├── stores/      # Store views
-│   └── users/       # User management views
+│   ├── users/       # User management views
+│   ├── employees/   # Employee management views
+│   ├── time-entries/ # Time entry views
+│   ├── pay-periods/ # Pay period views
+│   └── payroll/     # Payroll record views
 ├── public/          # Static files (CSS, JS)
 ├── scripts/         # Utility scripts
 ├── app.js           # Express app configuration
@@ -859,6 +1110,10 @@ APS/
 - **Settings**: Company information for invoices
 - **CalendarInvite**: Calendar invitation tokens and status
 - **ActivityLog**: Job activity history
+- **Employee**: Employee information, pay rates, status, hire/termination dates
+- **TimeEntry**: Records of hours worked, breaks, overtime, type (regular/PTO/sick/holiday)
+- **PayPeriod**: Payroll windows with start/end dates and status (open/locked/processed)
+- **PayrollRecord**: Calculated payroll for employees per pay period, payment tracking
 
 ## 🐛 Troubleshooting
 

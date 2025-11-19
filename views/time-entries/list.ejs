@@ -1,0 +1,144 @@
+<%- include('../partials/header', { title: 'Time Entries' }) %>
+
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3">Time Entries</h1>
+    <a href="/time-entries/new" class="btn btn-primary">
+      <i class="bi bi-plus-circle"></i> New Time Entry
+    </a>
+  </div>
+
+  <!-- Filters -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <form method="GET" action="/time-entries" class="row g-3">
+        <div class="col-md-3">
+          <select class="form-select" name="employee">
+            <option value="">All Employees</option>
+            <% if (employees && employees.length > 0) { %>
+              <% employees.forEach(emp => { %>
+                <option value="<%= emp._id %>" <%= employeeFilter === emp._id.toString() ? 'selected' : '' %>>
+                  <%= emp.firstName %> <%= emp.lastName %>
+                </option>
+              <% }) %>
+            <% } %>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <input type="date" class="form-control" name="dateFrom" value="<%= dateFrom || '' %>" placeholder="From">
+        </div>
+        <div class="col-md-2">
+          <input type="date" class="form-control" name="dateTo" value="<%= dateTo || '' %>" placeholder="To">
+        </div>
+        <div class="col-md-2">
+          <select class="form-select" name="type">
+            <option value="">All Types</option>
+            <option value="regular" <%= typeFilter === 'regular' ? 'selected' : '' %>>Regular</option>
+            <option value="overtime" <%= typeFilter === 'overtime' ? 'selected' : '' %>>Overtime</option>
+            <option value="pto" <%= typeFilter === 'pto' ? 'selected' : '' %>>PTO</option>
+            <option value="sick" <%= typeFilter === 'sick' ? 'selected' : '' %>>Sick</option>
+            <option value="holiday" <%= typeFilter === 'holiday' ? 'selected' : '' %>>Holiday</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <select class="form-select" name="approved">
+            <option value="">All</option>
+            <option value="true" <%= approvedFilter === 'true' ? 'selected' : '' %>>Approved</option>
+            <option value="false" <%= approvedFilter === 'false' ? 'selected' : '' %>>Pending</option>
+          </select>
+        </div>
+        <div class="col-md-1">
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-search"></i>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Employee</th>
+          <th>Hours</th>
+          <th>Overtime</th>
+          <th>Type</th>
+          <th>Job/Project</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (timeEntries && timeEntries.length > 0) { %>
+          <% timeEntries.forEach(entry => { %>
+            <tr>
+              <td>
+                <%= entry.date ? (() => { const d = new Date(entry.date); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); })() : '-' %>
+              </td>
+              <td>
+                <% if (entry.employee) { %>
+                  <a href="/employees/<%= entry.employee._id %>">
+                    <%= entry.employee.firstName %> <%= entry.employee.lastName %>
+                  </a>
+                <% } else { %>
+                  Unknown
+                <% } %>
+              </td>
+              <td><%= (entry.hoursWorked || 0).toFixed(2) %></td>
+              <td><%= (entry.overtimeHours || 0).toFixed(2) %></td>
+              <td>
+                <span class="badge bg-<%= entry.type === 'pto' || entry.type === 'sick' ? 'info' : entry.type === 'holiday' ? 'warning' : 'primary' %>">
+                  <%= entry.type %>
+                </span>
+              </td>
+              <td><%= entry.jobName || entry.projectOrJobId || '-' %></td>
+              <td>
+                <span class="badge bg-<%= entry.approved ? 'success' : 'warning' %>">
+                  <%= entry.approved ? 'Approved' : 'Pending' %>
+                </span>
+              </td>
+              <td>
+                <a href="/time-entries/<%= entry._id %>" class="btn btn-sm btn-outline-primary">View</a>
+                <% if (!entry.approved) { %>
+                  <a href="/time-entries/<%= entry._id %>/edit" class="btn btn-sm btn-outline-secondary">Edit</a>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        <% } else { %>
+          <tr>
+            <td colspan="8" class="text-center text-muted">No time entries found</td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <% if (typeof totalPages !== 'undefined' && totalPages > 1) { %>
+    <nav aria-label="Page navigation">
+      <ul class="pagination justify-content-center">
+        <% if (currentPage > 1) { %>
+          <li class="page-item">
+            <a class="page-link" href="?page=<%= currentPage - 1 %><%= employeeFilter ? '&employee=' + employeeFilter : '' %><%= dateFrom ? '&dateFrom=' + dateFrom : '' %><%= dateTo ? '&dateTo=' + dateTo : '' %><%= typeFilter ? '&type=' + typeFilter : '' %><%= approvedFilter ? '&approved=' + approvedFilter : '' %>">Previous</a>
+          </li>
+        <% } %>
+        <% for (let i = 1; i <= totalPages; i++) { %>
+          <li class="page-item <%= i === currentPage ? 'active' : '' %>">
+            <a class="page-link" href="?page=<%= i %><%= employeeFilter ? '&employee=' + employeeFilter : '' %><%= dateFrom ? '&dateFrom=' + dateFrom : '' %><%= dateTo ? '&dateTo=' + dateTo : '' %><%= typeFilter ? '&type=' + typeFilter : '' %><%= approvedFilter ? '&approved=' + approvedFilter : '' %>"><%= i %></a>
+          </li>
+        <% } %>
+        <% if (currentPage < totalPages) { %>
+          <li class="page-item">
+            <a class="page-link" href="?page=<%= currentPage + 1 %><%= employeeFilter ? '&employee=' + employeeFilter : '' %><%= dateFrom ? '&dateFrom=' + dateFrom : '' %><%= dateTo ? '&dateTo=' + dateTo : '' %><%= typeFilter ? '&type=' + typeFilter : '' %><%= approvedFilter ? '&approved=' + approvedFilter : '' %>">Next</a>
+          </li>
+        <% } %>
+      </ul>
+    </nav>
+  <% } %>
+</div>
+
+<%- include('../partials/footer') %>
+

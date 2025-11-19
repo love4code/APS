@@ -1,0 +1,102 @@
+<%- include('../partials/header', { title: 'Payroll Record' }) %>
+
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3">Payroll Record</h1>
+    <a href="/payroll-records" class="btn btn-outline-secondary">Back to Payroll Records</a>
+  </div>
+
+  <div class="row">
+    <div class="col-md-8">
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5 class="card-title">Payroll Information</h5>
+          <div class="row">
+            <div class="col-md-6">
+              <p><strong>Employee:</strong> 
+                <% if (payrollRecord.employee) { %>
+                  <a href="/employees/<%= payrollRecord.employee._id %>">
+                    <%= payrollRecord.employee.firstName %> <%= payrollRecord.employee.lastName %>
+                  </a>
+                <% } else { %>
+                  Unknown
+                <% } %>
+              </p>
+              <p><strong>Pay Period:</strong> 
+                <% if (payrollRecord.payPeriod) { %>
+                  <a href="/pay-periods/<%= payrollRecord.payPeriod._id %>">
+                    <%= payrollRecord.payPeriod.name %>
+                  </a>
+                <% } else { %>
+                  N/A
+                <% } %>
+              </p>
+              <p><strong>Regular Hours:</strong> <%= (payrollRecord.totalRegularHours || 0).toFixed(2) %></p>
+              <p><strong>Overtime Hours:</strong> <%= (payrollRecord.totalOvertimeHours || 0).toFixed(2) %></p>
+            </div>
+            <div class="col-md-6">
+              <p><strong>PTO Hours:</strong> <%= (payrollRecord.totalPTOHours || 0).toFixed(2) %></p>
+              <p><strong>Overtime Multiplier:</strong> <%= payrollRecord.overtimeMultiplierUsed || 1.5 %>x</p>
+              <p><strong>Gross Pay:</strong> <strong class="text-success">$<%= (payrollRecord.totalGrossPay || 0).toFixed(2) %></strong></p>
+              <p><strong>Payment Status:</strong> 
+                <% 
+                  let payStatusClass = 'danger';
+                  if (payrollRecord.paymentStatus === 'paid') payStatusClass = 'success';
+                  else if (payrollRecord.paymentStatus === 'scheduled') payStatusClass = 'info';
+                %>
+                <span class="badge bg-<%= payStatusClass %>"><%= payrollRecord.paymentStatus %></span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payment Information -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5 class="card-title">Payment Information</h5>
+          <form method="POST" action="/payroll-records/<%= payrollRecord._id %>/mark-paid">
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="paymentStatus" class="form-label">Payment Status *</label>
+                <select class="form-select" id="paymentStatus" name="paymentStatus" required>
+                  <option value="unpaid" <%= payrollRecord.paymentStatus === 'unpaid' ? 'selected' : '' %>>Unpaid</option>
+                  <option value="scheduled" <%= payrollRecord.paymentStatus === 'scheduled' ? 'selected' : '' %>>Scheduled</option>
+                  <option value="paid" <%= payrollRecord.paymentStatus === 'paid' ? 'selected' : '' %>>Paid</option>
+                </select>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="paymentDate" class="form-label">Payment Date</label>
+                <input type="date" class="form-control" id="paymentDate" name="paymentDate" value="<%= payrollRecord.paymentDate ? new Date(payrollRecord.paymentDate).toISOString().split('T')[0] : '' %>">
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="paymentMethod" class="form-label">Payment Method</label>
+                <select class="form-select" id="paymentMethod" name="paymentMethod">
+                  <option value="">Select...</option>
+                  <option value="check" <%= payrollRecord.paymentMethod === 'check' ? 'selected' : '' %>>Check</option>
+                  <option value="direct_deposit" <%= payrollRecord.paymentMethod === 'direct_deposit' ? 'selected' : '' %>>Direct Deposit</option>
+                  <option value="cash" <%= payrollRecord.paymentMethod === 'cash' ? 'selected' : '' %>>Cash</option>
+                  <option value="other" <%= payrollRecord.paymentMethod === 'other' ? 'selected' : '' %>>Other</option>
+                </select>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="transactionReference" class="form-label">Transaction Reference</label>
+                <input type="text" class="form-control" id="transactionReference" name="transactionReference" value="<%= payrollRecord.transactionReference || '' %>" placeholder="Check #, Transaction ID, etc.">
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="notes" class="form-label">Notes</label>
+              <textarea class="form-control" id="notes" name="notes" rows="3"><%= payrollRecord.notes || '' %></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Update Payment Information</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>
+

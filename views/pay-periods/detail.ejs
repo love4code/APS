@@ -1,0 +1,176 @@
+<%- include('../partials/header', { title: payPeriod.name }) %>
+
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3"><%= payPeriod.name %></h1>
+    <div class="d-flex gap-2">
+      <% if (payPeriod.status === 'open') { %>
+        <form action="/pay-periods/<%= payPeriod._id %>/lock" method="POST" class="d-inline">
+          <button type="submit" class="btn btn-warning" onclick="return confirm('Lock this pay period? This will prevent further edits to time entries in this period.')">
+            <i class="bi bi-lock"></i> Lock Period
+          </button>
+        </form>
+      <% } %>
+      <% if (payPeriod.status === 'locked') { %>
+        <form action="/pay-periods/<%= payPeriod._id %>/process" method="POST" class="d-inline">
+          <button type="submit" class="btn btn-primary" onclick="return confirm('Process payroll for this period? This will calculate pay for all employees.')">
+            <i class="bi bi-calculator"></i> Process Payroll
+          </button>
+        </form>
+      <% } %>
+      <% if (payPeriod.status === 'processed') { %>
+        <a href="/payroll-records/export/csv?payPeriod=<%= payPeriod._id %>" class="btn btn-success">
+          <i class="bi bi-download"></i> Export CSV
+        </a>
+      <% } %>
+      <a href="/pay-periods" class="btn btn-outline-secondary">Back to Pay Periods</a>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <h5 class="card-title"><%= summary.totalEmployees || 0 %></h5>
+          <p class="card-text text-muted mb-0">Employees</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <h5 class="card-title"><%= (summary.totalRegularHours || 0).toFixed(2) %></h5>
+          <p class="card-text text-muted mb-0">Regular Hours</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <h5 class="card-title"><%= (summary.totalOvertimeHours || 0).toFixed(2) %></h5>
+          <p class="card-text text-muted mb-0">Overtime Hours</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <h5 class="card-title">$<%= (summary.totalGrossPay || 0).toFixed(2) %></h5>
+          <p class="card-text text-muted mb-0">Total Gross Pay</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pay Period Info -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5 class="card-title">Pay Period Information</h5>
+      <p><strong>Status:</strong> 
+        <% 
+          let statusClass = 'secondary';
+          if (payPeriod.status === 'open') statusClass = 'success';
+          else if (payPeriod.status === 'locked') statusClass = 'warning';
+          else if (payPeriod.status === 'processed') statusClass = 'info';
+        %>
+        <span class="badge bg-<%= statusClass %>"><%= payPeriod.status %></span>
+      </p>
+      <p><strong>Start Date:</strong> <%= payPeriod.startDate ? (() => { const d = new Date(payPeriod.startDate); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); })() : '-' %></p>
+      <p><strong>End Date:</strong> <%= payPeriod.endDate ? (() => { const d = new Date(payPeriod.endDate); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); })() : '-' %></p>
+      <% if (payPeriod.notes) { %>
+        <p><strong>Notes:</strong> <%= payPeriod.notes %></p>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Payroll Records (if processed) -->
+  <% if (payrollRecords && payrollRecords.length > 0) { %>
+    <div class="card mb-4">
+      <div class="card-body">
+        <h5 class="card-title">Payroll Records</h5>
+        <div class="table-responsive">
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Regular Hours</th>
+                <th>Overtime Hours</th>
+                <th>PTO Hours</th>
+                <th>Gross Pay</th>
+                <th>Payment Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% payrollRecords.forEach(record => { %>
+                <tr>
+                  <td>
+                    <a href="/employees/<%= record.employee._id %>">
+                      <%= record.employee.firstName %> <%= record.employee.lastName %>
+                    </a>
+                  </td>
+                  <td><%= (record.totalRegularHours || 0).toFixed(2) %></td>
+                  <td><%= (record.totalOvertimeHours || 0).toFixed(2) %></td>
+                  <td><%= (record.totalPTOHours || 0).toFixed(2) %></td>
+                  <td>$<%= (record.totalGrossPay || 0).toFixed(2) %></td>
+                  <td>
+                    <% 
+                      let payStatusClass = 'danger';
+                      if (record.paymentStatus === 'paid') payStatusClass = 'success';
+                      else if (record.paymentStatus === 'scheduled') payStatusClass = 'info';
+                    %>
+                    <span class="badge bg-<%= payStatusClass %>"><%= record.paymentStatus %></span>
+                  </td>
+                  <td>
+                    <a href="/payroll-records/<%= record._id %>" class="btn btn-sm btn-outline-primary">View</a>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  <% } %>
+
+  <!-- Employee Time Summary (if not processed) -->
+  <% if (employeeTimeData && employeeTimeData.length > 0 && payPeriod.status !== 'processed') { %>
+    <div class="card mb-4">
+      <div class="card-body">
+        <h5 class="card-title">Employee Time Summary</h5>
+        <div class="table-responsive">
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Regular Hours</th>
+                <th>Overtime Hours</th>
+                <th>PTO Hours</th>
+                <th>Total Hours</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% employeeTimeData.forEach(data => { %>
+                <tr>
+                  <td>
+                    <a href="/employees/<%= data.employee._id %>">
+                      <%= data.employee.firstName %> <%= data.employee.lastName %>
+                    </a>
+                  </td>
+                  <td><%= data.totalRegular.toFixed(2) %></td>
+                  <td><%= data.totalOvertime.toFixed(2) %></td>
+                  <td><%= data.totalPTO.toFixed(2) %></td>
+                  <td><%= (data.totalRegular + data.totalOvertime + data.totalPTO).toFixed(2) %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  <% } %>
+</div>
+
+<%- include('../partials/footer') %>
+

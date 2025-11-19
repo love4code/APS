@@ -215,6 +215,10 @@ app.use('/invoices', require('./routes/invoiceRoutes'))
 app.use('/jobs', require('./routes/jobRoutes'))
 app.use('/my', require('./routes/jobRoutes')) // For /my/sales and /my/installs
 app.use('/invite', require('./routes/inviteRoutes'))
+app.use('/employees', require('./routes/employeeRoutes'))
+app.use('/time-entries', require('./routes/timeEntryRoutes'))
+app.use('/pay-periods', require('./routes/payPeriodRoutes'))
+app.use('/payroll-records', require('./routes/payrollRoutes'))
 
 // 404 handler
 app.use((req, res) => {
