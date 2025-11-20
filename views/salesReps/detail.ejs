@@ -167,14 +167,83 @@
       </div>
     </div>
 
-    <!-- Jobs Column -->
+    <!-- Sales and Jobs Column -->
     <div class="col-md-8">
+      <!-- Sales Section -->
       <div class="card">
         <div class="card-header">
-          <h5 class="mb-0">All Sales (<%= jobs.length %>)</h5>
+          <h5 class="mb-0">All Sales (<%= typeof sales !== 'undefined' ? sales.length : 0 %>)</h5>
         </div>
         <div class="card-body">
-          <% if (jobs && jobs.length > 0) { %>
+          <% if (typeof sales !== 'undefined' && sales && sales.length > 0) { %>
+          <div class="table-responsive">
+            <table class="table table-sm table-hover">
+              <thead>
+                <tr>
+                  <th>Customer</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th>Installer</th>
+                  <th>Total</th>
+                  <th>Paid</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% sales.forEach(sale => { %>
+                <tr>
+                  <td>
+                    <a href="/customers/<%= sale.customer._id %>">
+                      <%= sale.customer.name %>
+                    </a>
+                  </td>
+                  <td><%= new Date(sale.createdAt).toLocaleDateString() %></td>
+                  <td>
+                    <span
+                      class="badge bg-<%= sale.status === 'complete' ? 'success' : sale.status === 'delayed' ? 'warning' : sale.status === 'delivered' ? 'info' : 'secondary' %>"
+                    >
+                      <%= sale.status %>
+                    </span>
+                  </td>
+                  <td>
+                    <%= sale.installer ? sale.installer.name : 'Not assigned' %>
+                  </td>
+                  <td>
+                    <strong>$<%= (sale.totalPrice || 0).toFixed(2) %></strong>
+                  </td>
+                  <td>
+                    <span
+                      class="badge bg-<%= sale.isPaid ? 'success' : 'danger' %>"
+                    >
+                      <%= sale.isPaid ? 'Paid' : 'Unpaid' %>
+                    </span>
+                  </td>
+                  <td>
+                    <a
+                      href="/jobs/<%= sale._id %>"
+                      class="btn btn-sm btn-outline-primary"
+                    >
+                      View
+                    </a>
+                  </td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+          <% } else { %>
+          <p class="text-muted">No sales found for this sales rep.</p>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- Jobs Section -->
+      <% if (typeof jobs !== 'undefined' && jobs && jobs.length > 0) { %>
+      <div class="card mt-4">
+        <div class="card-header">
+          <h5 class="mb-0">All Jobs (<%= jobs.length %>)</h5>
+        </div>
+        <div class="card-body">
           <div class="table-responsive">
             <table class="table table-sm table-hover">
               <thead>
@@ -230,11 +299,9 @@
               </tbody>
             </table>
           </div>
-          <% } else { %>
-          <p class="text-muted">No sales found for this sales rep.</p>
-          <% } %>
         </div>
       </div>
+      <% } %>
 
       <!-- Payments Section -->
       <div class="card mt-4">

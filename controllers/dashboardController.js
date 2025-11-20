@@ -133,14 +133,16 @@ exports.getDashboard = async (req, res, next) => {
         const repJobs = await Job.find({ salesRep: rep._id })
           .maxTimeMS(3000)
           .lean()
-        rep.totalJobs = repJobs.length
-        rep.salesTotal = repJobs.reduce(
+        // Count only sales (jobs with isSale: true)
+        const repSales = repJobs.filter(job => job.isSale === true)
+        rep.totalSales = repSales.length
+        rep.salesTotal = repSales.reduce(
           (sum, job) => sum + (job.totalPrice || 0),
           0
         )
       } catch (err) {
         console.error(`Error calculating stats for sales rep ${rep._id}:`, err)
-        rep.totalJobs = 0
+        rep.totalSales = 0
         rep.salesTotal = 0
       }
     }

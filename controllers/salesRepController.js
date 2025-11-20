@@ -59,10 +59,14 @@ exports.detail = async (req, res) => {
     }
 
     // Get all jobs for this sales rep
-    const jobs = await Job.find({ salesRep: salesRep._id })
+    const allJobs = await Job.find({ salesRep: salesRep._id })
       .populate('customer', 'name email phone')
       .populate('installer', 'name')
       .sort({ createdAt: -1 })
+
+    // Separate sales (isSale: true) from all jobs
+    const sales = allJobs.filter(job => job.isSale === true)
+    const jobs = allJobs.filter(job => job.isSale !== true)
 
     // Get all payments to this sales rep
     const payments = await Payment.find({
@@ -73,23 +77,23 @@ exports.detail = async (req, res) => {
       .populate('job.customer', 'name')
       .sort({ datePaid: -1 })
 
-    // Calculate statistics
+    // Calculate statistics (using allJobs for total counts)
     const stats = {
-      totalJobs: jobs.length,
-      totalSales: jobs.reduce((sum, job) => sum + (job.totalPrice || 0), 0),
-      paidSales: jobs
+      totalJobs: allJobs.length,
+      totalSales: allJobs.reduce((sum, job) => sum + (job.totalPrice || 0), 0),
+      paidSales: allJobs
         .filter(j => j.isPaid)
         .reduce((sum, job) => sum + (job.totalPrice || 0), 0),
-      unpaidSales: jobs
+      unpaidSales: allJobs
         .filter(j => !j.isPaid)
         .reduce((sum, job) => sum + (job.totalPrice || 0), 0),
-      completedJobs: jobs.filter(j => j.status === 'complete').length,
-      scheduledJobs: jobs.filter(j => j.status === 'scheduled').length,
-      deliveredJobs: jobs.filter(j => j.status === 'delivered').length,
+      completedJobs: allJobs.filter(j => j.status === 'complete').length,
+      scheduledJobs: allJobs.filter(j => j.status === 'scheduled').length,
+      deliveredJobs: allJobs.filter(j => j.status === 'delivered').length,
       averageSale:
-        jobs.length > 0
-          ? jobs.reduce((sum, job) => sum + (job.totalPrice || 0), 0) /
-            jobs.length
+        allJobs.length > 0
+          ? allJobs.reduce((sum, job) => sum + (job.totalPrice || 0), 0) /
+            allJobs.length
           : 0,
       totalPayments: payments.reduce((sum, p) => sum + (p.amount || 0), 0),
       paymentCount: payments.length
@@ -109,6 +113,7 @@ exports.detail = async (req, res) => {
     res.render('salesReps/detail', {
       title: `Sales Rep: ${salesRep.name}`,
       salesRep: updatedSalesRep,
+      sales,
       jobs,
       payments,
       stats,
