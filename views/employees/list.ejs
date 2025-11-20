@@ -83,13 +83,32 @@
                 %>
                 <span class="badge bg-<%= statusClass %>"><%= employee.status %></span>
               </td>
-              <td><%= employee.payType %></td>
               <td>
-                <% if (employee.payType === 'hourly') { %>
-                  $<%= (employee.hourlyRate || 0).toFixed(2) %>/hr
-                <% } else { %>
-                  $<%= ((employee.annualSalary || 0) / 52).toFixed(2) %>/wk
-                <% } %>
+                <% 
+                  const payTypes = Array.isArray(employee.payType) ? employee.payType : [employee.payType];
+                  const payTypeLabels = payTypes.map(pt => {
+                    if (pt === 'hourly') return 'Hourly';
+                    if (pt === 'salary') return 'Salary';
+                    if (pt === 'percentage') return 'Percentage';
+                    return pt;
+                  });
+                %>
+                <%= payTypeLabels.join(', ') %>
+              </td>
+              <td>
+                <% 
+                  let rateDisplay = [];
+                  if (payTypes.includes('hourly')) {
+                    rateDisplay.push('$' + (employee.hourlyRate || 0).toFixed(2) + '/hr');
+                  }
+                  if (payTypes.includes('salary')) {
+                    rateDisplay.push('$' + ((employee.annualSalary || 0) / 52).toFixed(2) + '/wk');
+                  }
+                  if (payTypes.includes('percentage')) {
+                    rateDisplay.push((employee.percentageRate || 0).toFixed(2) + '%');
+                  }
+                %>
+                <%= rateDisplay.length > 0 ? rateDisplay.join(', ') : 'N/A' %>
               </td>
               <td>
                 <%= employee.hireDate ? (() => { const d = new Date(employee.hireDate); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); })() : '-' %>

@@ -32,6 +32,12 @@ const payrollRecordSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
+  // Daily percentage payouts included in this payroll
+  totalDailyPayouts: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
   overtimeMultiplierUsed: {
     type: Number,
     default: 1.5
@@ -81,4 +87,3 @@ payrollRecordSchema.pre('save', function (next) {
 })
 
 module.exports = mongoose.model('PayrollRecord', payrollRecordSchema)
-

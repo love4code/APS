@@ -1,0 +1,255 @@
+<%- include('../partials/header', { title: 'Daily Payouts' }) %>
+
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3">Daily Payouts</h1>
+  </div>
+
+  <!-- Filters -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <form method="GET" action="/payouts" class="row g-3">
+        <div class="col-md-4">
+          <label for="dateFrom" class="form-label">Date From</label>
+          <input type="date" class="form-control" id="dateFrom" name="dateFrom" value="<%= typeof dateFrom !== 'undefined' ? dateFrom : '' %>">
+        </div>
+        <div class="col-md-4">
+          <label for="dateTo" class="form-label">Date To</label>
+          <input type="date" class="form-control" id="dateTo" name="dateTo" value="<%= typeof dateTo !== 'undefined' ? dateTo : '' %>">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">&nbsp;</label>
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-search"></i> Filter
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <% if (typeof summaryTotal !== 'undefined') { %>
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5 class="card-title">Summary</h5>
+      <div class="row">
+        <div class="col-md-3">
+          <div class="text-center p-3 bg-light rounded">
+            <h4 class="text-primary">$<%= (summaryTotal.totalRevenue || 0).toFixed(2) %></h4>
+            <p class="text-muted mb-0">Total Revenue</p>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="text-center p-3 bg-light rounded">
+            <h4 class="text-danger">$<%= (summaryTotal.totalCosts || 0).toFixed(2) %></h4>
+            <p class="text-muted mb-0">Total Costs</p>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="text-center p-3 bg-light rounded">
+            <h4 class="text-success">$<%= (summaryTotal.totalProfit || 0).toFixed(2) %></h4>
+            <p class="text-muted mb-0">Total Profit</p>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="text-center p-3 bg-light rounded">
+            <h4 class="text-success">$<%= (summaryTotal.totalEmployeePayout || 0).toFixed(2) %></h4>
+            <p class="text-muted mb-0">Total Employee Payouts</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <% } %>
+
+  <!-- Employee Totals -->
+  <% if (typeof employeeTotals !== 'undefined' && employeeTotals.length > 0) { %>
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5 class="card-title mb-4">Employee Totals</h5>
+      <div class="table-responsive">
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Payout Count</th>
+              <th>Total Payout</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% for (let i = 0; i < employeeTotals.length; i++) { 
+              const empTotal = employeeTotals[i];
+            %>
+              <tr>
+                <td>
+                  <% if (empTotal.employee) { %>
+                    <a href="/employees/<%= empTotal.employee._id %>">
+                      <strong><%= empTotal.employee.firstName %> <%= empTotal.employee.lastName %></strong>
+                    </a>
+                  <% } else { %>
+                    Unknown Employee
+                  <% } %>
+                </td>
+                <td>
+                  <span class="badge bg-info"><%= empTotal.payoutCount %> day<%= empTotal.payoutCount !== 1 ? 's' : '' %></span>
+                </td>
+                <td class="text-success fw-bold">$<%= (empTotal.totalPayout || 0).toFixed(2) %></td>
+                <td>
+                  <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#details-<%= i %>">
+                    <i class="bi bi-chevron-down"></i> View Details
+                  </button>
+                </td>
+              </tr>
+              <tr class="collapse" id="details-<%= i %>">
+                <td colspan="4">
+                  <div class="p-3 bg-light">
+                    <h6>Daily Breakdown:</h6>
+                    <table class="table table-sm table-bordered">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Pay Type</th>
+                          <th>Rate</th>
+                          <th>Submitted</th>
+                          <th>Payout</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <% if (empTotal.payouts && empTotal.payouts.length > 0) { %>
+                          <% for (let j = 0; j < empTotal.payouts.length; j++) { 
+                            const p = empTotal.payouts[j];
+                            const pDate = p.date ? new Date(p.date) : null;
+                            const pDateStr = pDate ? (pDate.getUTCMonth() + 1) + '/' + pDate.getUTCDate() + '/' + pDate.getUTCFullYear() : 'N/A';
+                            const submittedDate = p.createdAt ? new Date(p.createdAt) : null;
+                            const submittedDateStr = submittedDate ? (submittedDate.getUTCMonth() + 1) + '/' + submittedDate.getUTCDate() + '/' + submittedDate.getUTCFullYear() + ' ' + 
+                              (submittedDate.getUTCHours() % 12 || 12) + ':' + String(submittedDate.getUTCMinutes()).padStart(2, '0') + ' ' + (submittedDate.getUTCHours() >= 12 ? 'PM' : 'AM') : 'N/A';
+                            const payTypeBadge = p.payType === 'percentage' ? 'info' : (p.payType === 'hourly' ? 'primary' : 'secondary');
+                            const payTypeLabel = p.payType === 'percentage' ? 'Percentage' : (p.payType === 'hourly' ? 'Hourly' : 'N/A');
+                            let rateStr = 'N/A';
+                            if (p.payType === 'percentage') {
+                              rateStr = (p.percentageRate || 0).toFixed(2) + '%';
+                            } else if (p.payType === 'hourly') {
+                              rateStr = '$' + (p.hourlyRate || 0).toFixed(2) + '/hr × ' + (p.hours || 0).toFixed(2) + ' hrs';
+                            }
+                          %>
+                            <tr>
+                              <td><%= pDateStr %></td>
+                              <td><span class="badge bg-<%= payTypeBadge %>"><%= payTypeLabel %></span></td>
+                              <td><%= rateStr %></td>
+                              <td>
+                                <small class="text-muted">Submitted: <%= submittedDateStr %></small>
+                              </td>
+                              <td class="text-success fw-bold">$<%= (p.payoutAmount || 0).toFixed(2) %></td>
+                            </tr>
+                          <% } %>
+                        <% } else { %>
+                          <tr>
+                            <td colspan="5" class="text-center text-muted">No payout details</td>
+                          </tr>
+                        <% } %>
+                      </tbody>
+                    </table>
+                  </div>
+                </td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <% } %>
+
+  <!-- Individual Payout Records -->
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title mb-4">Individual Payout Records</h5>
+      <div class="table-responsive">
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Total Revenue</th>
+              <th>Job Costs</th>
+              <th>Materials</th>
+              <th>Labor Costs</th>
+              <th>Total Costs</th>
+              <th>Total Profit</th>
+              <th>Employee Payouts</th>
+              <th>20% Company Payout</th>
+              <th>Created By</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (payouts && payouts.length > 0) { %>
+              <% for (let i = 0; i < payouts.length; i++) { 
+                const payout = payouts[i];
+                const payoutDate = payout.date ? new Date(payout.date) : null;
+                const dateStr = payoutDate ? (payoutDate.getUTCMonth() + 1) + '/' + payoutDate.getUTCDate() + '/' + payoutDate.getUTCFullYear() : 'N/A';
+                const employeeCount = payout.employeePayouts ? payout.employeePayouts.length : 0;
+              %>
+                <tr>
+                  <td><%= dateStr %></td>
+                  <td>$<%= (payout.totalRevenue || 0).toFixed(2) %></td>
+                  <td>$<%= (payout.jobCosts || 0).toFixed(2) %></td>
+                  <td>$<%= (payout.materials || 0).toFixed(2) %></td>
+                  <td>$<%= (payout.laborCosts || 0).toFixed(2) %></td>
+                  <td>$<%= (payout.totalCosts || 0).toFixed(2) %></td>
+                  <td>$<%= (payout.totalProfit || 0).toFixed(2) %></td>
+                  <td>
+                    <span class="badge bg-info"><%= employeeCount %> employee<%= employeeCount !== 1 ? 's' : '' %></span>
+                  </td>
+                  <td class="text-success fw-bold">$<%= (payout.calculatedPayout || 0).toFixed(2) %></td>
+                  <td>
+                    <% if (payout.createdBy && payout.createdBy.name) { %>
+                      <%= payout.createdBy.name %>
+                    <% } else { %>
+                      N/A
+                    <% } %>
+                  </td>
+                  <td>
+                    <div class="d-flex gap-1">
+                    <a href="/payouts/<%= payout._id %>" class="btn btn-sm btn-outline-primary">View Details</a>
+                    <% if (!payout.isHourlyPayout) { %>
+                    <form action="/payouts/<%= payout._id %>/delete" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this payout? This action cannot be undone.');">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                      </form>
+                    <% } %>
+                    </div>
+                  </td>
+                </tr>
+              <% } %>
+            <% } else { %>
+              <tr>
+                <td colspan="11" class="text-center text-muted">No payout records found.</td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <% if (totalPages > 1) { %>
+        <nav aria-label="Page navigation" class="mt-4">
+          <ul class="pagination justify-content-center">
+            <li class="page-item <%= currentPage === 1 ? 'disabled' : '' %>">
+              <a class="page-link" href="?page=<%= currentPage - 1 %>&dateFrom=<%= typeof dateFrom !== 'undefined' ? dateFrom : '' %>&dateTo=<%= typeof dateTo !== 'undefined' ? dateTo : '' %>">Previous</a>
+            </li>
+            <% for (let i = 1; i <= totalPages; i++) { %>
+              <li class="page-item <%= currentPage === i ? 'active' : '' %>">
+                <a class="page-link" href="?page=<%= i %>&dateFrom=<%= typeof dateFrom !== 'undefined' ? dateFrom : '' %>&dateTo=<%= typeof dateTo !== 'undefined' ? dateTo : '' %>"><%= i %></a>
+              </li>
+            <% } %>
+            <li class="page-item <%= currentPage === totalPages ? 'disabled' : '' %>">
+              <a class="page-link" href="?page=<%= currentPage + 1 %>&dateFrom=<%= typeof dateFrom !== 'undefined' ? dateFrom : '' %>&dateTo=<%= typeof dateTo !== 'undefined' ? dateTo : '' %>">Next</a>
+            </li>
+          </ul>
+        </nav>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

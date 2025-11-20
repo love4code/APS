@@ -36,6 +36,24 @@ const timeEntrySchema = new mongoose.Schema({
     enum: ['regular', 'overtime', 'pto', 'sick', 'holiday'],
     default: 'regular'
   },
+  // Support for multiple jobs
+  jobs: [
+    {
+      job: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Job'
+      },
+      jobName: {
+        type: String,
+        trim: true
+      },
+      jobId: {
+        type: String,
+        trim: true
+      }
+    }
+  ],
+  // Legacy fields for backward compatibility
   projectOrJobId: {
     type: String,
     trim: true
@@ -75,7 +93,7 @@ timeEntrySchema.index({ type: 1 })
 // Update updatedAt before saving
 timeEntrySchema.pre('save', function (next) {
   this.updatedAt = Date.now()
-  
+
   // Calculate hoursWorked from startTime/endTime if both are provided and hoursWorked not explicitly set
   if (this.startTime && this.endTime && !this.isModified('hoursWorked')) {
     const start = new Date(this.startTime)
@@ -85,9 +103,8 @@ timeEntrySchema.pre('save', function (next) {
     const breakHours = (this.breakMinutes || 0) / 60
     this.hoursWorked = Math.max(0, diffHours - breakHours)
   }
-  
+
   next()
 })
 
 module.exports = mongoose.model('TimeEntry', timeEntrySchema)
-

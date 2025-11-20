@@ -1,0 +1,191 @@
+<%- include('../partials/header', { title: 'Weekly Percentage Payouts' }) %>
+
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3">Weekly Payouts</h1>
+  </div>
+
+  <!-- Week Filter -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <form method="GET" action="/payouts/weekly" class="row g-3">
+        <div class="col-md-4">
+          <label for="weekStart" class="form-label">Week Start (Monday)</label>
+              <input type="date" class="form-control" id="weekStart" name="weekStart" value="<%= typeof weekStart !== 'undefined' ? weekStart : '' %>">
+        </div>
+        <div class="col-md-4">
+          <label for="weekEnd" class="form-label">Week End (Sunday)</label>
+              <input type="date" class="form-control" id="weekEnd" name="weekEnd" value="<%= typeof weekEnd !== 'undefined' ? weekEnd : '' %>">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">&nbsp;</label>
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-search"></i> Filter Week
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Week Summary -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5 class="card-title">Week Summary</h5>
+      <div class="row">
+        <div class="col-md-3">
+          <div class="text-center p-3 bg-light rounded">
+            <h4 class="text-primary">$<%= (weekTotal.totalRevenue || 0).toFixed(2) %></h4>
+            <p class="text-muted mb-0">Total Revenue</p>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="text-center p-3 bg-light rounded">
+            <h4 class="text-danger">$<%= (weekTotal.totalCosts || 0).toFixed(2) %></h4>
+            <p class="text-muted mb-0">Total Costs</p>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="text-center p-3 bg-light rounded">
+            <h4 class="text-success">$<%= (weekTotal.totalProfit || 0).toFixed(2) %></h4>
+            <p class="text-muted mb-0">Total Profit</p>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="text-center p-3 bg-light rounded">
+            <h4 class="text-success">$<%= (weekTotal.totalCompanyPayout || 0).toFixed(2) %></h4>
+            <p class="text-muted mb-0">Total Employee Payouts</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Employee Weekly Totals -->
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title mb-4">Employee Weekly Totals</h5>
+      <div class="table-responsive">
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Date Range</th>
+              <th>Payout Count</th>
+              <th>Total Payout</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (weeklyTotals && weeklyTotals.length > 0) { %>
+              <% for (let i = 0; i < weeklyTotals.length; i++) { 
+                const empTotal = weeklyTotals[i];
+                // Calculate date range from payouts
+                let dateRangeStr = 'N/A';
+                if (empTotal.payouts && empTotal.payouts.length > 0) {
+                  const dates = empTotal.payouts
+                    .map(p => p.date ? new Date(p.date) : null)
+                    .filter(d => d !== null)
+                    .sort((a, b) => a - b);
+                  if (dates.length > 0) {
+                    const firstDate = dates[0];
+                    const lastDate = dates[dates.length - 1];
+                    const firstDateStr = (firstDate.getUTCMonth() + 1) + '/' + firstDate.getUTCDate() + '/' + firstDate.getUTCFullYear();
+                    if (dates.length === 1 || firstDate.getTime() === lastDate.getTime()) {
+                      dateRangeStr = firstDateStr;
+                    } else {
+                      const lastDateStr = (lastDate.getUTCMonth() + 1) + '/' + lastDate.getUTCDate() + '/' + lastDate.getUTCFullYear();
+                      dateRangeStr = firstDateStr + ' - ' + lastDateStr;
+                    }
+                  }
+                }
+              %>
+                <tr>
+                  <td>
+                    <% if (empTotal.employee) { %>
+                      <a href="/employees/<%= empTotal.employee._id %>">
+                        <strong><%= empTotal.employee.firstName %> <%= empTotal.employee.lastName %></strong>
+                      </a>
+                    <% } else { %>
+                      Unknown Employee
+                    <% } %>
+                  </td>
+                  <td>
+                    <small class="text-muted"><%= dateRangeStr %></small>
+                  </td>
+                  <td>
+                    <span class="badge bg-info"><%= empTotal.payoutCount %> day<%= empTotal.payoutCount !== 1 ? 's' : '' %></span>
+                  </td>
+                  <td class="text-success fw-bold">$<%= (empTotal.totalPayout || 0).toFixed(2) %></td>
+                  <td>
+                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#details-<%= i %>">
+                      <i class="bi bi-chevron-down"></i> View Details
+                    </button>
+                  </td>
+                </tr>
+                <tr class="collapse" id="details-<%= i %>">
+                  <td colspan="5">
+                    <div class="p-3 bg-light">
+                      <h6>Daily Breakdown:</h6>
+                      <table class="table table-sm table-bordered">
+                        <thead>
+                          <tr>
+                            <th>Date</th>
+                            <th>Pay Type</th>
+                            <th>Rate</th>
+                            <th>Submitted</th>
+                            <th>Payout</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <% if (empTotal.payouts && empTotal.payouts.length > 0) { %>
+                            <% for (let j = 0; j < empTotal.payouts.length; j++) { 
+                              const p = empTotal.payouts[j];
+                              const pDate = p.date ? new Date(p.date) : null;
+                              const pDateStr = pDate ? (pDate.getUTCMonth() + 1) + '/' + pDate.getUTCDate() + '/' + pDate.getUTCFullYear() : 'N/A';
+                              const submittedDate = p.createdAt ? new Date(p.createdAt) : null;
+                              const submittedDateStr = submittedDate ? (submittedDate.getUTCMonth() + 1) + '/' + submittedDate.getUTCDate() + '/' + submittedDate.getUTCFullYear() + ' ' + 
+                                (submittedDate.getUTCHours() % 12 || 12) + ':' + String(submittedDate.getUTCMinutes()).padStart(2, '0') + ' ' + (submittedDate.getUTCHours() >= 12 ? 'PM' : 'AM') : 'N/A';
+                              const payTypeBadge = p.payType === 'percentage' ? 'info' : (p.payType === 'hourly' ? 'primary' : 'secondary');
+                              const payTypeLabel = p.payType === 'percentage' ? 'Percentage' : (p.payType === 'hourly' ? 'Hourly' : 'N/A');
+                              let rateStr = 'N/A';
+                              if (p.payType === 'percentage') {
+                                rateStr = (p.percentageRate || 0).toFixed(2) + '%';
+                              } else if (p.payType === 'hourly') {
+                                rateStr = '$' + (p.hourlyRate || 0).toFixed(2) + '/hr × ' + (p.hours || 0).toFixed(2) + ' hrs';
+                              }
+                            %>
+                              <tr>
+                                <td><%= pDateStr %></td>
+                                <td><span class="badge bg-<%= payTypeBadge %>"><%= payTypeLabel %></span></td>
+                                <td><%= rateStr %></td>
+                                <td>
+                                  <small class="text-muted">Submitted: <%= submittedDateStr %></small>
+                                </td>
+                                <td class="text-success fw-bold">$<%= (p.payoutAmount || 0).toFixed(2) %></td>
+                              </tr>
+                            <% } %>
+                          <% } else { %>
+                            <tr>
+                              <td colspan="5" class="text-center text-muted">No payout details</td>
+                            </tr>
+                          <% } %>
+                        </tbody>
+                      </table>
+                    </div>
+                  </td>
+                </tr>
+              <% } %>
+            <% } else { %>
+              <tr>
+                <td colspan="5" class="text-center text-muted">No payouts found for this week.</td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>
+

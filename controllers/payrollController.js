@@ -146,7 +146,7 @@ exports.exportCSV = async (req, res) => {
       .lean()
 
     // Helper function to escape CSV fields
-    const escapeCSV = (field) => {
+    const escapeCSV = field => {
       if (field === null || field === undefined) return ''
       const str = String(field)
       if (str.includes(',') || str.includes('"') || str.includes('\n')) {
@@ -157,37 +157,45 @@ exports.exportCSV = async (req, res) => {
 
     // Prepare CSV data
     const csvRows = []
-    
+
     // Header row
-    csvRows.push([
-      'Employee Name',
-      'Email',
-      'Pay Period',
-      'Regular Hours',
-      'Overtime Hours',
-      'PTO Hours',
-      'Gross Pay',
-      'Payment Status',
-      'Payment Date',
-      'Payment Method'
-    ].map(escapeCSV).join(','))
+    csvRows.push(
+      [
+        'Employee Name',
+        'Email',
+        'Pay Period',
+        'Regular Hours',
+        'Overtime Hours',
+        'PTO Hours',
+        'Gross Pay',
+        'Payment Status',
+        'Payment Date',
+        'Payment Method'
+      ]
+        .map(escapeCSV)
+        .join(',')
+    )
 
     // Data rows
     payrollRecords.forEach(record => {
-      csvRows.push([
-        `${record.employee.firstName} ${record.employee.lastName}`,
-        record.employee.email || '',
-        record.payPeriod ? record.payPeriod.name : '',
-        (record.totalRegularHours || 0).toFixed(2),
-        (record.totalOvertimeHours || 0).toFixed(2),
-        (record.totalPTOHours || 0).toFixed(2),
-        (record.totalGrossPay || 0).toFixed(2),
-        record.paymentStatus || 'unpaid',
-        record.paymentDate
-          ? new Date(record.paymentDate).toLocaleDateString()
-          : '',
-        record.paymentMethod || ''
-      ].map(escapeCSV).join(','))
+      csvRows.push(
+        [
+          `${record.employee.firstName} ${record.employee.lastName}`,
+          record.employee.email || '',
+          record.payPeriod ? record.payPeriod.name : '',
+          (record.totalRegularHours || 0).toFixed(2),
+          (record.totalOvertimeHours || 0).toFixed(2),
+          (record.totalPTOHours || 0).toFixed(2),
+          (record.totalGrossPay || 0).toFixed(2),
+          record.paymentStatus || 'unpaid',
+          record.paymentDate
+            ? new Date(record.paymentDate).toLocaleDateString()
+            : '',
+          record.paymentMethod || ''
+        ]
+          .map(escapeCSV)
+          .join(',')
+      )
     })
 
     const csvString = csvRows.join('\n')
@@ -204,4 +212,3 @@ exports.exportCSV = async (req, res) => {
     res.redirect('/payroll-records')
   }
 }
-

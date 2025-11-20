@@ -45,9 +45,15 @@ const employeeSchema = new mongoose.Schema({
     type: Date
   },
   payType: {
-    type: String,
-    enum: ['hourly', 'salary'],
-    required: true
+    type: [String],
+    enum: ['hourly', 'salary', 'percentage'],
+    default: [],
+    validate: {
+      validator: function (v) {
+        return v && v.length > 0
+      },
+      message: 'At least one pay type must be selected'
+    }
   },
   hourlyRate: {
     type: Number,
@@ -56,6 +62,11 @@ const employeeSchema = new mongoose.Schema({
   annualSalary: {
     type: Number,
     min: 0
+  },
+  percentageRate: {
+    type: Number,
+    min: 0,
+    max: 100
   },
   defaultOvertimeMultiplier: {
     type: Number,
@@ -82,7 +93,7 @@ const employeeSchema = new mongoose.Schema({
 // Indexes for common queries
 employeeSchema.index({ status: 1 })
 employeeSchema.index({ department: 1 })
-employeeSchema.index({ email: 1 })
+// Note: email index is automatically created by unique: true, so we don't need to add it here
 employeeSchema.index({ lastName: 1, firstName: 1 })
 
 // Update updatedAt before saving
@@ -100,4 +111,3 @@ employeeSchema.virtual('fullName').get(function () {
 employeeSchema.set('toJSON', { virtuals: true })
 
 module.exports = mongoose.model('Employee', employeeSchema)
-

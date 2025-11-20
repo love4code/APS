@@ -51,26 +51,33 @@
           </div>
           <div class="col-md-6 mb-3">
             <label for="hireDate" class="form-label">Hire Date *</label>
-            <input type="date" class="form-control" id="hireDate" name="hireDate" value="<%= employee && employee.hireDate ? new Date(employee.hireDate).toISOString().split('T')[0] : '' %>" required>
+            <input type="date" class="form-control" id="hireDate" name="hireDate" value="<%= employee && employee.hireDate ? (typeof employee.hireDate === 'string' && employee.hireDate.includes('-') ? employee.hireDate : new Date(employee.hireDate).toISOString().split('T')[0]) : '' %>" required>
           </div>
         </div>
 
         <div class="row">
           <div class="col-md-6 mb-3">
             <label for="terminationDate" class="form-label">Termination Date</label>
-            <input type="date" class="form-control" id="terminationDate" name="terminationDate" value="<%= employee && employee.terminationDate ? new Date(employee.terminationDate).toISOString().split('T')[0] : '' %>">
+            <input type="date" class="form-control" id="terminationDate" name="terminationDate" value="<%= employee && employee.terminationDate ? (typeof employee.terminationDate === 'string' && employee.terminationDate.includes('-') ? employee.terminationDate : new Date(employee.terminationDate).toISOString().split('T')[0]) : '' %>">
           </div>
           <div class="col-md-6 mb-3">
-            <label for="payType" class="form-label">Pay Type *</label>
-            <select class="form-select" id="payType" name="payType" required onchange="togglePayFields()">
-              <option value="">Select...</option>
-              <option value="hourly" <%= employee && employee.payType === 'hourly' ? 'selected' : '' %>>Hourly</option>
-              <option value="salary" <%= employee && employee.payType === 'salary' ? 'selected' : '' %>>Salary</option>
-            </select>
+            <label class="form-label">Pay Type *</label>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="payTypeHourly" name="payType" value="hourly" onchange="togglePayFields()" <%= employee && (Array.isArray(employee.payType) ? employee.payType.includes('hourly') : employee.payType === 'hourly') ? 'checked' : '' %>>
+              <label class="form-check-label" for="payTypeHourly">Hourly</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="payTypeSalary" name="payType" value="salary" onchange="togglePayFields()" <%= employee && (Array.isArray(employee.payType) ? employee.payType.includes('salary') : employee.payType === 'salary') ? 'checked' : '' %>>
+              <label class="form-check-label" for="payTypeSalary">Salary</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="payTypePercentage" name="payType" value="percentage" onchange="togglePayFields()" <%= employee && (Array.isArray(employee.payType) ? employee.payType.includes('percentage') : employee.payType === 'percentage') ? 'checked' : '' %>>
+              <label class="form-check-label" for="payTypePercentage">Percentage</label>
+            </div>
           </div>
         </div>
 
-        <div class="row" id="hourlyFields" style="display: <%= employee && employee.payType === 'hourly' ? 'flex' : 'none' %>;">
+        <div class="row" id="hourlyFields" style="display: <%= employee && (Array.isArray(employee.payType) ? employee.payType.includes('hourly') : employee.payType === 'hourly') ? 'flex' : 'none' %>;">
           <div class="col-md-6 mb-3">
             <label for="hourlyRate" class="form-label">Hourly Rate *</label>
             <div class="input-group">
@@ -80,13 +87,24 @@
           </div>
         </div>
 
-        <div class="row" id="salaryFields" style="display: <%= employee && employee.payType === 'salary' ? 'flex' : 'none' %>;">
+        <div class="row" id="salaryFields" style="display: <%= employee && (Array.isArray(employee.payType) ? employee.payType.includes('salary') : employee.payType === 'salary') ? 'flex' : 'none' %>;">
           <div class="col-md-6 mb-3">
             <label for="annualSalary" class="form-label">Annual Salary *</label>
             <div class="input-group">
               <span class="input-group-text">$</span>
               <input type="number" class="form-control" id="annualSalary" name="annualSalary" step="0.01" min="0" value="<%= employee && employee.annualSalary ? employee.annualSalary : '' %>">
             </div>
+          </div>
+        </div>
+
+        <div class="row" id="percentageFields" style="display: <%= employee && (Array.isArray(employee.payType) ? employee.payType.includes('percentage') : employee.payType === 'percentage') ? 'flex' : 'none' %>;">
+          <div class="col-md-6 mb-3">
+            <label for="percentageRate" class="form-label">Percentage Rate *</label>
+            <div class="input-group">
+              <input type="number" class="form-control" id="percentageRate" name="percentageRate" step="0.01" min="0" max="100" value="<%= employee && employee.percentageRate ? employee.percentageRate : '' %>">
+              <span class="input-group-text">%</span>
+            </div>
+            <small class="form-text text-muted">Enter percentage (0-100)</small>
           </div>
         </div>
 
@@ -114,27 +132,39 @@
 
 <script>
   function togglePayFields() {
-    const payType = document.getElementById('payType').value;
+    const hourlyCheckbox = document.getElementById('payTypeHourly');
+    const salaryCheckbox = document.getElementById('payTypeSalary');
+    const percentageCheckbox = document.getElementById('payTypePercentage');
     const hourlyFields = document.getElementById('hourlyFields');
     const salaryFields = document.getElementById('salaryFields');
+    const percentageFields = document.getElementById('percentageFields');
     const hourlyRate = document.getElementById('hourlyRate');
     const annualSalary = document.getElementById('annualSalary');
+    const percentageRate = document.getElementById('percentageRate');
     
-    if (payType === 'hourly') {
+    // Show/hide fields based on checkboxes
+    if (hourlyCheckbox.checked) {
       hourlyFields.style.display = 'flex';
-      salaryFields.style.display = 'none';
       hourlyRate.required = true;
-      annualSalary.required = false;
-    } else if (payType === 'salary') {
-      hourlyFields.style.display = 'none';
-      salaryFields.style.display = 'flex';
-      hourlyRate.required = false;
-      annualSalary.required = true;
     } else {
       hourlyFields.style.display = 'none';
-      salaryFields.style.display = 'none';
       hourlyRate.required = false;
+    }
+    
+    if (salaryCheckbox.checked) {
+      salaryFields.style.display = 'flex';
+      annualSalary.required = true;
+    } else {
+      salaryFields.style.display = 'none';
       annualSalary.required = false;
+    }
+    
+    if (percentageCheckbox.checked) {
+      percentageFields.style.display = 'flex';
+      percentageRate.required = true;
+    } else {
+      percentageFields.style.display = 'none';
+      percentageRate.required = false;
     }
   }
   

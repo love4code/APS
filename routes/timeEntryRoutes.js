@@ -13,6 +13,7 @@ router.get('/:id', timeEntryController.detail)
 router.get('/:id/edit', timeEntryController.editForm)
 router.post('/:id', timeEntryController.update)
 router.post('/:id/approve', timeEntryController.approve)
+router.post('/:id/delete', timeEntryController.delete)
 
 module.exports = router
 

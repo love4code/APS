@@ -2,6 +2,7 @@ const TimeEntry = require('../models/TimeEntry')
 const Employee = require('../models/Employee')
 const User = require('../models/User')
 const PayPeriod = require('../models/PayPeriod')
+const Job = require('../models/Job')
 
 exports.list = async (req, res) => {
   try {
@@ -89,6 +90,13 @@ exports.newForm = async (req, res) => {
       .sort({ lastName: 1, firstName: 1 })
       .lean()
 
+    // Get all jobs for search (excluding sales)
+    const jobs = await Job.find({ isSale: { $ne: true } })
+      .populate('customer', 'name')
+      .sort({ createdAt: -1 })
+      .select('_id customer installDate status')
+      .lean()
+
     // Pre-select employee if provided
     const employeeId = req.query.employeeId || null
 
@@ -96,6 +104,7 @@ exports.newForm = async (req, res) => {
       title: 'New Time Entry',
       timeEntry: null,
       employees,
+      jobs: jobs || [],
       selectedEmployeeId: employeeId
     })
   } catch (error) {
@@ -115,8 +124,9 @@ exports.create = async (req, res) => {
       breakMinutes,
       overtimeHours,
       type,
-      projectOrJobId,
-      jobName,
+      jobs, // Array of {jobId, jobName}
+      projectOrJobId, // Legacy field
+      jobName, // Legacy field
       notes
     } = req.body
 
@@ -125,11 +135,12 @@ exports.create = async (req, res) => {
       return res.redirect('/time-entries/new')
     }
 
-    // Parse date
+    // Parse date (using local time, not UTC)
     let parsedDate = null
+    let year, month, day
     if (date) {
-      const [year, month, day] = date.split('-').map(Number)
-      parsedDate = new Date(Date.UTC(year, month - 1, day))
+      ;[year, month, day] = date.split('-').map(Number)
+      parsedDate = new Date(year, month - 1, day)
     }
 
     // Parse start/end times if provided
@@ -137,22 +148,27 @@ exports.create = async (req, res) => {
     let parsedEndTime = null
     let calculatedHours = parseFloat(hoursWorked) || 0
 
-    if (startTime && endTime) {
-      // Combine date with time
+    if (startTime && endTime && parsedDate) {
+      // Combine date with time (using local time, not UTC)
       const [startHour, startMin] = startTime.split(':').map(Number)
       const [endHour, endMin] = endTime.split(':').map(Number)
-      
-      parsedStartTime = new Date(parsedDate)
-      parsedStartTime.setUTCHours(startHour, startMin, 0, 0)
-      
-      parsedEndTime = new Date(parsedDate)
-      parsedEndTime.setUTCHours(endHour, endMin, 0, 0)
-      
+
+      parsedStartTime = new Date(
+        year,
+        month - 1,
+        day,
+        startHour,
+        startMin,
+        0,
+        0
+      )
+      parsedEndTime = new Date(year, month - 1, day, endHour, endMin, 0, 0)
+
       if (parsedEndTime < parsedStartTime) {
         // End time is next day
-        parsedEndTime.setUTCDate(parsedEndTime.getUTCDate() + 1)
+        parsedEndTime.setDate(parsedEndTime.getDate() + 1)
       }
-      
+
       // Calculate hours
       const diffMs = parsedEndTime - parsedStartTime
       const diffHours = diffMs / (1000 * 60 * 60)
@@ -177,6 +193,27 @@ exports.create = async (req, res) => {
       // TODO: Add weekly overtime calculation (check total hours for the week)
     }
 
+    // Process jobs array
+    let jobsArray = []
+    if (jobs && Array.isArray(jobs)) {
+      jobsArray = jobs
+        .filter(j => j.jobId && j.jobId.trim() !== '')
+        .map(j => ({
+          job: j.jobId,
+          jobName: j.jobName || '',
+          jobId: j.jobId
+        }))
+    }
+
+    // Legacy support: if no jobs array but legacy fields exist, create a job entry
+    if (jobsArray.length === 0 && (projectOrJobId || jobName)) {
+      jobsArray.push({
+        job: projectOrJobId || null,
+        jobName: jobName || '',
+        jobId: projectOrJobId || ''
+      })
+    }
+
     const timeEntry = new TimeEntry({
       employee,
       date: parsedDate,
@@ -186,8 +223,10 @@ exports.create = async (req, res) => {
       breakMinutes: parseFloat(breakMinutes) || 0,
       overtimeHours: calculatedOvertime,
       type: type || 'regular',
-      projectOrJobId: projectOrJobId || null,
-      jobName: jobName || null,
+      jobs: jobsArray,
+      projectOrJobId:
+        jobsArray.length > 0 ? jobsArray[0].jobId : projectOrJobId || null, // Legacy field
+      jobName: jobsArray.length > 0 ? jobsArray[0].jobName : jobName || null, // Legacy field
       notes: notes || '',
       approved: false
     })
@@ -214,10 +253,83 @@ exports.detail = async (req, res) => {
       return res.redirect('/time-entries')
     }
 
+    // Populate jobs if they exist
+    if (timeEntry.jobs && timeEntry.jobs.length > 0) {
+      await TimeEntry.populate(timeEntry, {
+        path: 'jobs.job',
+        select: '_id customer installDate status',
+        populate: {
+          path: 'customer',
+          select: 'name'
+        }
+      })
+    }
+
+    // Calculate amount owed based on employee pay type and hours worked
+    let amountOwed = 0
+    let payCalculation = {
+      regularHours: 0,
+      overtimeHours: timeEntry.overtimeHours || 0,
+      regularPay: 0,
+      overtimePay: 0,
+      totalPay: 0,
+      payType: 'N/A',
+      rate: 0
+    }
+
+    if (timeEntry.employee) {
+      const employee = timeEntry.employee
+      const payTypes = Array.isArray(employee.payType)
+        ? employee.payType
+        : [employee.payType]
+      const regularHours =
+        (timeEntry.hoursWorked || 0) - (timeEntry.overtimeHours || 0)
+      const overtimeHours = timeEntry.overtimeHours || 0
+      const overtimeMultiplier = employee.defaultOvertimeMultiplier || 1.5
+
+      payCalculation.regularHours = regularHours
+      payCalculation.overtimeHours = overtimeHours
+
+      // Calculate based on pay type
+      if (payTypes.includes('hourly') && employee.hourlyRate) {
+        payCalculation.payType = 'Hourly'
+        payCalculation.rate = employee.hourlyRate
+        payCalculation.regularPay = regularHours * employee.hourlyRate
+        payCalculation.overtimePay =
+          overtimeHours * employee.hourlyRate * overtimeMultiplier
+        payCalculation.totalPay =
+          payCalculation.regularPay + payCalculation.overtimePay
+        amountOwed = payCalculation.totalPay
+      } else if (payTypes.includes('salary') && employee.annualSalary) {
+        // Calculate daily rate (assuming 260 working days per year: 52 weeks × 5 days)
+        const dailyRate = employee.annualSalary / 260
+        payCalculation.payType = 'Salary'
+        payCalculation.rate = dailyRate
+        // For salary, typically pay full day regardless of hours, but we can calculate proportionally
+        // For now, we'll show daily rate if they worked any hours
+        if (timeEntry.hoursWorked > 0) {
+          // Option 1: Full day rate if hours worked
+          payCalculation.totalPay = dailyRate
+          // Option 2: Proportional (uncomment if preferred)
+          // payCalculation.totalPay = (timeEntry.hoursWorked / 8) * dailyRate
+        }
+        amountOwed = payCalculation.totalPay
+      } else if (payTypes.includes('percentage')) {
+        // Percentage pay is typically calculated differently (based on profit, not hours)
+        // For time entries, we might not calculate this, or show a note
+        payCalculation.payType = 'Percentage'
+        payCalculation.rate = employee.percentageRate || 0
+        payCalculation.totalPay = 0
+        amountOwed = 0
+      }
+    }
+
     res.render('time-entries/detail', {
       title: 'Time Entry Details',
       timeEntry,
-      user: req.user
+      user: req.user,
+      amountOwed,
+      payCalculation
     })
   } catch (error) {
     console.error('Error loading time entry:', error)
@@ -228,8 +340,9 @@ exports.detail = async (req, res) => {
 
 exports.editForm = async (req, res) => {
   try {
-    const timeEntry = await TimeEntry.findById(req.params.id)
-      .populate('employee')
+    const timeEntry = await TimeEntry.findById(req.params.id).populate(
+      'employee'
+    )
 
     if (!timeEntry) {
       req.flash('error', 'Time entry not found')
@@ -240,10 +353,18 @@ exports.editForm = async (req, res) => {
       .sort({ lastName: 1, firstName: 1 })
       .lean()
 
+    // Get all jobs for search (excluding sales)
+    const jobs = await Job.find({ isSale: { $ne: true } })
+      .populate('customer', 'name')
+      .sort({ createdAt: -1 })
+      .select('_id customer installDate status')
+      .lean()
+
     res.render('time-entries/form', {
       title: 'Edit Time Entry',
       timeEntry,
       employees,
+      jobs: jobs || [],
       selectedEmployeeId: timeEntry.employee._id.toString()
     })
   } catch (error) {
@@ -282,16 +403,18 @@ exports.update = async (req, res) => {
       breakMinutes,
       overtimeHours,
       type,
-      projectOrJobId,
-      jobName,
+      jobs, // Array of {jobId, jobName}
+      projectOrJobId, // Legacy field
+      jobName, // Legacy field
       notes
     } = req.body
 
-    // Parse date
+    // Parse date (using local time, not UTC)
     let parsedDate = null
+    let year, month, day
     if (date) {
-      const [year, month, day] = date.split('-').map(Number)
-      parsedDate = new Date(Date.UTC(year, month - 1, day))
+      ;[year, month, day] = date.split('-').map(Number)
+      parsedDate = new Date(year, month - 1, day)
     }
 
     // Parse start/end times if provided
@@ -299,20 +422,25 @@ exports.update = async (req, res) => {
     let parsedEndTime = null
     let calculatedHours = parseFloat(hoursWorked) || 0
 
-    if (startTime && endTime) {
+    if (startTime && endTime && parsedDate) {
       const [startHour, startMin] = startTime.split(':').map(Number)
       const [endHour, endMin] = endTime.split(':').map(Number)
-      
-      parsedStartTime = new Date(parsedDate)
-      parsedStartTime.setUTCHours(startHour, startMin, 0, 0)
-      
-      parsedEndTime = new Date(parsedDate)
-      parsedEndTime.setUTCHours(endHour, endMin, 0, 0)
-      
+
+      parsedStartTime = new Date(
+        year,
+        month - 1,
+        day,
+        startHour,
+        startMin,
+        0,
+        0
+      )
+      parsedEndTime = new Date(year, month - 1, day, endHour, endMin, 0, 0)
+
       if (parsedEndTime < parsedStartTime) {
-        parsedEndTime.setUTCDate(parsedEndTime.getUTCDate() + 1)
+        parsedEndTime.setDate(parsedEndTime.getDate() + 1)
       }
-      
+
       const diffMs = parsedEndTime - parsedStartTime
       const diffHours = diffMs / (1000 * 60 * 60)
       const breakHours = (parseFloat(breakMinutes) || 0) / 60
@@ -327,6 +455,27 @@ exports.update = async (req, res) => {
       }
     }
 
+    // Process jobs array
+    let jobsArray = []
+    if (jobs && Array.isArray(jobs)) {
+      jobsArray = jobs
+        .filter(j => j.jobId && j.jobId.trim() !== '')
+        .map(j => ({
+          job: j.jobId,
+          jobName: j.jobName || '',
+          jobId: j.jobId
+        }))
+    }
+
+    // Legacy support: if no jobs array but legacy fields exist, create a job entry
+    if (jobsArray.length === 0 && (projectOrJobId || jobName)) {
+      jobsArray.push({
+        job: projectOrJobId || null,
+        jobName: jobName || '',
+        jobId: projectOrJobId || ''
+      })
+    }
+
     timeEntry.employee = employee
     timeEntry.date = parsedDate
     timeEntry.startTime = parsedStartTime
@@ -335,11 +484,18 @@ exports.update = async (req, res) => {
     timeEntry.breakMinutes = parseFloat(breakMinutes) || 0
     timeEntry.overtimeHours = calculatedOvertime
     timeEntry.type = type || 'regular'
-    timeEntry.projectOrJobId = projectOrJobId || null
-    timeEntry.jobName = jobName || null
+    timeEntry.jobs = jobsArray
+    timeEntry.projectOrJobId =
+      jobsArray.length > 0 ? jobsArray[0].jobId : projectOrJobId || null // Legacy field
+    timeEntry.jobName =
+      jobsArray.length > 0 ? jobsArray[0].jobName : jobName || null // Legacy field
     timeEntry.notes = notes || ''
     // Reset approval if hours changed
-    if (timeEntry.approved && (timeEntry.hoursWorked !== calculatedHours || timeEntry.overtimeHours !== calculatedOvertime)) {
+    if (
+      timeEntry.approved &&
+      (timeEntry.hoursWorked !== calculatedHours ||
+        timeEntry.overtimeHours !== calculatedOvertime)
+    ) {
       timeEntry.approved = false
       timeEntry.approvedBy = null
     }
@@ -378,3 +534,37 @@ exports.approve = async (req, res) => {
   }
 }
 
+exports.delete = async (req, res) => {
+  try {
+    const timeEntry = await TimeEntry.findById(req.params.id)
+
+    if (!timeEntry) {
+      req.flash('error', 'Time entry not found')
+      return res.redirect('/time-entries')
+    }
+
+    // Check if time entry is in a locked pay period
+    const payPeriods = await PayPeriod.find({
+      status: { $in: ['locked', 'processed'] },
+      startDate: { $lte: timeEntry.date },
+      endDate: { $gte: timeEntry.date }
+    })
+
+    if (payPeriods.length > 0) {
+      req.flash(
+        'error',
+        'Cannot delete time entry: it is in a locked or processed pay period'
+      )
+      return res.redirect(`/time-entries/${timeEntry._id}`)
+    }
+
+    await timeEntry.deleteOne()
+
+    req.flash('success', 'Time entry deleted successfully')
+    res.redirect('/time-entries')
+  } catch (error) {
+    console.error('Error deleting time entry:', error)
+    req.flash('error', 'Error deleting time entry')
+    res.redirect(`/time-entries/${req.params.id}`)
+  }
+}

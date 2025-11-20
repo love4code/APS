@@ -37,6 +37,9 @@
             <div class="col-md-6">
               <p><strong>PTO Hours:</strong> <%= (payrollRecord.totalPTOHours || 0).toFixed(2) %></p>
               <p><strong>Overtime Multiplier:</strong> <%= payrollRecord.overtimeMultiplierUsed || 1.5 %>x</p>
+              <% if (payrollRecord.totalDailyPayouts && payrollRecord.totalDailyPayouts > 0) { %>
+                <p><strong>Daily Payouts:</strong> <strong class="text-info">$<%= (payrollRecord.totalDailyPayouts || 0).toFixed(2) %></strong></p>
+              <% } %>
               <p><strong>Gross Pay:</strong> <strong class="text-success">$<%= (payrollRecord.totalGrossPay || 0).toFixed(2) %></strong></p>
               <p><strong>Payment Status:</strong> 
                 <% 

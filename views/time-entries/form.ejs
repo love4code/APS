@@ -29,12 +29,12 @@
         <div class="row">
           <div class="col-md-6 mb-3">
             <label for="startTime" class="form-label">Start Time</label>
-            <input type="time" class="form-control" id="startTime" name="startTime" value="<%= timeEntry && timeEntry.startTime ? new Date(timeEntry.startTime).toTimeString().slice(0,5) : '' %>" onchange="calculateHours()">
+            <input type="time" class="form-control" id="startTime" name="startTime" value="<%= timeEntry && timeEntry.startTime ? (() => { const d = new Date(timeEntry.startTime); const hours = d.getHours().toString().padStart(2, '0'); const minutes = d.getMinutes().toString().padStart(2, '0'); return hours + ':' + minutes; })() : '' %>" onchange="calculateHours()">
             <small class="form-text text-muted">Optional: Leave blank to enter hours directly</small>
           </div>
           <div class="col-md-6 mb-3">
             <label for="endTime" class="form-label">End Time</label>
-            <input type="time" class="form-control" id="endTime" name="endTime" value="<%= timeEntry && timeEntry.endTime ? new Date(timeEntry.endTime).toTimeString().slice(0,5) : '' %>" onchange="calculateHours()">
+            <input type="time" class="form-control" id="endTime" name="endTime" value="<%= timeEntry && timeEntry.endTime ? (() => { const d = new Date(timeEntry.endTime); const hours = d.getHours().toString().padStart(2, '0'); const minutes = d.getMinutes().toString().padStart(2, '0'); return hours + ':' + minutes; })() : '' %>" onchange="calculateHours()">
           </div>
         </div>
 
@@ -67,15 +67,62 @@
           </div>
         </div>
 
-        <div class="row">
-          <div class="col-md-6 mb-3">
-            <label for="jobName" class="form-label">Job/Project Name</label>
-            <input type="text" class="form-control" id="jobName" name="jobName" value="<%= timeEntry ? (timeEntry.jobName || '') : '' %>" placeholder="Optional">
+        <div class="mb-3">
+          <label class="form-label">Jobs/Projects</label>
+          <div id="jobs-container" class="mb-2">
+            <% if (timeEntry && timeEntry.jobs && timeEntry.jobs.length > 0) { %>
+              <% timeEntry.jobs.forEach((job, index) => { %>
+                <div class="job-row card mb-2 p-2" data-index="<%= index %>">
+                  <div class="row align-items-center">
+                    <div class="col-md-5">
+                      <div class="job-search-wrapper" data-index="<%= index %>">
+                        <div class="input-group">
+                          <input type="text" class="form-control job-search-input" placeholder="Search jobs..." autocomplete="off" value="<%= job.jobName || '' %>" data-selected-id="<%= job.job ? job.job.toString() : job.jobId || '' %>">
+                          <input type="hidden" class="job-id-input" name="jobs[<%= index %>][jobId]" value="<%= job.job ? job.job.toString() : job.jobId || '' %>">
+                          <input type="hidden" class="job-name-input" name="jobs[<%= index %>][jobName]" value="<%= job.jobName || '' %>">
+                          <div class="job-dropdown" style="display: none; position: absolute; top: 100%; left: 0; width: 100%; z-index: 10000; background: white; border: 1px solid #ddd; border-radius: 4px; max-height: 200px; overflow-y: auto;"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <input type="text" class="form-control job-id-display" value="<%= job.jobId || (job.job ? job.job.toString() : '') %>" readonly placeholder="Job ID (auto-filled)">
+                    </div>
+                    <div class="col-md-3">
+                      <button type="button" class="btn btn-sm btn-danger remove-job" onclick="removeJobRow(this)">
+                        <i class="bi bi-x"></i> Remove
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              <% }) %>
+            <% } else { %>
+              <div class="job-row card mb-2 p-2" data-index="0">
+                <div class="row align-items-center">
+                  <div class="col-md-5">
+                    <div class="job-search-wrapper" data-index="0">
+                      <div class="input-group">
+                        <input type="text" class="form-control job-search-input" placeholder="Search jobs..." autocomplete="off">
+                        <input type="hidden" class="job-id-input" name="jobs[0][jobId]">
+                        <input type="hidden" class="job-name-input" name="jobs[0][jobName]">
+                        <div class="job-dropdown" style="display: none; position: absolute; top: 100%; left: 0; width: 100%; z-index: 10000; background: white; border: 1px solid #ddd; border-radius: 4px; max-height: 200px; overflow-y: auto;"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <input type="text" class="form-control job-id-display" readonly placeholder="Job ID (auto-filled)">
+                  </div>
+                  <div class="col-md-3">
+                    <button type="button" class="btn btn-sm btn-danger remove-job" onclick="removeJobRow(this)">
+                      <i class="bi bi-x"></i> Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            <% } %>
           </div>
-          <div class="col-md-6 mb-3">
-            <label for="projectOrJobId" class="form-label">Job/Project ID</label>
-            <input type="text" class="form-control" id="projectOrJobId" name="projectOrJobId" value="<%= timeEntry ? (timeEntry.projectOrJobId || '') : '' %>" placeholder="Optional">
-          </div>
+          <button type="button" class="btn btn-sm btn-outline-primary" onclick="addJobRow()">
+            <i class="bi bi-plus"></i> Add Job
+          </button>
         </div>
 
         <div class="mb-3">
@@ -129,7 +176,210 @@
       document.getElementById('overtimeHours').value = '0';
     }
   }
+
+  // Job search functionality
+  let jobs = <%- JSON.stringify(jobs || []) %>;
+  let jobIndex = <%= timeEntry && timeEntry.jobs ? timeEntry.jobs.length : 1 %>;
+
+  function initJobSearch(wrapper, searchInput, jobIdInput, jobNameInput, jobIdDisplay, dropdown) {
+    let selectedJob = null;
+    let isMouseOverDropdown = false;
+    let isMouseOverWrapper = false;
+
+    function filterJobs() {
+      if (!searchInput || !dropdown || !jobs) {
+        return;
+      }
+      
+      const searchTerm = searchInput.value.toLowerCase().trim();
+      
+      // Filter jobs based on search term
+      const filtered = jobs.filter(j => {
+        const customerName = j.customer ? j.customer.name.toLowerCase() : '';
+        const jobId = j._id.toString().toLowerCase();
+        const installDate = j.installDate ? new Date(j.installDate).toLocaleDateString().toLowerCase() : '';
+        const status = (j.status || '').toLowerCase();
+        
+        return searchTerm.length === 0 || 
+               customerName.includes(searchTerm) ||
+               jobId.includes(searchTerm) ||
+               installDate.includes(searchTerm) ||
+               status.includes(searchTerm);
+      });
+      
+      // Show dropdown if there are results
+      if (filtered.length > 0 && searchTerm.length > 0) {
+        dropdown.style.display = 'block';
+        dropdown.innerHTML = filtered.map(j => {
+          const customerName = j.customer ? j.customer.name : 'Unknown';
+          const jobId = j._id.toString();
+          const installDate = j.installDate ? new Date(j.installDate).toLocaleDateString() : 'N/A';
+          const status = j.status || 'N/A';
+          return `<div class="job-option p-2 border-bottom" style="cursor: pointer;" data-id="${j._id}" data-name="${customerName} - Job #${jobId}">
+            <div>
+              <strong>${customerName}</strong>
+              <div class="text-muted small">Job #${jobId} | Install: ${installDate} | Status: ${status}</div>
+            </div>
+          </div>`;
+        }).join('');
+      } else {
+        dropdown.style.display = 'none';
+      }
+    }
+    
+    // Search input event
+    searchInput.addEventListener('input', filterJobs);
+    
+    // Show suggestions on focus
+    searchInput.addEventListener('focus', function() {
+      filterJobs();
+    });
+
+    // Mouse tracking
+    wrapper.addEventListener('mouseenter', function() {
+      isMouseOverWrapper = true;
+    });
+    wrapper.addEventListener('mouseleave', function() {
+      isMouseOverWrapper = false;
+      if (!isMouseOverDropdown) {
+        setTimeout(() => {
+          if (!isMouseOverDropdown && !isMouseOverWrapper) {
+            dropdown.style.display = 'none';
+          }
+        }, 200);
+      }
+    });
+
+    dropdown.addEventListener('mouseenter', function() {
+      isMouseOverDropdown = true;
+    });
+    dropdown.addEventListener('mouseleave', function() {
+      isMouseOverDropdown = false;
+      setTimeout(() => {
+        if (!isMouseOverDropdown && !isMouseOverWrapper) {
+          dropdown.style.display = 'none';
+        }
+      }, 200);
+    });
+    
+    // Handle job selection
+    dropdown.addEventListener('click', function(e) {
+      const option = e.target.closest('.job-option');
+      if (option) {
+        e.stopPropagation();
+        const jobId = option.getAttribute('data-id');
+        const jobName = option.getAttribute('data-name');
+        const job = jobs.find(j => j._id.toString() === jobId);
+        
+        if (job) {
+          selectedJob = job;
+          searchInput.value = jobName;
+          jobIdInput.value = jobId;
+          jobNameInput.value = jobName;
+          jobIdDisplay.value = jobId;
+          dropdown.style.display = 'none';
+        }
+      }
+    });
+
+    // Close dropdown on outside click
+    document.addEventListener('click', function(e) {
+      if (!wrapper.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.style.display = 'none';
+      }
+    });
+  }
+
+  function addJobRow() {
+    const container = document.getElementById('jobs-container');
+    
+    const jobRow = document.createElement('div');
+    jobRow.className = 'job-row card mb-2 p-2';
+    jobRow.setAttribute('data-index', jobIndex);
+    
+    jobRow.innerHTML = 
+      '<div class="row align-items-center">' +
+        '<div class="col-md-5">' +
+          '<div class="job-search-wrapper" data-index="' + jobIndex + '">' +
+            '<div class="input-group" style="position: relative;">' +
+              '<input type="text" class="form-control job-search-input" placeholder="Search jobs..." autocomplete="off">' +
+              '<input type="hidden" class="job-id-input" name="jobs[' + jobIndex + '][jobId]">' +
+              '<input type="hidden" class="job-name-input" name="jobs[' + jobIndex + '][jobName]">' +
+              '<div class="job-dropdown" style="display: none; position: absolute; top: 100%; left: 0; width: 100%; z-index: 10000; background: white; border: 1px solid #ddd; border-radius: 4px; max-height: 200px; overflow-y: auto;"></div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="col-md-4">' +
+          '<input type="text" class="form-control job-id-display" readonly placeholder="Job ID (auto-filled)">' +
+        '</div>' +
+        '<div class="col-md-3">' +
+          '<button type="button" class="btn btn-sm btn-danger remove-job" onclick="removeJobRow(this)">' +
+            '<i class="bi bi-x"></i> Remove' +
+          '</button>' +
+        '</div>' +
+      '</div>';
+    
+    container.appendChild(jobRow);
+    
+    // Initialize search for new row
+    const wrapper = jobRow.querySelector('.job-search-wrapper');
+    const searchInput = jobRow.querySelector('.job-search-input');
+    const jobIdInput = jobRow.querySelector('.job-id-input');
+    const jobNameInput = jobRow.querySelector('.job-name-input');
+    const jobIdDisplay = jobRow.querySelector('.job-id-display');
+    const dropdown = jobRow.querySelector('.job-dropdown');
+    
+    initJobSearch(wrapper, searchInput, jobIdInput, jobNameInput, jobIdDisplay, dropdown);
+    
+    // Focus on search input
+    setTimeout(() => {
+      searchInput.focus();
+    }, 100);
+    
+    jobIndex++;
+  }
+
+  function removeJobRow(button) {
+    const container = document.getElementById('jobs-container');
+    const jobRow = button.closest('.job-row');
+    if (container.children.length > 1) {
+      jobRow.remove();
+    } else {
+      // Clear the last row instead of removing it
+      jobRow.querySelector('.job-search-input').value = '';
+      jobRow.querySelector('.job-id-input').value = '';
+      jobRow.querySelector('.job-name-input').value = '';
+      jobRow.querySelector('.job-id-display').value = '';
+    }
+  }
+
+  // Initialize job search for existing rows
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.job-search-wrapper').forEach(wrapper => {
+      const searchInput = wrapper.querySelector('.job-search-input');
+      const jobIdInput = wrapper.querySelector('.job-id-input');
+      const jobNameInput = wrapper.querySelector('.job-name-input');
+      const jobIdDisplay = wrapper.querySelector('.job-id-display');
+      const dropdown = wrapper.querySelector('.job-dropdown');
+      
+      initJobSearch(wrapper, searchInput, jobIdInput, jobNameInput, jobIdDisplay, dropdown);
+    });
+  });
 </script>
+
+<style>
+  .job-search-wrapper {
+    position: relative;
+  }
+  
+  .job-dropdown {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  
+  .job-option:hover {
+    background-color: #f8f9fa;
+  }
+</style>
 
 <%- include('../partials/footer') %>
 

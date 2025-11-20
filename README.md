@@ -33,6 +33,7 @@ A comprehensive Customer Relationship Management (CRM) system for tracking pool 
     - [17.3. Managing Pay Periods](#173-managing-pay-periods)
     - [17.4. Processing Payroll](#174-processing-payroll)
     - [17.5. Exporting Payroll Data](#175-exporting-payroll-data)
+    - [17.6. Multiple Pay Types & Percentage Payouts](#176-multiple-pay-types--percentage-payouts)
 - [Tax Calculation](#-tax-calculation)
 - [Email Configuration](#-email-configuration)
 - [Technical Details](#-technical-details)
@@ -800,12 +801,18 @@ The Employee Management & Payroll system allows you to track employee informatio
    - **Status**: Active, Inactive, Terminated, or On Leave
    - **Hire Date** (required)
    - **Termination Date** (optional, auto-set if status is "Terminated")
-   - **Pay Type**: Hourly or Salary (required)
-   - **Hourly Rate** (required if Pay Type is Hourly)
-   - **Annual Salary** (required if Pay Type is Salary)
+   - **Pay Type**: Select one or more pay types using checkboxes:
+     - ☑ **Hourly**: Check if employee is paid hourly
+     - ☑ **Salary**: Check if employee is salaried
+     - ☑ **Percentage**: Check if employee receives percentage-based pay
+   - **Hourly Rate** (required if Hourly is checked)
+   - **Annual Salary** (required if Salary is checked)
+   - **Percentage Rate** (required if Percentage is checked, 0-100%)
    - **Overtime Multiplier** (default: 1.5 for time and a half)
    - **Notes** (optional)
 3. Click **"Save Employee"**
+
+**Note**: Employees can have multiple pay types (e.g., both Hourly and Percentage) for flexible compensation structures.
 
 **Viewing Employee Details**:
 
@@ -815,7 +822,11 @@ The Employee Management & Payroll system allows you to track employee informatio
   - This month's summary (total hours, overtime, PTO)
   - Recent time entries
   - Recent payroll records
-  - Quick actions (Add Time Entry, Mark Inactive, Terminate)
+  - Quick actions:
+    - Add Time Entry
+    - Calculate Daily Payout (only visible for employees with percentage pay type)
+    - Mark Inactive
+    - Terminate
 
 **Editing an Employee**:
 
@@ -999,10 +1010,89 @@ The Employee Management & Payroll system allows you to track employee informatio
 
 **Data Models**:
 
-- **Employee**: Stores employee information, pay rates, status
+- **Employee**: Stores employee information, pay rates (can have multiple pay types: hourly, salary, percentage), status
 - **TimeEntry**: Records hours worked, breaks, overtime, type (regular/PTO/sick/holiday)
 - **PayPeriod**: Defines payroll windows (start/end dates, status)
 - **PayrollRecord**: Calculated payroll for each employee per pay period, includes payment tracking
+- **PercentagePayout**: Daily payout records for percentage-based employees, includes revenue, costs, profit, and calculated payouts
+
+#### 17.6. Multiple Pay Types & Percentage Payouts
+
+**Multiple Pay Types**:
+
+Employees can now have multiple pay types simultaneously (e.g., both Hourly and Percentage). This allows for flexible compensation structures.
+
+**Setting Up Multiple Pay Types**:
+
+1. When creating or editing an employee, you'll see checkboxes for pay types:
+   - ☑ Hourly
+   - ☑ Salary
+   - ☑ Percentage
+2. Check all applicable pay types
+3. Fill in the required fields for each selected pay type:
+   - **Hourly**: Enter hourly rate
+   - **Salary**: Enter annual salary
+   - **Percentage**: Enter percentage rate (0-100%)
+4. Save the employee
+
+**Example Use Cases**:
+
+- Employee paid hourly for regular work + percentage of profit on sales
+- Employee with base salary + percentage commission
+- Employee with hourly rate + percentage of job profits
+
+**Daily Percentage Payout Calculator**:
+
+For employees with percentage pay type, you can calculate daily payouts based on profit.
+
+**Calculating a Daily Payout**:
+
+1. Go to an employee's detail page who has percentage pay type
+2. Click **"Calculate Daily Payout"** button in the Quick Actions section
+3. A modal will open with the payout calculator
+4. Fill in the form:
+   - **Date**: Select the date for this payout
+   - **Total Revenue**: Enter the total revenue for the day
+   - **Job Costs**: Enter any job-related costs (optional)
+   - **Materials**: Enter material costs (optional)
+   - **Employees**:
+     - Click **"Add Employee"** to add employees to the payout
+     - Select an employee from the dropdown (shows employees with percentage pay type)
+     - Enter or adjust their percentage rate
+     - The payout amount for each employee is calculated automatically
+5. Review the **Summary** section which shows:
+   - Total Revenue
+   - Total Costs (Job Costs + Materials)
+   - Total Profit (Revenue - Costs)
+   - Total Employee Payout (sum of all employee percentages)
+   - **20% of Profit** (automatically calculated)
+6. Add optional notes
+7. Click **"Save Payout"** to record the payout to the database
+
+**Payout Calculation Formula**:
+
+- **Total Costs** = Job Costs + Materials
+- **Total Profit** = Total Revenue - Total Costs
+- **Employee Payout** = (Total Profit × Employee Percentage) / 100
+- **20% Payout** = (Total Profit × 20) / 100
+
+**Viewing Payout Records**:
+
+- Payout records are stored in the database and can be accessed via the percentage payout system
+- Each payout record includes:
+  - Date
+  - All employees included in the payout
+  - Individual payout amounts
+  - Total revenue, costs, and profit
+  - 20% profit calculation
+  - Notes
+
+**Notes**:
+
+- The 20% of profit is automatically calculated and stored with each payout record
+- You can add multiple employees to a single daily payout
+- Each employee's percentage rate can be adjusted per payout (useful if rates change)
+- All payout records are stored permanently for accounting and record-keeping
 
 **Permissions**:
 
@@ -1020,6 +1110,83 @@ The Employee Management & Payroll system allows you to track employee informatio
 4. **Review Before Processing**: Check time entry summaries on pay period detail page before processing
 5. **Export After Processing**: Export CSV files for accounting after each pay period is processed
 6. **Mark Paid After Payment**: Update payment status immediately after issuing payments
+
+#### 17.6. Multiple Pay Types & Percentage Payouts
+
+**Multiple Pay Types**:
+
+Employees can now have multiple pay types simultaneously (e.g., both Hourly and Percentage). This allows for flexible compensation structures.
+
+**Setting Up Multiple Pay Types**:
+
+1. When creating or editing an employee, you'll see checkboxes for pay types:
+   - ☑ Hourly
+   - ☑ Salary
+   - ☑ Percentage
+2. Check all applicable pay types
+3. Fill in the required fields for each selected pay type:
+   - **Hourly**: Enter hourly rate
+   - **Salary**: Enter annual salary
+   - **Percentage**: Enter percentage rate (0-100%)
+4. Save the employee
+
+**Example Use Cases**:
+
+- Employee paid hourly for regular work + percentage of profit on sales
+- Employee with base salary + percentage commission
+- Employee with hourly rate + percentage of job profits
+
+**Daily Percentage Payout Calculator**:
+
+For employees with percentage pay type, you can calculate daily payouts based on profit.
+
+**Calculating a Daily Payout**:
+
+1. Go to an employee's detail page who has percentage pay type
+2. Click **"Calculate Daily Payout"** button in the Quick Actions section
+3. A modal will open with the payout calculator
+4. Fill in the form:
+   - **Date**: Select the date for this payout
+   - **Total Revenue**: Enter the total revenue for the day
+   - **Job Costs**: Enter any job-related costs (optional)
+   - **Materials**: Enter material costs (optional)
+   - **Employees**:
+     - Click **"Add Employee"** to add employees to the payout
+     - Select an employee from the dropdown (shows employees with percentage pay type)
+     - Enter or adjust their percentage rate
+     - The payout amount for each employee is calculated automatically
+5. Review the **Summary** section which shows:
+   - Total Revenue
+   - Total Costs (Job Costs + Materials)
+   - Total Profit (Revenue - Costs)
+   - Total Employee Payout (sum of all employee percentages)
+   - **20% of Profit** (automatically calculated)
+6. Add optional notes
+7. Click **"Save Payout"** to record the payout to the database
+
+**Payout Calculation Formula**:
+
+- **Total Costs** = Job Costs + Materials
+- **Total Profit** = Total Revenue - Total Costs
+- **Employee Payout** = (Total Profit × Employee Percentage) / 100
+- **20% Payout** = (Total Profit × 20) / 100
+
+**Viewing Payout Records**:
+
+- Access payout records via **"Payroll"** → **"Percentage Payouts"** (if this menu item is added)
+- Filter by date range
+- View details including:
+  - All employees included in the payout
+  - Individual payout amounts
+  - Total calculations
+  - 20% profit calculation
+
+**Notes**:
+
+- The 20% of profit is automatically calculated and stored with each payout record
+- You can add multiple employees to a single daily payout
+- Each employee's percentage rate can be adjusted per payout (useful if rates change)
+- All payout records are stored permanently for accounting and record-keeping
 
 ## 💰 Tax Calculation
 

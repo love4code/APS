@@ -219,6 +219,7 @@ app.use('/employees', require('./routes/employeeRoutes'))
 app.use('/time-entries', require('./routes/timeEntryRoutes'))
 app.use('/pay-periods', require('./routes/payPeriodRoutes'))
 app.use('/payroll-records', require('./routes/payrollRoutes'))
+app.use('/payouts', require('./routes/percentagePayoutRoutes'))
 
 // 404 handler
 app.use((req, res) => {
