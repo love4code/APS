@@ -13,6 +13,7 @@ router.get('/:id', employeeController.detail)
 router.get('/:id/edit', employeeController.editForm)
 router.post('/:id', employeeController.update)
 router.post('/:id/archive', employeeController.archive)
+router.post('/:id/delete', employeeController.delete)
 
 module.exports = router
 

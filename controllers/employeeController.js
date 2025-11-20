@@ -1097,3 +1097,59 @@ exports.archive = async (req, res) => {
     res.redirect(`/employees/${req.params.id}`)
   }
 }
+
+exports.delete = async (req, res) => {
+  try {
+    const employee = await Employee.findById(req.params.id)
+
+    if (!employee) {
+      req.flash('error', 'Employee not found')
+      return res.redirect('/employees')
+    }
+
+    // Check for related records
+    const timeEntryCount = await TimeEntry.countDocuments({
+      employee: employee._id
+    })
+    const payrollRecordCount = await PayrollRecord.countDocuments({
+      employee: employee._id
+    })
+
+    // Check for percentage payouts that include this employee
+    const payoutCount = await PercentagePayout.countDocuments({
+      'employeePayouts.employee': employee._id
+    })
+
+    if (timeEntryCount > 0 || payrollRecordCount > 0 || payoutCount > 0) {
+      const errors = []
+      if (timeEntryCount > 0)
+        errors.push(
+          `${timeEntryCount} time entr${timeEntryCount === 1 ? 'y' : 'ies'}`
+        )
+      if (payrollRecordCount > 0)
+        errors.push(
+          `${payrollRecordCount} payroll record${
+            payrollRecordCount === 1 ? '' : 's'
+          }`
+        )
+      if (payoutCount > 0)
+        errors.push(`${payoutCount} payout${payoutCount === 1 ? '' : 's'}`)
+
+      req.flash(
+        'error',
+        `Cannot delete employee with ${errors.join(
+          ', '
+        )}. Delete related records first or mark employee as terminated instead.`
+      )
+      return res.redirect(`/employees/${employee._id}`)
+    }
+
+    await Employee.findByIdAndDelete(req.params.id)
+    req.flash('success', 'Employee deleted successfully')
+    res.redirect('/employees')
+  } catch (error) {
+    console.error('Error deleting employee:', error)
+    req.flash('error', 'Error deleting employee: ' + error.message)
+    res.redirect(`/employees/${req.params.id}`)
+  }
+}
