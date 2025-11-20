@@ -44,3 +44,4 @@ payPeriodSchema.pre('save', function (next) {
 })
 
 module.exports = mongoose.model('PayPeriod', payPeriodSchema)
+

@@ -1,11 +1,177 @@
+  <!-- Wrap page content in navbar layout -->
+  <div class="navbar-layout">
+    <main class="container-fluid py-4">
+      <!-- Page content will be moved here by script below -->
+      <div id="navbar-content-target"></div>
+    </main>
+  </div>
+  
+  <script>
+    (function() {
+      function organizeContent() {
+        const navbarMain = document.querySelector('.navbar-layout main');
+        const sidebarMain = document.querySelector('.sidebar-layout main');
+        const target = document.getElementById('navbar-content-target');
+        
+        if (!navbarMain || !target) {
+          console.error('Navbar main or target not found');
+          return;
+        }
+        
+        // Content is likely inside sidebar main (rendered between header/footer)
+        // or as siblings of sidebar-layout
+        let pageContent = [];
+        
+        // First, check if content is inside sidebar main
+        if (sidebarMain) {
+          const sidebarChildren = Array.from(sidebarMain.children);
+          // Find content after alerts (page content)
+          const alerts = sidebarMain.querySelectorAll('.alert');
+          const lastAlert = alerts.length > 0 ? alerts[alerts.length - 1] : null;
+          
+          if (lastAlert) {
+            const lastAlertIndex = sidebarChildren.indexOf(lastAlert);
+            pageContent = sidebarChildren.slice(lastAlertIndex + 1);
+          } else {
+            // No alerts, all children are content
+            pageContent = sidebarChildren;
+          }
+        }
+        
+        // Also check for content as siblings of sidebar-layout
+        const sidebarLayout = document.querySelector('.sidebar-layout');
+        if (sidebarLayout && sidebarLayout.parentNode) {
+          const siblings = Array.from(sidebarLayout.parentNode.children);
+          const sidebarIndex = siblings.indexOf(sidebarLayout);
+          const afterSidebar = siblings.slice(sidebarIndex + 1);
+          
+          // Filter out layout divs, scripts, footer
+          const siblingContent = afterSidebar.filter(el => 
+            el.nodeType === 1 &&
+            !el.classList.contains('navbar-layout') &&
+            !el.classList.contains('sidebar-layout') &&
+            el.tagName !== 'SCRIPT' &&
+            el.tagName !== 'FOOTER' &&
+            el.id !== 'navbar-content-target'
+          );
+          
+          pageContent = pageContent.concat(siblingContent);
+        }
+        
+        // Determine which layout should show content based on screen size
+        var isLargeScreen = window.innerWidth > 768;
+        
+        if (isLargeScreen) {
+          // On large screens: Keep content in sidebar main (where it was rendered)
+          // Just ensure alerts are in both places for consistency
+          const sidebarAlerts = sidebarMain ? Array.from(sidebarMain.querySelectorAll('.alert')) : [];
+          const navbarAlerts = Array.from(navbarMain.querySelectorAll('.alert'));
+          
+          // Copy alerts to sidebar if not already there
+          if (sidebarMain && navbarAlerts.length > 0 && sidebarAlerts.length === 0) {
+            navbarAlerts.forEach(alert => {
+              const cloned = alert.cloneNode(true);
+              sidebarMain.insertBefore(cloned, sidebarMain.firstChild);
+            });
+          }
+          
+          // Remove content from navbar main on large screens (keep in sidebar)
+          const navbarContent = Array.from(navbarMain.children).filter(el => 
+            !el.classList.contains('alert') &&
+            el.id !== 'navbar-content-target'
+          );
+          navbarContent.forEach(el => el.remove());
+          
+        } else {
+          // On small screens: Move content from sidebar to navbar main
+          if (pageContent.length > 0) {
+            // Get alerts in navbar main to insert content after them
+            const navbarAlerts = navbarMain.querySelectorAll('.alert');
+            const insertPoint = navbarAlerts.length > 0 ? navbarAlerts[navbarAlerts.length - 1].nextSibling : null;
+            
+            pageContent.forEach(el => {
+              if (el.parentNode && el !== target && el.id !== 'navbar-content-target') {
+                el.parentNode.removeChild(el);
+                // Insert after last alert, or append if no alerts
+                if (insertPoint && insertPoint.parentNode === navbarMain) {
+                  navbarMain.insertBefore(el, insertPoint);
+                } else {
+                  navbarMain.appendChild(el);
+                }
+              }
+            });
+          }
+        }
+        
+        // Remove target if it exists
+        if (target && target.parentNode) {
+          target.parentNode.removeChild(target);
+        }
+        
+        // Handle resize - move content between layouts
+        var resizeTimeout;
+        function handleResize() {
+          clearTimeout(resizeTimeout);
+          resizeTimeout = setTimeout(function() {
+            var isLarge = window.innerWidth > 768;
+            
+            if (isLarge) {
+              // Large screen: ensure content is in sidebar
+              const navbarContent = Array.from(navbarMain.children).filter(el => 
+                !el.classList.contains('alert') &&
+                el.id !== 'navbar-content-target'
+              );
+              
+              if (navbarContent.length > 0 && sidebarMain) {
+                navbarContent.forEach(el => {
+                  el.parentNode.removeChild(el);
+                  sidebarMain.appendChild(el);
+                });
+              }
+            } else {
+              // Small screen: ensure content is in navbar
+              if (sidebarMain) {
+                const sidebarContent = Array.from(sidebarMain.children).filter(el => 
+                  !el.classList.contains('alert')
+                );
+                
+                if (sidebarContent.length > 0) {
+                  const navbarAlerts = navbarMain.querySelectorAll('.alert');
+                  const insertPoint = navbarAlerts.length > 0 ? navbarAlerts[navbarAlerts.length - 1].nextSibling : null;
+                  
+                  sidebarContent.forEach(el => {
+                    el.parentNode.removeChild(el);
+                    if (insertPoint && insertPoint.parentNode === navbarMain) {
+                      navbarMain.insertBefore(el, insertPoint);
+                    } else {
+                      navbarMain.appendChild(el);
+                    }
+                  });
+                }
+              }
+            }
+          }, 100);
+        }
+        window.addEventListener('resize', handleResize);
+      }
+      
+      // Run after DOM is ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', organizeContent);
+      } else {
+        setTimeout(organizeContent, 10);
+      }
+    })();
+  </script>
+  
+  <!-- Close sidebar layout main tag -->
   </main>
-  <% const layoutType = typeof settings !== 'undefined' && settings ? (settings.layoutType || 'navbar') : 'navbar' %>
-  <% if (layoutType === 'sidebar') { %>
-    </div>
-    <!-- Close main-content -->
-    </div>
-    <!-- Close sidebar-wrapper -->
-  <% } %>
+  <!-- Close sidebar main-content div -->
+  </div>
+  <!-- Close sidebar sidebar-wrapper div -->
+  </div>
+  <!-- Close sidebar-layout div -->
+  </div>
 
   <footer class="bg-light py-3 mt-5">
     <div class="container-fluid text-center text-muted">

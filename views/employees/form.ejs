@@ -1,11 +1,11 @@
-<%- include('../partials/header', { title: employee ? 'Edit Employee' : 'New Employee' }) %>
+<%- include('../partials/header', { title: employee && employee._id ? 'Edit Employee' : 'New Employee' }) %>
 
-<div class="container-fluid">
+<div class="container-fluid" style="padding-top: 1rem;">
   <div class="row">
     <div class="col-md-10 mx-auto">
-      <h1 class="h3 mb-4"><%= employee ? 'Edit Employee' : 'New Employee' %></h1>
+      <h1 class="h3 mb-4"><%= employee && employee._id ? 'Edit Employee' : 'New Employee' %></h1>
 
-      <form method="POST" action="<%= employee ? `/employees/${employee._id}` : '/employees' %>">
+      <form id="employeeForm" method="POST" action="<%= employee && employee._id ? `/employees/${employee._id}` : '/employees' %>">
         <div class="row">
           <div class="col-md-6 mb-3">
             <label for="firstName" class="form-label">First Name *</label>
@@ -63,48 +63,66 @@
           <div class="col-md-6 mb-3">
             <label class="form-label">Pay Type *</label>
             <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="payTypeHourly" name="payType" value="hourly" onchange="togglePayFields()" <%= employee && (Array.isArray(employee.payType) ? employee.payType.includes('hourly') : employee.payType === 'hourly') ? 'checked' : '' %>>
+              <input class="form-check-input pay-type-checkbox" type="checkbox" id="payTypeHourly" name="payType" value="hourly" data-pay-type="hourly" <%= employee && (Array.isArray(employee.payType) ? employee.payType.includes('hourly') : employee.payType === 'hourly') ? 'checked' : '' %>>
               <label class="form-check-label" for="payTypeHourly">Hourly</label>
             </div>
             <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="payTypeSalary" name="payType" value="salary" onchange="togglePayFields()" <%= employee && (Array.isArray(employee.payType) ? employee.payType.includes('salary') : employee.payType === 'salary') ? 'checked' : '' %>>
+              <input class="form-check-input pay-type-checkbox" type="checkbox" id="payTypeSalary" name="payType" value="salary" data-pay-type="salary" <%= employee && (Array.isArray(employee.payType) ? employee.payType.includes('salary') : employee.payType === 'salary') ? 'checked' : '' %>>
               <label class="form-check-label" for="payTypeSalary">Salary</label>
             </div>
             <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="payTypePercentage" name="payType" value="percentage" onchange="togglePayFields()" <%= employee && (Array.isArray(employee.payType) ? employee.payType.includes('percentage') : employee.payType === 'percentage') ? 'checked' : '' %>>
+              <input class="form-check-input pay-type-checkbox" type="checkbox" id="payTypePercentage" name="payType" value="percentage" data-pay-type="percentage" <%= employee && (Array.isArray(employee.payType) ? employee.payType.includes('percentage') : employee.payType === 'percentage') ? 'checked' : '' %>>
               <label class="form-check-label" for="payTypePercentage">Percentage</label>
             </div>
           </div>
         </div>
 
-        <div class="row" id="hourlyFields" style="display: <%= employee && (Array.isArray(employee.payType) ? employee.payType.includes('hourly') : employee.payType === 'hourly') ? 'flex' : 'none' %>;">
-          <div class="col-md-6 mb-3">
-            <label for="hourlyRate" class="form-label">Hourly Rate *</label>
-            <div class="input-group">
-              <span class="input-group-text">$</span>
-              <input type="number" class="form-control" id="hourlyRate" name="hourlyRate" step="0.01" min="0" value="<%= employee && employee.hourlyRate ? employee.hourlyRate : '' %>">
+        <div class="row">
+          <div class="col-12">
+            <div class="pay-type-wrapper" style="display: none;">
+              <div class="pay-type-fields" id="hourlyFields">
+                <div class="mb-3" style="width: 100%;">
+                  <label for="hourlyRate" class="form-label">Hourly Rate *</label>
+                  <div class="input-group">
+                    <span class="input-group-text">$</span>
+                    <input type="number" class="form-control" id="hourlyRate" name="hourlyRate" step="0.01" min="0" value="<%= employee && employee.hourlyRate ? employee.hourlyRate : '' %>">
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="row" id="salaryFields" style="display: <%= employee && (Array.isArray(employee.payType) ? employee.payType.includes('salary') : employee.payType === 'salary') ? 'flex' : 'none' %>;">
-          <div class="col-md-6 mb-3">
-            <label for="annualSalary" class="form-label">Annual Salary *</label>
-            <div class="input-group">
-              <span class="input-group-text">$</span>
-              <input type="number" class="form-control" id="annualSalary" name="annualSalary" step="0.01" min="0" value="<%= employee && employee.annualSalary ? employee.annualSalary : '' %>">
+        <div class="row">
+          <div class="col-12">
+            <div class="pay-type-wrapper" style="display: none;">
+              <div class="pay-type-fields" id="salaryFields">
+                <div class="mb-3" style="width: 100%;">
+                  <label for="annualSalary" class="form-label">Annual Salary *</label>
+                  <div class="input-group">
+                    <span class="input-group-text">$</span>
+                    <input type="number" class="form-control" id="annualSalary" name="annualSalary" step="0.01" min="0" value="<%= employee && employee.annualSalary ? employee.annualSalary : '' %>">
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="row" id="percentageFields" style="display: <%= employee && (Array.isArray(employee.payType) ? employee.payType.includes('percentage') : employee.payType === 'percentage') ? 'flex' : 'none' %>;">
-          <div class="col-md-6 mb-3">
-            <label for="percentageRate" class="form-label">Percentage Rate *</label>
-            <div class="input-group">
-              <input type="number" class="form-control" id="percentageRate" name="percentageRate" step="0.01" min="0" max="100" value="<%= employee && employee.percentageRate ? employee.percentageRate : '' %>">
-              <span class="input-group-text">%</span>
+        <div class="row">
+          <div class="col-12">
+            <div class="pay-type-wrapper" style="display: none;">
+              <div class="pay-type-fields" id="percentageFields">
+                <div class="mb-3" style="width: 100%;">
+                  <label for="percentageRate" class="form-label">Percentage Rate *</label>
+                  <div class="input-group">
+                    <input type="number" class="form-control" id="percentageRate" name="percentageRate" step="0.01" min="0" max="100" value="<%= employee && employee.percentageRate ? employee.percentageRate : '' %>" placeholder="Enter percentage (e.g., 10 for 10%)">
+                    <span class="input-group-text">%</span>
+                  </div>
+                  <small class="form-text text-muted">Enter percentage (0-100)</small>
+                </div>
+              </div>
             </div>
-            <small class="form-text text-muted">Enter percentage (0-100)</small>
           </div>
         </div>
 
@@ -123,55 +141,1138 @@
 
         <div class="d-flex gap-2">
           <button type="submit" class="btn btn-primary">Save Employee</button>
-          <a href="<%= employee ? `/employees/${employee._id}` : '/employees' %>" class="btn btn-secondary">Cancel</a>
+          <a href="<%= employee && employee._id ? `/employees/${employee._id}` : '/employees' %>" class="btn btn-secondary">Cancel</a>
         </div>
       </form>
     </div>
   </div>
 </div>
 
-<script>
-  function togglePayFields() {
-    const hourlyCheckbox = document.getElementById('payTypeHourly');
-    const salaryCheckbox = document.getElementById('payTypeSalary');
-    const percentageCheckbox = document.getElementById('payTypePercentage');
-    const hourlyFields = document.getElementById('hourlyFields');
-    const salaryFields = document.getElementById('salaryFields');
-    const percentageFields = document.getElementById('percentageFields');
-    const hourlyRate = document.getElementById('hourlyRate');
-    const annualSalary = document.getElementById('annualSalary');
-    const percentageRate = document.getElementById('percentageRate');
-    
-    // Show/hide fields based on checkboxes
-    if (hourlyCheckbox.checked) {
-      hourlyFields.style.display = 'flex';
-      hourlyRate.required = true;
-    } else {
-      hourlyFields.style.display = 'none';
-      hourlyRate.required = false;
-    }
-    
-    if (salaryCheckbox.checked) {
-      salaryFields.style.display = 'flex';
-      annualSalary.required = true;
-    } else {
-      salaryFields.style.display = 'none';
-      annualSalary.required = false;
-    }
-    
-    if (percentageCheckbox.checked) {
-      percentageFields.style.display = 'flex';
-      percentageRate.required = true;
-    } else {
-      percentageFields.style.display = 'none';
-      percentageRate.required = false;
+<style>
+  /* Ensure form doesn't collapse children - force block display */
+  #employeeForm {
+    min-height: 500px !important;
+    display: block !important;
+    flex-direction: column !important;
+  }
+  
+  /* On desktop, ensure form in main-content is block */
+  @media (min-width: 769px) {
+    .main-content #employeeForm,
+    .main-content form#employeeForm {
+      display: block !important;
+      flex-direction: column !important;
+      min-height: 500px !important;
     }
   }
   
-  // Initialize on page load
+  /* Ensure pay type checkboxes are always clickable */
+  .pay-type-checkbox,
+  input[type="checkbox"][id^="payType"] {
+    pointer-events: auto !important;
+    z-index: 100 !important;
+    position: relative !important;
+    cursor: pointer !important;
+  }
+  
+  /* Ensure checkbox labels are clickable */
+  .form-check-label[for^="payType"] {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    z-index: 99 !important;
+    position: relative !important;
+  }
+  
+  /* Ensure form-check divs don't block clicks */
+  .form-check {
+    pointer-events: auto !important;
+    z-index: 98 !important;
+    position: relative !important;
+  }
+  
+  /* Ensure row and col containers for pay type fields are always visible when needed */
+  .row:has(.pay-type-wrapper.show-pay-fields),
+  .col-12:has(.pay-type-wrapper.show-pay-fields) {
+    display: flex !important;
+    visibility: visible !important;
+    height: auto !important;
+    min-height: auto !important;
+  }
+  
+  /* Hide pay type wrapper by default */
+  .pay-type-wrapper:not(.show-pay-fields) {
+    display: none !important;
+  }
+  
+  /* Explicitly show row when it contains visible pay type wrapper */
+  #employeeForm .row:has(> .col-12 > .pay-type-wrapper.show-pay-fields) {
+    display: flex !important;
+    visibility: visible !important;
+    height: auto !important;
+    min-height: auto !important;
+    flex-wrap: wrap !important;
+  }
+  
+  /* Explicitly show col-12 when it contains visible pay type wrapper */
+  #employeeForm .col-12:has(> .pay-type-wrapper.show-pay-fields) {
+    display: block !important;
+    visibility: visible !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+  }
+  
+  /* Show pay type wrapper when visible */
+  .pay-type-wrapper.show-pay-fields {
+    display: block !important;
+    visibility: visible !important;
+    height: auto !important;
+    min-height: 150px !important;
+    width: 100% !important;
+    overflow: visible !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* Ensure inner pay-type-fields is ALWAYS visible when wrapper is shown */
+  .pay-type-wrapper.show-pay-fields .pay-type-fields,
+  .pay-type-wrapper .pay-type-fields.show-pay-fields {
+    display: block !important;
+    visibility: visible !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 100px !important;
+    opacity: 1 !important;
+  }
+  
+  /* Hide pay type fields by default (inner div) - but not when wrapper is shown */
+  .pay-type-wrapper:not(.show-pay-fields) .pay-type-fields {
+    display: none !important;
+  }
+  
+  /* Also hide if fields don't have show-pay-fields class */
+  .pay-type-fields:not(.show-pay-fields) {
+    display: none !important;
+  }
+  
+  /* Force pay type fields to be visible when shown - use block with explicit height */
+  /* Use higher specificity to override any inline-block rules */
+  #employeeForm div.pay-type-fields.show-pay-fields,
+  #employeeForm #hourlyFields.show-pay-fields,
+  #employeeForm #salaryFields.show-pay-fields,
+  #employeeForm #percentageFields.show-pay-fields,
+  div.pay-type-fields.show-pay-fields,
+  #hourlyFields.show-pay-fields,
+  #salaryFields.show-pay-fields,
+  #percentageFields.show-pay-fields {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    height: 150px !important;
+    min-height: 150px !important;
+    max-height: none !important;
+    width: 100% !important;
+    overflow: visible !important;
+    box-sizing: border-box !important;
+    position: relative !important;
+  }
+  
+  /* Ensure inner content is visible */
+  .pay-type-fields.show-pay-fields .mb-3 {
+    display: block !important;
+    visibility: visible !important;
+    width: 100% !important;
+  }
+  
+  /* Ensure labels and inputs are visible */
+  .pay-type-fields.show-pay-fields label {
+    display: block !important;
+    visibility: visible !important;
+  }
+  
+  .pay-type-fields.show-pay-fields .input-group {
+    display: flex !important;
+    visibility: visible !important;
+  }
+  
+  .pay-type-fields.show-pay-fields input {
+    display: block !important;
+    visibility: visible !important;
+  }
+  
+  /* Also support data-visible attribute with high specificity */
+  div#hourlyFields[data-visible="true"],
+  div#salaryFields[data-visible="true"],
+  div#percentageFields[data-visible="true"],
+  .row#hourlyFields[data-visible="true"],
+  .row#salaryFields[data-visible="true"],
+  .row#percentageFields[data-visible="true"] {
+    display: flex !important;
+    visibility: visible !important;
+  }
+  
+  /* Also check inline styles as fallback */
+  #hourlyFields[style*="display: flex"],
+  #hourlyFields[style*="display:block"],
+  #salaryFields[style*="display: flex"],
+  #salaryFields[style*="display:block"],
+  #percentageFields[style*="display: flex"],
+  #percentageFields[style*="display:block"] {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+  }
+  
+  /* Ensure inner columns are visible with explicit dimensions - for both wrapper and direct fields */
+  .pay-type-wrapper.show-pay-fields .pay-type-fields .mb-3,
+  .pay-type-fields.show-pay-fields .mb-3 {
+    display: block !important;
+    visibility: visible !important;
+    width: 100% !important;
+    min-height: 80px !important;
+    height: auto !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* Ensure labels are visible */
+  .pay-type-wrapper.show-pay-fields label,
+  .pay-type-fields.show-pay-fields label {
+    display: block !important;
+    visibility: visible !important;
+    height: auto !important;
+    min-height: 20px !important;
+    line-height: 1.5 !important;
+  }
+  
+  /* Ensure input groups and inputs are visible with explicit height */
+  .pay-type-wrapper.show-pay-fields .input-group,
+  .pay-type-fields.show-pay-fields .input-group {
+    display: flex !important;
+    visibility: visible !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    align-items: stretch !important;
+  }
+  
+  .pay-type-wrapper.show-pay-fields input,
+  .pay-type-fields.show-pay-fields input {
+    display: block !important;
+    visibility: visible !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    flex: 1 !important;
+  }
+  
+  .pay-type-wrapper.show-pay-fields .input-group-text,
+  .pay-type-fields.show-pay-fields .input-group-text {
+    display: flex !important;
+    visibility: visible !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    align-items: center !important;
+  }
+  
+  .pay-type-wrapper.show-pay-fields small,
+  .pay-type-fields.show-pay-fields small {
+    display: block !important;
+    visibility: visible !important;
+  }
+  
+  /* Media query to ensure it works on all screen sizes - especially desktop */
+  @media (min-width: 769px) {
+    /* Fix main-content flex container on desktop */
+    .main-content {
+      overflow-y: auto !important;
+      overflow-x: visible !important;
+    }
+    
+    .main-content #employeeForm {
+      display: block !important;
+      min-height: 500px !important;
+      flex-shrink: 0 !important;
+      overflow: visible !important;
+    }
+    
+    /* Ensure main-content doesn't hide children */
+    .main-content .container-fluid {
+      overflow: visible !important;
+      min-height: 500px !important;
+    }
+    
+    /* Ensure form children are not collapsed by flex */
+    .main-content #employeeForm > * {
+      flex-shrink: 0 !important;
+      min-height: auto !important;
+    }
+    
+    /* CRITICAL: Force pay type wrappers to be visible on desktop */
+    .main-content .pay-type-wrapper.show-pay-fields,
+    #employeeForm .pay-type-wrapper.show-pay-fields,
+    .pay-type-wrapper.show-pay-fields {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      height: auto !important;
+      min-height: 150px !important;
+      max-height: none !important;
+      width: 100% !important;
+      overflow: visible !important;
+      box-sizing: border-box !important;
+      position: relative !important;
+      z-index: 10 !important;
+      flex-shrink: 0 !important;
+      flex-grow: 0 !important;
+      margin: 10px 0 !important;
+      padding: 10px !important;
+    }
+    
+    /* CRITICAL: Force inner pay-type-fields to be visible on desktop */
+    .main-content .pay-type-wrapper.show-pay-fields .pay-type-fields,
+    #employeeForm .pay-type-wrapper.show-pay-fields .pay-type-fields,
+    .pay-type-wrapper.show-pay-fields .pay-type-fields {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      height: auto !important;
+      min-height: 100px !important;
+      max-height: none !important;
+      width: 100% !important;
+      overflow: visible !important;
+      box-sizing: border-box !important;
+      position: relative !important;
+      flex-shrink: 0 !important;
+    }
+    
+    /* CRITICAL: Force inner content (.mb-3) to be visible */
+    .main-content .pay-type-wrapper.show-pay-fields .mb-3,
+    #employeeForm .pay-type-wrapper.show-pay-fields .mb-3 {
+      display: block !important;
+      visibility: visible !important;
+      width: 100% !important;
+      height: auto !important;
+      min-height: 80px !important;
+      margin-bottom: 1rem !important;
+    }
+    
+    /* CRITICAL: Force labels and inputs to be visible */
+    .main-content .pay-type-wrapper.show-pay-fields label,
+    #employeeForm .pay-type-wrapper.show-pay-fields label {
+      display: block !important;
+      visibility: visible !important;
+      height: auto !important;
+      min-height: 20px !important;
+    }
+    
+    .main-content .pay-type-wrapper.show-pay-fields .input-group,
+    #employeeForm .pay-type-wrapper.show-pay-fields .input-group {
+      display: flex !important;
+      visibility: visible !important;
+      height: 38px !important;
+      min-height: 38px !important;
+      width: 100% !important;
+    }
+    
+    .main-content .pay-type-wrapper.show-pay-fields input,
+    #employeeForm .pay-type-wrapper.show-pay-fields input {
+      display: block !important;
+      visibility: visible !important;
+      height: 38px !important;
+      min-height: 38px !important;
+      width: 100% !important;
+      flex: 1 !important;
+    }
+    
+    /* CRITICAL: Ensure main-content doesn't clip pay type fields */
+    .main-content {
+      overflow-y: auto !important;
+      overflow-x: visible !important;
+      clip: auto !important;
+      clip-path: none !important;
+    }
+    
+    /* CRITICAL: Ensure form doesn't clip children */
+    .main-content #employeeForm {
+      overflow: visible !important;
+      clip: auto !important;
+      clip-path: none !important;
+    }
+    
+    /* CRITICAL: Ensure container-fluid doesn't clip */
+    .main-content .container-fluid {
+      overflow: visible !important;
+      clip: auto !important;
+      clip-path: none !important;
+    }
+    
+    /* Ensure pay type wrappers are visible on desktop - use very high specificity */
+    body .main-content #employeeForm .pay-type-wrapper.show-pay-fields,
+    body #employeeForm .pay-type-wrapper.show-pay-fields,
+    .main-content #employeeForm .pay-type-wrapper.show-pay-fields,
+    #employeeForm .pay-type-wrapper.show-pay-fields {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      height: auto !important;
+      min-height: 150px !important;
+      width: 100% !important;
+      overflow: visible !important;
+      box-sizing: border-box !important;
+      position: relative !important;
+      flex-shrink: 0 !important;
+      z-index: 10 !important;
+      background: transparent !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    
+    /* Ensure inner pay fields are visible on desktop - use very high specificity */
+    body .main-content #employeeForm .pay-type-wrapper.show-pay-fields .pay-type-fields,
+    body #employeeForm .pay-type-wrapper.show-pay-fields .pay-type-fields,
+    .main-content #employeeForm .pay-type-wrapper.show-pay-fields .pay-type-fields,
+    #employeeForm .pay-type-wrapper.show-pay-fields .pay-type-fields,
+    body .main-content #employeeForm .pay-type-fields.show-pay-fields,
+    body #employeeForm .pay-type-fields.show-pay-fields,
+    .main-content #employeeForm .pay-type-fields.show-pay-fields,
+    #employeeForm .pay-type-fields.show-pay-fields {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      width: 100% !important;
+      height: auto !important;
+      min-height: 100px !important;
+      position: relative !important;
+      z-index: 10 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    
+    /* Ensure all children are visible on desktop */
+    body .main-content #employeeForm .pay-type-wrapper.show-pay-fields *,
+    body #employeeForm .pay-type-wrapper.show-pay-fields *,
+    .main-content #employeeForm .pay-type-wrapper.show-pay-fields *,
+    #employeeForm .pay-type-wrapper.show-pay-fields * {
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+    
+    /* Ensure form doesn't collapse on desktop */
+    #employeeForm {
+      min-height: 500px !important;
+      display: block !important;
+    }
+    
+    /* Ensure container-fluid inside main-content doesn't collapse */
+    .main-content .container-fluid {
+      min-height: 500px !important;
+      display: block !important;
+    }
+  }
+  
+  /* Override any inline display: none or inline-block !important */
+  div#hourlyFields[data-visible="true"][style*="display"],
+  div#salaryFields[data-visible="true"][style*="display"],
+  div#percentageFields[data-visible="true"][style*="display"],
+  .row#hourlyFields[data-visible="true"][style*="display"],
+  .row#salaryFields[data-visible="true"][style*="display"],
+  .row#percentageFields[data-visible="true"][style*="display"] {
+    display: flex !important;
+  }
+</style>
+
+<script>
+// Script is running
+
+// Simple function to show/hide pay fields - but don't hide if updatePayField just showed them
+var lastUpdateTime = {};
+function showPayFieldsSimple() {
+  var hourly = document.getElementById('payTypeHourly');
+  var salary = document.getElementById('payTypeSalary');
+  var percentage = document.getElementById('payTypePercentage');
+  var hourlyFields = document.getElementById('hourlyFields');
+  var salaryFields = document.getElementById('salaryFields');
+  var percentageFields = document.getElementById('percentageFields');
+  
+  // Find wrapper divs (parents of the fields)
+  var hourlyWrapper = hourlyFields ? hourlyFields.parentElement : null;
+  var salaryWrapper = salaryFields ? salaryFields.parentElement : null;
+  var percentageWrapper = percentageFields ? percentageFields.parentElement : null;
+  
+  if (!hourly || !salary || !percentage) {
+    console.error('Checkboxes not found!');
+    return;
+  }
+  
+  if (!hourlyFields || !salaryFields || !percentageFields) {
+    console.error('Field containers not found!');
+    return;
+  }
+  
+  // Force re-read of checked state
+  var hourlyChecked = hourly.checked;
+  var salaryChecked = salary.checked;
+  var percentageChecked = percentage.checked;
+  
+  // Only update if checkbox state actually changed or if field is currently hidden
+  var now = Date.now();
+  var timeSinceHourlyUpdate = now - (lastUpdateTime.hourly || 0);
+  var timeSinceSalaryUpdate = now - (lastUpdateTime.salary || 0);
+  var timeSincePercentageUpdate = now - (lastUpdateTime.percentage || 0);
+  
+  // Show/hide using wrapper divs
+  if (hourlyChecked) {
+    if (hourlyWrapper && hourlyWrapper.classList.contains('pay-type-wrapper')) {
+      hourlyWrapper.removeAttribute('style');
+      hourlyWrapper.style.display = 'block';
+      hourlyWrapper.style.visibility = 'visible';
+      hourlyWrapper.style.width = '100%';
+      hourlyWrapper.style.minHeight = '150px';
+      hourlyWrapper.classList.add('show-pay-fields');
+      hourlyWrapper.setAttribute('data-visible', 'true');
+      void hourlyWrapper.offsetHeight;
+    }
+    hourlyFields.classList.add('show-pay-fields');
+    hourlyFields.setAttribute('data-visible', 'true');
+    hourlyFields.removeAttribute('style');
+    hourlyFields.style.display = 'block';
+    hourlyFields.style.visibility = 'visible';
+    hourlyFields.style.width = '100%';
+    void hourlyFields.offsetHeight;
+  } else {
+    if (hourlyWrapper && hourlyWrapper.classList.contains('pay-type-wrapper')) {
+      hourlyWrapper.style.display = 'none';
+      hourlyWrapper.classList.remove('show-pay-fields');
+      hourlyWrapper.removeAttribute('data-visible');
+    }
+    hourlyFields.classList.remove('show-pay-fields');
+    hourlyFields.removeAttribute('data-visible');
+  }
+  
+  if (salaryChecked) {
+    if (salaryWrapper && salaryWrapper.classList.contains('pay-type-wrapper')) {
+      salaryWrapper.removeAttribute('style');
+      salaryWrapper.style.display = 'block';
+      salaryWrapper.style.visibility = 'visible';
+      salaryWrapper.style.width = '100%';
+      salaryWrapper.style.minHeight = '150px';
+      salaryWrapper.classList.add('show-pay-fields');
+      salaryWrapper.setAttribute('data-visible', 'true');
+      void salaryWrapper.offsetHeight;
+    }
+    salaryFields.classList.add('show-pay-fields');
+    salaryFields.setAttribute('data-visible', 'true');
+    salaryFields.removeAttribute('style');
+    salaryFields.style.display = 'block';
+    salaryFields.style.visibility = 'visible';
+    salaryFields.style.width = '100%';
+    void salaryFields.offsetHeight;
+  } else {
+    if (salaryWrapper && salaryWrapper.classList.contains('pay-type-wrapper')) {
+      salaryWrapper.style.display = 'none';
+      salaryWrapper.classList.remove('show-pay-fields');
+      salaryWrapper.removeAttribute('data-visible');
+    }
+    salaryFields.classList.remove('show-pay-fields');
+    salaryFields.removeAttribute('data-visible');
+  }
+  
+  if (percentageChecked) {
+    if (percentageWrapper && percentageWrapper.classList.contains('pay-type-wrapper')) {
+      percentageWrapper.removeAttribute('style');
+      percentageWrapper.style.display = 'block';
+      percentageWrapper.style.visibility = 'visible';
+      percentageWrapper.style.width = '100%';
+      percentageWrapper.style.minHeight = '150px';
+      percentageWrapper.classList.add('show-pay-fields');
+      percentageWrapper.setAttribute('data-visible', 'true');
+      void percentageWrapper.offsetHeight;
+    }
+    percentageFields.classList.add('show-pay-fields');
+    percentageFields.setAttribute('data-visible', 'true');
+    percentageFields.removeAttribute('style');
+    percentageFields.style.display = 'block';
+    percentageFields.style.visibility = 'visible';
+    percentageFields.style.width = '100%';
+    // Force a reflow
+    var target = percentageWrapper || percentageFields;
+    void target.offsetHeight;
+    void percentageFields.offsetHeight;
+  } else {
+    if (percentageWrapper && percentageWrapper.classList.contains('pay-type-wrapper')) {
+      percentageWrapper.style.display = 'none';
+      percentageWrapper.classList.remove('show-pay-fields');
+      percentageWrapper.removeAttribute('data-visible');
+    }
+    percentageFields.classList.remove('show-pay-fields');
+    percentageFields.removeAttribute('data-visible');
+  }
+}
+
+// Make it global
+window.showPayFieldsSimple = showPayFieldsSimple;
+
+// Function to handle pay type checkbox changes
+function handlePayTypeChange(checkboxElement) {
+  if (!checkboxElement) {
+    console.error('handlePayTypeChange: checkboxElement is null/undefined');
+    return;
+  }
+  
+  var checkboxId = checkboxElement.id;
+  var isChecked = checkboxElement.checked;
+  
+  try {
+    // Immediately update the field
+    updatePayField(checkboxId, isChecked);
+  } catch (error) {
+    console.error('Error in handlePayTypeChange:', error);
+    console.error('Error stack:', error.stack);
+  }
+}
+
+// Use event delegation - listen for change events on document
+// Change event fires after checkbox state is updated, so this is reliable
+document.addEventListener('change', function(e) {
+  if (e.target && (
+    e.target.id === 'payTypeHourly' || 
+    e.target.id === 'payTypeSalary' || 
+    e.target.id === 'payTypePercentage' ||
+    (e.target.classList && e.target.classList.contains('pay-type-checkbox'))
+  )) {
+    handlePayTypeChange(e.target);
+  }
+}, true); // Use capture phase to catch early
+
+// Store handler functions to allow removal if needed
+var checkboxHandlers = {
+  hourly: { change: null, click: null },
+  salary: { change: null, click: null },
+  percentage: { change: null, click: null }
+};
+
+// Also attach direct event listeners to checkboxes for better reliability
+var listenersAttached = false;
+function attachCheckboxListeners() {
+  // Only attach once
+  if (listenersAttached) {
+    return;
+  }
+  
+  var hourlyCheckbox = document.getElementById('payTypeHourly');
+  var salaryCheckbox = document.getElementById('payTypeSalary');
+  var percentageCheckbox = document.getElementById('payTypePercentage');
+  
+  if (hourlyCheckbox) {
+    checkboxHandlers.hourly.change = function() {
+      handlePayTypeChange(this);
+    };
+    hourlyCheckbox.addEventListener('change', checkboxHandlers.hourly.change);
+  }
+  
+  if (salaryCheckbox) {
+    checkboxHandlers.salary.change = function() {
+      handlePayTypeChange(this);
+    };
+    salaryCheckbox.addEventListener('change', checkboxHandlers.salary.change);
+  }
+  
+  if (percentageCheckbox) {
+    checkboxHandlers.percentage.change = function() {
+      handlePayTypeChange(this);
+    };
+    percentageCheckbox.addEventListener('change', checkboxHandlers.percentage.change);
+  }
+  
+  listenersAttached = true;
+}
+
+// Attach listeners after DOM is ready
+if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', function() {
-    togglePayFields();
+    setTimeout(attachCheckboxListeners, 50);
   });
+} else {
+  setTimeout(attachCheckboxListeners, 50);
+}
+
+// Also attach on window load as backup
+window.addEventListener('load', function() {
+  setTimeout(attachCheckboxListeners, 100);
+});
+
+// SIMPLE function to update a specific pay field based on checkbox ID
+function updatePayField(checkboxId, isChecked) {
+  try {
+    // Find the wrapper and fields elements
+    var wrapper = null;
+    var fields = null;
+    
+    if (checkboxId === 'payTypeHourly') {
+      fields = document.getElementById('hourlyFields');
+      // Find the pay-type-wrapper which is now the parent of fields
+      wrapper = fields ? fields.parentElement : null;
+      // If parent is not the wrapper, traverse up
+      if (wrapper && !wrapper.classList.contains('pay-type-wrapper')) {
+        wrapper = wrapper.closest('.pay-type-wrapper');
+      }
+    } else if (checkboxId === 'payTypeSalary') {
+      fields = document.getElementById('salaryFields');
+      wrapper = fields ? fields.parentElement : null;
+      if (wrapper && !wrapper.classList.contains('pay-type-wrapper')) {
+        wrapper = wrapper.closest('.pay-type-wrapper');
+      }
+    } else if (checkboxId === 'payTypePercentage') {
+      fields = document.getElementById('percentageFields');
+      wrapper = fields ? fields.parentElement : null;
+      if (wrapper && !wrapper.classList.contains('pay-type-wrapper')) {
+        wrapper = wrapper.closest('.pay-type-wrapper');
+      }
+    }
+    
+    if (!wrapper || !fields) {
+      console.error('Elements not found for:', checkboxId, 'wrapper:', wrapper, 'fields:', fields);
+      return;
+    }
+  } catch (error) {
+    console.error('Error finding elements:', error);
+    return;
+  }
+  
+  if (isChecked) {
+    
+    // Show: First ensure wrapper is visible by removing inline display:none and setting styles
+    wrapper.style.removeProperty('display');
+    wrapper.classList.add('show-pay-fields');
+    wrapper.setAttribute('data-visible', 'true');
+    
+    // Ensure fields are visible
+    fields.style.removeProperty('display');
+    fields.classList.add('show-pay-fields');
+    fields.setAttribute('data-visible', 'true');
+    
+    // Check all parent elements and ensure they allow expansion
+    var current = wrapper;
+    var level = 0;
+    var rowParent = null;
+    var colParent = null;
+    
+    while (current && current !== document.body && level < 10) {
+      var currentStyles = window.getComputedStyle(current);
+      
+      // Check if parent is hidden
+      if (currentStyles.display === 'none' || currentStyles.visibility === 'hidden') {
+        // Determine appropriate display value based on element type and classes
+        var displayValue = 'block';
+        if (current.tagName === 'DIV') {
+          if (current.classList && current.classList.contains('row')) {
+            displayValue = 'flex';
+          } else if (current.classList && (current.classList.contains('col') || current.classList.contains('col-12'))) {
+            displayValue = 'block';
+          } else if (current.classList && current.classList.contains('sidebar-wrapper')) {
+            displayValue = 'flex';
+          }
+        } else if (current.tagName === 'MAIN') {
+          displayValue = 'block';
+        } else if (current.tagName === 'FORM') {
+          displayValue = 'block';
+        }
+        
+        current.style.setProperty('display', displayValue, 'important');
+        current.style.setProperty('visibility', 'visible', 'important');
+        current.style.setProperty('opacity', '1', 'important');
+      }
+      
+      // Track row and col parents
+      if (current.classList && current.classList.contains('row')) {
+        rowParent = current;
+      }
+      if (current.classList && current.classList.contains('col-12')) {
+        colParent = current;
+      }
+      
+      // If parent has display: flex or grid, ensure it allows children to expand
+      if (currentStyles.display === 'flex' || currentStyles.display === 'grid') {
+        current.style.setProperty('align-items', 'flex-start', 'important');
+        current.style.setProperty('align-content', 'flex-start', 'important');
+        current.style.setProperty('flex-wrap', 'wrap', 'important');
+      }
+      
+      // Ensure parent isn't collapsing children
+      if (parseInt(currentStyles.height) === 0 && currentStyles.height !== 'auto') {
+        current.style.setProperty('min-height', 'auto', 'important');
+        current.style.setProperty('height', 'auto', 'important');
+      }
+      
+      // Ensure parent has proper overflow
+      if (currentStyles.overflow === 'hidden' && current !== mainContent) {
+        current.style.setProperty('overflow', 'visible', 'important');
+      }
+      
+      current = current.parentElement;
+      level++;
+    }
+    
+    // Explicitly ensure row and col parents are visible
+    if (rowParent) {
+      rowParent.style.setProperty('display', 'flex', 'important');
+      rowParent.style.setProperty('visibility', 'visible', 'important');
+      rowParent.style.setProperty('flex-wrap', 'wrap', 'important');
+      rowParent.style.setProperty('min-height', 'auto', 'important');
+      rowParent.style.setProperty('height', 'auto', 'important');
+    }
+    
+    if (colParent) {
+      colParent.style.setProperty('display', 'block', 'important');
+      colParent.style.setProperty('visibility', 'visible', 'important');
+      colParent.style.setProperty('width', '100%', 'important');
+      colParent.style.setProperty('min-height', 'auto', 'important');
+      colParent.style.setProperty('height', 'auto', 'important');
+      colParent.style.setProperty('padding', '0', 'important');
+    }
+    
+    // Set wrapper styles with !important to override any CSS
+    // Use explicit height instead of min-height to force it
+    wrapper.style.setProperty('display', 'block', 'important');
+    wrapper.style.setProperty('visibility', 'visible', 'important');
+    wrapper.style.setProperty('opacity', '1', 'important');
+    wrapper.style.setProperty('width', '100%', 'important');
+    wrapper.style.setProperty('height', '150px', 'important'); // Explicit height
+    wrapper.style.setProperty('min-height', '150px', 'important');
+    wrapper.style.setProperty('max-height', 'none', 'important');
+    wrapper.style.setProperty('box-sizing', 'border-box', 'important');
+    wrapper.style.setProperty('overflow', 'visible', 'important');
+    wrapper.style.setProperty('padding', '1rem 0', 'important'); // Add padding to force height
+    wrapper.style.setProperty('margin', '0.5rem 0', 'important');
+    wrapper.style.setProperty('position', 'relative', 'important');
+    wrapper.style.setProperty('flex-shrink', '0', 'important');
+    wrapper.style.setProperty('flex-grow', '0', 'important');
+    
+    // Set fields styles with !important
+    fields.style.setProperty('display', 'block', 'important');
+    fields.style.setProperty('visibility', 'visible', 'important');
+    fields.style.setProperty('opacity', '1', 'important');
+    fields.style.setProperty('width', '100%', 'important');
+    fields.style.setProperty('height', '120px', 'important'); // Explicit height
+    fields.style.setProperty('min-height', '120px', 'important');
+    fields.style.setProperty('max-height', 'none', 'important');
+    fields.style.setProperty('box-sizing', 'border-box', 'important');
+    fields.style.setProperty('overflow', 'visible', 'important');
+    fields.style.setProperty('position', 'relative', 'important');
+    fields.style.setProperty('flex-shrink', '0', 'important');
+    
+    // Ensure the inner content is visible with explicit heights
+    var innerContent = fields.querySelector('.mb-3');
+    if (innerContent) {
+      innerContent.style.setProperty('display', 'block', 'important');
+      innerContent.style.setProperty('visibility', 'visible', 'important');
+      innerContent.style.setProperty('width', '100%', 'important');
+      innerContent.style.setProperty('height', 'auto', 'important');
+      innerContent.style.setProperty('min-height', '80px', 'important');
+      innerContent.style.setProperty('margin-bottom', '1rem', 'important');
+      
+      // Ensure label is visible
+      var label = innerContent.querySelector('label');
+      if (label) {
+        label.style.setProperty('display', 'block', 'important');
+        label.style.setProperty('visibility', 'visible', 'important');
+        label.style.setProperty('height', 'auto', 'important');
+        label.style.setProperty('min-height', '24px', 'important');
+        label.style.setProperty('margin-bottom', '0.5rem', 'important');
+      }
+      
+      // Ensure input group is visible
+      var inputGroup = innerContent.querySelector('.input-group');
+      if (inputGroup) {
+        inputGroup.style.setProperty('display', 'flex', 'important');
+        inputGroup.style.setProperty('visibility', 'visible', 'important');
+        inputGroup.style.setProperty('height', '38px', 'important');
+        inputGroup.style.setProperty('min-height', '38px', 'important');
+        inputGroup.style.setProperty('width', '100%', 'important');
+      }
+    }
+    
+    // Ensure parent containers allow expansion
+    var form = wrapper.closest('form');
+    if (form) {
+      form.style.setProperty('display', 'block', 'important');
+      form.style.setProperty('flex-direction', 'column', 'important');
+      form.style.setProperty('min-height', '500px', 'important');
+      form.style.setProperty('align-items', 'stretch', 'important');
+    }
+    
+    var row = wrapper.closest('.row');
+    if (row) {
+      // Force row to be visible
+      row.style.setProperty('display', 'flex', 'important');
+      row.style.setProperty('visibility', 'visible', 'important');
+      row.style.setProperty('flex-wrap', 'wrap', 'important');
+      row.style.setProperty('min-height', 'auto', 'important');
+      row.style.setProperty('height', 'auto', 'important');
+      row.style.setProperty('align-items', 'flex-start', 'important');
+      row.style.setProperty('overflow', 'visible', 'important');
+      
+      // Force reflow on row
+      void row.offsetHeight;
+    }
+    
+    var col = wrapper.closest('.col-12');
+    if (col) {
+      // Force col to be visible
+      col.style.setProperty('display', 'block', 'important');
+      col.style.setProperty('visibility', 'visible', 'important');
+      col.style.setProperty('width', '100%', 'important');
+      col.style.setProperty('min-height', 'auto', 'important');
+      col.style.setProperty('height', 'auto', 'important');
+      col.style.setProperty('overflow', 'visible', 'important');
+      
+      // Force reflow on col
+      void col.offsetHeight;
+    }
+    
+    var containerFluid = wrapper.closest('.container-fluid');
+    if (containerFluid) {
+      containerFluid.style.setProperty('display', 'block', 'important');
+      containerFluid.style.setProperty('overflow', 'visible', 'important');
+    }
+    
+    var mainContent = wrapper.closest('.main-content');
+    if (mainContent) {
+      mainContent.style.setProperty('overflow-y', 'auto', 'important');
+      mainContent.style.setProperty('overflow-x', 'visible', 'important');
+    }
+    
+    // Force multiple reflows to ensure browser applies all styles
+    void wrapper.offsetHeight;
+    void fields.offsetHeight;
+    void wrapper.offsetHeight;
+    void fields.offsetHeight;
+    
+    // Force a layout recalculation by reading offsetHeight multiple times
+    void wrapper.offsetHeight;
+    void fields.offsetHeight;
+    
+    // Check if parent row or col is hidden and fix it
+    var rowEl = wrapper.closest('.row');
+    var colEl = wrapper.closest('.col-12');
+    
+    if (rowEl) {
+      var rowStyles = window.getComputedStyle(rowEl);
+      if (rowStyles.display === 'none') {
+        rowEl.style.setProperty('display', 'flex', 'important');
+      }
+    }
+    
+    if (colEl) {
+      var colStyles = window.getComputedStyle(colEl);
+      if (colStyles.display === 'none') {
+        colEl.style.setProperty('display', 'block', 'important');
+      }
+    }
+    
+    // Force another reflow after fixing parents
+    void wrapper.offsetHeight;
+    void fields.offsetHeight;
+    void rowEl ? rowEl.offsetHeight : null;
+    void colEl ? colEl.offsetHeight : null;
+    
+    // Use requestAnimationFrame to check after browser has rendered
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        // Check if elements are visible after rendering
+        if (wrapper.offsetHeight === 0 || fields.offsetHeight === 0) {
+          // Re-check parents
+          if (rowEl) {
+            var rowStylesCheck = window.getComputedStyle(rowEl);
+            if (rowStylesCheck.display === 'none' || rowStylesCheck.visibility === 'hidden') {
+              rowEl.style.setProperty('display', 'flex', 'important');
+              rowEl.style.setProperty('visibility', 'visible', 'important');
+            }
+          }
+          
+          if (colEl) {
+            var colStylesCheck = window.getComputedStyle(colEl);
+            if (colStylesCheck.display === 'none' || colStylesCheck.visibility === 'hidden') {
+              colEl.style.setProperty('display', 'block', 'important');
+              colEl.style.setProperty('visibility', 'visible', 'important');
+            }
+          }
+          
+          // Try setting explicit pixel height based on content
+          var labelHeight = innerContent ? (innerContent.querySelector('label') ? 24 : 0) : 0;
+          var inputHeight = innerContent ? (innerContent.querySelector('.input-group') ? 38 : 0) : 0;
+          var smallHeight = innerContent ? (innerContent.querySelector('small') ? 20 : 0) : 0;
+          var marginBottom = 16; // 1rem margin
+          var totalHeight = labelHeight + inputHeight + smallHeight + marginBottom + 20; // extra padding
+          
+          // Only set if we have content
+          if (totalHeight > 0) {
+            wrapper.style.setProperty('height', (totalHeight + 40) + 'px', 'important');
+            fields.style.setProperty('height', totalHeight + 'px', 'important');
+          } else {
+            // Fallback: just ensure minimum heights
+            wrapper.style.setProperty('height', '150px', 'important');
+            fields.style.setProperty('height', '120px', 'important');
+          }
+          
+          // Force reflow again
+          void wrapper.offsetHeight;
+          void fields.offsetHeight;
+        }
+      });
+    });
+    
+    // Final check: On large screens, ensure fields are definitely visible
+    if (window.innerWidth >= 769) {
+      // Double-check wrapper is visible
+      var finalWrapperStyles = window.getComputedStyle(wrapper);
+      if (finalWrapperStyles.display === 'none' || wrapper.offsetHeight === 0) {
+        wrapper.style.setProperty('display', 'block', 'important');
+        wrapper.style.setProperty('visibility', 'visible', 'important');
+        wrapper.style.setProperty('opacity', '1', 'important');
+        wrapper.style.setProperty('height', '150px', 'important');
+      }
+      
+      // Double-check fields are visible
+      var finalFieldsStyles = window.getComputedStyle(fields);
+      if (finalFieldsStyles.display === 'none' || fields.offsetHeight === 0) {
+        fields.style.setProperty('display', 'block', 'important');
+        fields.style.setProperty('visibility', 'visible', 'important');
+        fields.style.setProperty('opacity', '1', 'important');
+        fields.style.setProperty('height', '120px', 'important');
+      }
+      
+      // Final reflow
+      void wrapper.offsetHeight;
+      void fields.offsetHeight;
+    }
+  } else {
+    // Hide: remove class, set display none with !important
+    wrapper.classList.remove('show-pay-fields');
+    wrapper.removeAttribute('data-visible');
+    wrapper.style.setProperty('display', 'none', 'important');
+    
+    fields.classList.remove('show-pay-fields');
+    fields.removeAttribute('data-visible');
+    fields.style.setProperty('display', 'none', 'important');
+    
+    // Force reflow to ensure hiding takes effect
+    void wrapper.offsetHeight;
+    void fields.offsetHeight;
+  }
+}
+
+// Make it global
+window.updatePayField = updatePayField;
+
+// Initialize on load - check all checkboxes and update fields accordingly
+// Only run once to avoid conflicts
+var payFieldsInitialized = false;
+function initializePayFields() {
+  if (payFieldsInitialized) {
+    return;
+  }
+  payFieldsInitialized = true;
+  
+  var hourlyCheckbox = document.getElementById('payTypeHourly');
+  var salaryCheckbox = document.getElementById('payTypeSalary');
+  var percentageCheckbox = document.getElementById('payTypePercentage');
+  
+  // Use requestAnimationFrame to ensure DOM is fully ready
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      if (hourlyCheckbox) {
+        updatePayField('payTypeHourly', hourlyCheckbox.checked);
+      }
+      if (salaryCheckbox) {
+        updatePayField('payTypeSalary', salaryCheckbox.checked);
+      }
+      if (percentageCheckbox) {
+        updatePayField('payTypePercentage', percentageCheckbox.checked);
+      }
+    });
+  });
+}
+
+// Initialize on load - only set up once
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(initializePayFields, 100);
+  });
+} else {
+  setTimeout(initializePayFields, 100);
+}
+
+// Also initialize on window load as backup (but only if not already initialized)
+window.addEventListener('load', function() {
+  setTimeout(initializePayFields, 150);
+  // Re-attach listeners on load
+  attachCheckboxListeners();
+});
+
+// Handle window resize to re-sync fields when screen size changes
+var resizeTimeout;
+window.addEventListener('resize', function() {
+  // Debounce resize handler
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(function() {
+    // Re-check all checkboxes and update their fields to ensure they're properly styled for new screen size
+    var hourlyCheckbox = document.getElementById('payTypeHourly');
+    var salaryCheckbox = document.getElementById('payTypeSalary');
+    var percentageCheckbox = document.getElementById('payTypePercentage');
+    
+    // Re-initialize fields to ensure they work on the new screen size
+    if (hourlyCheckbox && hourlyCheckbox.checked) {
+      updatePayField('payTypeHourly', true);
+    }
+    if (salaryCheckbox && salaryCheckbox.checked) {
+      updatePayField('payTypeSalary', true);
+    }
+    if (percentageCheckbox && percentageCheckbox.checked) {
+      updatePayField('payTypePercentage', true);
+    }
+  }, 150);
+});
+
+// Also ensure fields are properly initialized when screen size is already large on page load
+function ensureLargeScreenFields() {
+  if (window.innerWidth >= 769) {
+    var hourlyCheckbox = document.getElementById('payTypeHourly');
+    var salaryCheckbox = document.getElementById('payTypeSalary');
+    var percentageCheckbox = document.getElementById('payTypePercentage');
+    
+    // Use a small delay to ensure DOM is fully ready
+    setTimeout(function() {
+      if (hourlyCheckbox && hourlyCheckbox.checked) {
+        updatePayField('payTypeHourly', true);
+      }
+      if (salaryCheckbox && salaryCheckbox.checked) {
+        updatePayField('payTypeSalary', true);
+      }
+      if (percentageCheckbox && percentageCheckbox.checked) {
+        updatePayField('payTypePercentage', true);
+      }
+      
+      // Also ensure checkboxes are clickable
+      attachCheckboxListeners();
+    }, 200);
+  }
+}
+
+// Call on load if screen is already large
+window.addEventListener('load', function() {
+  ensureLargeScreenFields();
+});
+
+// Also call on DOMContentLoaded as backup
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(ensureLargeScreenFields, 250);
+  });
+} else {
+  setTimeout(ensureLargeScreenFields, 250);
+}
+
 </script>
 
 <%- include('../partials/footer') %>

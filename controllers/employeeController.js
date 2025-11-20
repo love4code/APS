@@ -77,6 +77,11 @@ exports.newForm = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
+    console.log('=== Employee Create Request ===')
+    console.log('Request body:', req.body)
+    console.log('Request method:', req.method)
+    console.log('Request path:', req.path)
+
     const {
       firstName,
       lastName,
@@ -94,6 +99,18 @@ exports.create = async (req, res) => {
       defaultOvertimeMultiplier,
       notes
     } = req.body
+
+    console.log('Extracted values:', {
+      firstName,
+      lastName,
+      email,
+      phone,
+      position,
+      department,
+      status,
+      hireDate,
+      payType
+    })
 
     // Handle payType - can be string (single) or array (multiple)
     let payTypes = []
@@ -123,6 +140,7 @@ exports.create = async (req, res) => {
     }
 
     // Validate required fields
+    console.log('Validating required fields...')
     if (
       !firstName ||
       !lastName ||
@@ -131,14 +149,18 @@ exports.create = async (req, res) => {
       !department ||
       !hireDate
     ) {
+      console.log('Validation failed - missing required fields')
       req.flash('error', 'Please fill in all required fields')
       return res.render('employees/form', {
         title: 'New Employee',
         employee: formData
       })
     }
+    console.log('Required fields validation passed')
 
+    console.log('Pay types:', payTypes)
     if (payTypes.length === 0) {
+      console.log('Validation failed - no pay type selected')
       req.flash('error', 'At least one pay type must be selected')
       return res.render('employees/form', {
         title: 'New Employee',
@@ -147,35 +169,88 @@ exports.create = async (req, res) => {
     }
 
     // Validate pay type specific fields
-    if (payTypes.includes('hourly') && (!hourlyRate || hourlyRate <= 0)) {
-      req.flash('error', 'Hourly rate is required for hourly employees')
-      return res.render('employees/form', {
-        title: 'New Employee',
-        employee: formData
-      })
-    }
-
-    if (payTypes.includes('salary') && (!annualSalary || annualSalary <= 0)) {
-      req.flash('error', 'Annual salary is required for salaried employees')
-      return res.render('employees/form', {
-        title: 'New Employee',
-        employee: formData
-      })
-    }
-
-    if (
-      payTypes.includes('percentage') &&
-      (!percentageRate || percentageRate <= 0 || percentageRate > 100)
-    ) {
-      req.flash(
-        'error',
-        'Percentage rate is required for percentage-based employees (must be between 0 and 100)'
+    console.log('Validating pay type specific fields...')
+    if (payTypes.includes('hourly')) {
+      const hourlyRateNum = hourlyRate ? parseFloat(hourlyRate) : null
+      console.log(
+        'Hourly rate validation - value:',
+        hourlyRate,
+        'parsed:',
+        hourlyRateNum
       )
-      return res.render('employees/form', {
-        title: 'New Employee',
-        employee: formData
-      })
+      if (
+        !hourlyRate ||
+        hourlyRate === '' ||
+        isNaN(hourlyRateNum) ||
+        hourlyRateNum <= 0
+      ) {
+        console.log('Validation failed - invalid hourly rate')
+        req.flash(
+          'error',
+          'Hourly rate is required for hourly employees and must be greater than 0'
+        )
+        return res.render('employees/form', {
+          title: 'New Employee',
+          employee: formData
+        })
+      }
     }
+
+    if (payTypes.includes('salary')) {
+      const annualSalaryNum = annualSalary ? parseFloat(annualSalary) : null
+      console.log(
+        'Annual salary validation - value:',
+        annualSalary,
+        'parsed:',
+        annualSalaryNum
+      )
+      if (
+        !annualSalary ||
+        annualSalary === '' ||
+        isNaN(annualSalaryNum) ||
+        annualSalaryNum <= 0
+      ) {
+        console.log('Validation failed - invalid annual salary')
+        req.flash(
+          'error',
+          'Annual salary is required for salaried employees and must be greater than 0'
+        )
+        return res.render('employees/form', {
+          title: 'New Employee',
+          employee: formData
+        })
+      }
+    }
+
+    if (payTypes.includes('percentage')) {
+      const percentageRateNum = percentageRate
+        ? parseFloat(percentageRate)
+        : null
+      console.log(
+        'Percentage rate validation - value:',
+        percentageRate,
+        'parsed:',
+        percentageRateNum
+      )
+      if (
+        !percentageRate ||
+        percentageRate === '' ||
+        isNaN(percentageRateNum) ||
+        percentageRateNum <= 0 ||
+        percentageRateNum > 100
+      ) {
+        console.log('Validation failed - invalid percentage rate')
+        req.flash(
+          'error',
+          'Percentage rate is required for percentage-based employees. Please enter a value between 0 and 100.'
+        )
+        return res.render('employees/form', {
+          title: 'New Employee',
+          employee: formData
+        })
+      }
+    }
+    console.log('Pay type specific field validation passed')
 
     // Parse dates
     let parsedHireDate = null
@@ -213,12 +288,18 @@ exports.create = async (req, res) => {
       notes: notes || ''
     })
 
+    console.log('Saving employee to database...')
     await employee.save()
+    console.log('Employee saved successfully with ID:', employee._id)
 
     req.flash('success', 'Employee created successfully')
     res.redirect(`/employees/${employee._id}`)
   } catch (error) {
-    console.error('Error creating employee:', error)
+    console.error('=== ERROR CREATING EMPLOYEE ===')
+    console.error('Error name:', error.name)
+    console.error('Error message:', error.message)
+    console.error('Error stack:', error.stack)
+    console.error('Full error object:', error)
 
     // Prepare form data for error rendering
     const {
@@ -267,9 +348,13 @@ exports.create = async (req, res) => {
     if (error.code === 11000) {
       req.flash('error', 'An employee with this email already exists')
     } else {
-      req.flash('error', error.message || 'Error creating employee')
+      // Show more detailed error message
+      const errorMessage = error.message || 'Error creating employee'
+      console.error('Setting error flash message:', errorMessage)
+      req.flash('error', errorMessage)
     }
 
+    console.log('Rendering form with error, formData:', formData)
     return res.render('employees/form', {
       title: 'New Employee',
       employee: formData

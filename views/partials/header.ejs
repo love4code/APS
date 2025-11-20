@@ -13,55 +13,134 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/css/style.css" />
-    <% const layoutType = typeof settings !== 'undefined' && settings ? (settings.layoutType || 'navbar') : 'navbar' %>
-    <% if (layoutType === 'sidebar') { %>
     <style>
-      body {
-        margin: 0;
-        padding: 0;
-        overflow-x: hidden;
-        height: 100vh;
-        display: flex;
-        flex-direction: column;
+      /* Responsive layout: navbar on small screens, sidebar on large screens */
+      
+      /* Default: Sidebar hidden, navbar visible */
+      .sidebar-layout {
+        display: none !important;
       }
-      body:has(.sidebar-wrapper) {
-        height: 100vh;
-        overflow: hidden;
+      .navbar-layout {
+        display: block !important;
       }
-      .sidebar-wrapper {
-        display: flex !important;
-        flex-direction: row !important;
-        flex: 1 1 auto;
-        width: 100%;
-        height: 100%;
-        min-height: 100vh;
-        overflow: hidden;
-        position: relative;
-        align-items: stretch;
-        box-sizing: border-box;
+      
+      /* Default: Show navbar, hide sidebar on small screens */
+      @media (max-width: 768px) {
+        .navbar-layout {
+          display: block !important;
+          width: 100% !important;
+          visibility: visible !important;
+        }
+        .navbar-layout nav {
+          display: block !important;
+        }
+        .navbar-layout main {
+          display: block !important;
+          visibility: visible !important;
+          width: 100% !important;
+          position: relative !important;
+          z-index: 1 !important;
+        }
+        .sidebar-layout {
+          display: none !important;
+        }
+        /* Reset body styles for navbar layout on small screens */
+        body {
+          display: block !important;
+          height: auto !important;
+          min-height: 100vh;
+          overflow-x: auto;
+          margin: 0;
+          padding: 0;
+        }
+        body:has(.navbar-layout) {
+          display: block !important;
+          height: auto !important;
+        }
       }
-      /* Ensure sidebar-wrapper always maintains flex display */
-      .sidebar-wrapper[style*="display"] {
-        display: flex !important;
+      
+      /* Show sidebar, hide navbar on large screens */
+      @media (min-width: 769px) {
+        .navbar-layout {
+          display: none !important;
+        }
+        .sidebar-layout {
+          display: flex !important;
+          flex-direction: column !important;
+          flex: 1 1 auto !important;
+          width: 100% !important;
+          height: 100vh !important;
+          min-height: 100vh !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+        }
+      }
+      
+      /* Sidebar layout styles */
+      /* Body styles only apply when sidebar layout is visible */
+      @media (min-width: 769px) {
+        body:has(.sidebar-layout) {
+          margin: 0;
+          padding: 0;
+          overflow-x: hidden;
+          height: 100vh;
+          display: flex;
+          flex-direction: column;
+        }
+        body:has(.sidebar-wrapper) {
+          height: 100vh;
+          overflow-x: hidden;
+          overflow-y: auto;
+        }
+      }
+      @media (min-width: 769px) {
+        .sidebar-wrapper {
+          display: flex !important;
+          flex-direction: row !important;
+          flex: 1 1 auto;
+          width: 100%;
+          height: 100vh;
+          min-height: 100vh;
+          max-height: 100vh;
+          overflow: hidden;
+          position: relative;
+          align-items: stretch;
+          box-sizing: border-box;
+          top: 0;
+          margin-top: 0;
+          padding-top: 0;
+        }
+        /* Ensure sidebar-wrapper always maintains flex display */
+        .sidebar-wrapper[style*="display"] {
+          display: flex !important;
+        }
       }
       .sidebar {
-        height: 100%;
+        height: 100vh;
         min-height: 100vh;
+        max-height: 100vh;
         background-color: #0d6efd;
         color: white;
         position: relative;
-        overflow: hidden;
+        overflow-y: auto;
+        overflow-x: hidden;
         transition: flex 0.3s ease, width 0.3s ease, min-width 0.3s ease, max-width 0.3s ease, opacity 0.3s ease;
         padding: 0;
         box-sizing: border-box;
         flex-shrink: 0;
         z-index: auto;
+        align-self: stretch;
+        top: 0;
+        margin-top: 0;
       }
       .sidebar:not(.collapsed) {
         flex: 0 0 250px !important;
         width: 250px !important;
         min-width: 250px !important;
         max-width: 250px !important;
+        height: 100vh !important;
+        min-height: 100vh !important;
+        max-height: 100vh !important;
         visibility: visible !important;
         opacity: 1 !important;
         display: block !important;
@@ -73,6 +152,9 @@
         width: 60px !important;
         min-width: 60px !important;
         max-width: 60px !important;
+        height: 100vh !important;
+        min-height: 100vh !important;
+        max-height: 100vh !important;
         overflow: visible !important;
         visibility: visible !important;
         opacity: 1 !important;
@@ -125,8 +207,13 @@
       .sidebar-content {
         width: 100%;
         height: 100%;
+        min-height: 100%;
         overflow-y: auto;
+        overflow-x: hidden;
         position: relative;
+        padding-top: 0;
+        display: flex;
+        flex-direction: column;
       }
       /* When collapsed, ensure toggle button container doesn't hide it */
       .sidebar.collapsed .sidebar-content {
@@ -139,6 +226,9 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
+        position: relative;
+        z-index: 1;
+        flex-shrink: 0;
       }
       .sidebar-brand {
         color: white;
@@ -169,6 +259,8 @@
         list-style: none;
         padding: 0;
         margin: 0;
+        flex: 1;
+        overflow-y: auto;
       }
       .sidebar-menu li {
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -210,6 +302,8 @@
         transition: width 0.3s ease, flex 0.3s ease;
         position: relative;
         z-index: 1;
+        padding: 1rem;
+        box-sizing: border-box;
       }
       /* When sidebar is expanded, main content should take remaining space */
       .sidebar-wrapper .sidebar:not(.collapsed) ~ .main-content {
@@ -323,11 +417,8 @@
         }
       }
     </style>
-    <% } %>
   </head>
   <body>
-    <% if (layoutType === 'sidebar') { %>
-    <!-- Sidebar Layout -->
     <script>
       // Define toggleSubmenu immediately so onclick handlers can use it
       function toggleSubmenu(event, menuId) {
@@ -340,75 +431,7 @@
       }
       window.toggleSubmenu = toggleSubmenu;
       
-      // Define toggleSidebar placeholder IMMEDIATELY so onclick handlers can use it
-      // This will be replaced by the full function later, but ensures it exists now
-      window.toggleSidebar = function() {
-        console.log('toggleSidebar placeholder called');
-        const sidebar = document.getElementById('sidebar');
-        if (!sidebar) {
-          console.error('Sidebar not found in placeholder');
-          return;
-        }
-        // If full function is available, use it
-        if (typeof window._toggleSidebarFull === 'function') {
-          console.log('Using full toggleSidebar function');
-          return window._toggleSidebarFull();
-        }
-        // Otherwise, do a simple toggle
-        console.log('Full function not available, doing simple toggle');
-        const isCollapsed = sidebar.classList.contains('collapsed');
-        const mainContent = document.querySelector('.main-content');
-        const wrapper = sidebar.parentElement;
-        
-        if (isCollapsed) {
-          // Expand sidebar
-          console.log('Expanding sidebar (placeholder)');
-          sidebar.classList.remove('collapsed');
-          sidebar.style.setProperty('position', 'relative', 'important');
-          sidebar.style.setProperty('display', 'block', 'important');
-          sidebar.style.setProperty('flex', '0 0 250px', 'important');
-          sidebar.style.setProperty('width', '250px', 'important');
-          sidebar.style.setProperty('min-width', '250px', 'important');
-          sidebar.style.setProperty('max-width', '250px', 'important');
-          
-          if (mainContent) {
-            mainContent.style.removeProperty('width');
-            mainContent.style.removeProperty('flex');
-            mainContent.style.removeProperty('margin-left');
-            mainContent.style.setProperty('position', 'relative', 'important');
-          }
-          
-          if (wrapper) {
-            wrapper.style.setProperty('display', 'flex', 'important');
-            wrapper.style.setProperty('flex-direction', 'row', 'important');
-          }
-          
-          // Force reflow
-          void sidebar.offsetWidth;
-          if (mainContent) void mainContent.offsetWidth;
-          console.log('Sidebar expanded, offsetWidth:', sidebar.offsetWidth);
-        } else {
-          // Collapse sidebar
-          console.log('Collapsing sidebar (placeholder)');
-          sidebar.classList.add('collapsed');
-          sidebar.style.setProperty('flex', '0 0 60px', 'important');
-          sidebar.style.setProperty('width', '60px', 'important');
-          sidebar.style.setProperty('min-width', '60px', 'important');
-          sidebar.style.setProperty('max-width', '60px', 'important');
-          
-          if (mainContent) {
-            mainContent.style.setProperty('width', 'calc(100% - 60px)', 'important');
-            mainContent.style.setProperty('flex', '1 1 calc(100% - 60px)', 'important');
-            mainContent.style.setProperty('margin-left', '0', 'important');
-          }
-          
-          // Force reflow
-          void sidebar.offsetWidth;
-          if (mainContent) void mainContent.offsetWidth;
-          console.log('Sidebar collapsed, offsetWidth:', sidebar.offsetWidth);
-        }
-      };
-      console.log('toggleSidebar placeholder defined on window in first script block');
+      // toggleSidebar will be defined in the script block below
       
       // Define closeSidebar immediately so onclick handlers can use it
       function closeSidebar() {
@@ -481,119 +504,9 @@
       // Make it available globally immediately
       window.closeSidebar = closeSidebar;
     </script>
-    <button class="sidebar-toggle mobile-only" id="sidebarToggleBtnMobile" title="Toggle Sidebar">
-      <i class="bi bi-list"></i>
-    </button>
-    <div class="sidebar-wrapper">
-    <aside class="sidebar collapsed" id="sidebar">
-      <!-- Toggle button inside sidebar - visible when collapsed, positioned outside sidebar-content -->
-      <button class="sidebar-toggle" id="sidebarToggleBtn" title="Toggle Sidebar" onclick="event.preventDefault(); event.stopPropagation(); console.log('Toggle button onclick fired, window.toggleSidebar:', typeof window.toggleSidebar); if(typeof window.toggleSidebar === 'function') { console.log('Calling toggleSidebar'); window.toggleSidebar(); } else { console.error('toggleSidebar not found, trying direct call'); if(typeof toggleSidebar === 'function') { toggleSidebar(); } else { console.error('toggleSidebar not found anywhere'); } } return false;">
-        <i class="bi bi-list"></i>
-      </button>
-      <div class="sidebar-content">
-        <div class="sidebar-header">
-          <a href="/" class="sidebar-brand"><i class="bi bi-water"></i> APS</a>
-          <button class="sidebar-close" id="sidebarCloseBtn" title="Close Sidebar" onclick="closeSidebar(); return false;">
-            <i class="bi bi-x-lg"></i>
-          </button>
-        </div>
-        <ul class="sidebar-menu">
-        <% if (typeof isAuthenticated !== 'undefined' && isAuthenticated) { %>
-        <li><a href="/"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
-        <li>
-          <a href="#" onclick="toggleSubmenu(event, 'jobs-menu')">
-            <i class="bi bi-briefcase"></i> Jobs <i class="bi bi-chevron-down"></i>
-          </a>
-          <ul class="sidebar-submenu" id="jobs-menu">
-            <li><a href="/jobs"><i class="bi bi-list"></i> All Jobs</a></li>
-            <li><a href="/jobs/calendar"><i class="bi bi-calendar3"></i> Calendar</a></li>
-          </ul>
-        </li>
-        <li>
-          <a href="#" onclick="toggleSubmenu(event, 'sales-menu')">
-            <i class="bi bi-cart"></i> Sales <i class="bi bi-chevron-down"></i>
-          </a>
-          <ul class="sidebar-submenu" id="sales-menu">
-            <li><a href="/sales"><i class="bi bi-list"></i> All Sales</a></li>
-            <li><a href="/sales/new"><i class="bi bi-plus-circle"></i> New Sale</a></li>
-          </ul>
-        </li>
-        <li>
-          <a href="#" onclick="toggleSubmenu(event, 'people-menu')">
-            <i class="bi bi-people"></i> People <i class="bi bi-chevron-down"></i>
-          </a>
-          <ul class="sidebar-submenu" id="people-menu">
-            <li><a href="/customers"><i class="bi bi-person"></i> Customers</a></li>
-            <li><a href="/sales-reps"><i class="bi bi-person-badge"></i> Sales Reps</a></li>
-            <li><a href="/installers"><i class="bi bi-tools"></i> Installers</a></li>
-            <li><a href="/employees"><i class="bi bi-person-workspace"></i> Employees</a></li>
-          </ul>
-        </li>
-        <li>
-          <a href="#" onclick="toggleSubmenu(event, 'payroll-menu')">
-            <i class="bi bi-clock-history"></i> Payroll <i class="bi bi-chevron-down"></i>
-          </a>
-          <ul class="sidebar-submenu" id="payroll-menu">
-            <li><a href="/time-entries"><i class="bi bi-clock"></i> Time Entries</a></li>
-            <li><a href="/pay-periods"><i class="bi bi-calendar-range"></i> Pay Periods</a></li>
-            <li><a href="/payroll-records"><i class="bi bi-cash-stack"></i> Payroll Records</a></li>
-            <li><a href="/payouts"><i class="bi bi-calendar-day"></i> Daily Payouts</a></li>
-            <li><a href="/payouts/weekly"><i class="bi bi-calendar-week"></i> Weekly Payouts</a></li>
-          </ul>
-        </li>
-        <li><a href="/invoices"><i class="bi bi-receipt"></i> Invoices</a></li>
-        <li>
-          <a href="#" onclick="toggleSubmenu(event, 'settings-menu')">
-            <i class="bi bi-gear"></i> Settings <i class="bi bi-chevron-down"></i>
-          </a>
-          <ul class="sidebar-submenu" id="settings-menu">
-            <li><a href="/products"><i class="bi bi-box"></i> Products</a></li>
-            <li><a href="/stores"><i class="bi bi-shop"></i> Stores</a></li>
-            <li><a href="/payments"><i class="bi bi-cash-coin"></i> Payments</a></li>
-            <li><a href="/settings"><i class="bi bi-building"></i> Company Settings</a></li>
-            <% if (typeof user !== 'undefined' && user && user.role === 'admin') { %>
-            <li><a href="/admin/users"><i class="bi bi-person-gear"></i> Users</a></li>
-            <% } %>
-          </ul>
-        </li>
-        <% if (typeof user !== 'undefined' && user && (user.isSalesRep || user.soldByOwner || user.isInstaller)) { %>
-        <li>
-          <a href="#" onclick="toggleSubmenu(event, 'my-menu')">
-            <i class="bi bi-person-circle"></i> My <i class="bi bi-chevron-down"></i>
-          </a>
-          <ul class="sidebar-submenu" id="my-menu">
-            <% if (typeof user !== 'undefined' && user && (user.isSalesRep || user.soldByOwner)) { %>
-            <li><a href="/my/sales"><i class="bi bi-receipt"></i> My Sales</a></li>
-            <% } %>
-            <% if (typeof user !== 'undefined' && user && user.isInstaller) { %>
-            <li><a href="/my/installs"><i class="bi bi-wrench"></i> My Installs</a></li>
-            <% } %>
-          </ul>
-        </li>
-        <% } %>
-        <li>
-          <a href="#" onclick="toggleSubmenu(event, 'user-menu')">
-            <i class="bi bi-person-circle"></i> <%= typeof user !== 'undefined' && user ? user.name : 'User' %> <i class="bi bi-chevron-down"></i>
-          </a>
-          <ul class="sidebar-submenu" id="user-menu">
-            <li>
-              <a href="/logout" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-                <i class="bi bi-box-arrow-right"></i> Logout
-              </a>
-            </li>
-          </ul>
-        </li>
-        <% } else { %>
-        <li><a href="/login"><i class="bi bi-box-arrow-in-right"></i> Login</a></li>
-        <% } %>
-        </ul>
-      </div>
-    </aside>
-    <form id="logout-form" action="/logout" method="POST" style="display: none"></form>
-    <div class="main-content" id="mainContent">
-      <main class="container-fluid py-4" style="padding-top: 1rem;">
-    <% } else { %>
-    <!-- Navbar Layout -->
+    
+    <!-- Navbar Layout (shown on small screens) -->
+    <div class="navbar-layout">
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
       <div class="container-fluid">
         <a class="navbar-brand" href="/"><i class="bi bi-water"></i> APS</a>
@@ -757,7 +670,163 @@
         ></button>
       </div>
       <% } %> <% } %>
+      <!-- Page content will be inserted here for navbar layout -->
     </main>
+    </div>
+    <!-- Navbar layout closed - content will be wrapped properly in footer -->
+    
+    <!-- Sidebar Layout (shown on large screens) - sibling of navbar, not nested -->
+    <div class="sidebar-layout">
+    <button class="sidebar-toggle mobile-only" id="sidebarToggleBtnMobile" title="Toggle Sidebar">
+      <i class="bi bi-list"></i>
+    </button>
+    <div class="sidebar-wrapper">
+    <aside class="sidebar collapsed" id="sidebar">
+      <!-- Toggle button inside sidebar - visible when collapsed, positioned outside sidebar-content -->
+      <button class="sidebar-toggle" id="sidebarToggleBtn" title="Toggle Sidebar" onclick="if(typeof window.toggleSidebar === 'function') { window.toggleSidebar(); } return false;">
+        <i class="bi bi-list"></i>
+      </button>
+      <div class="sidebar-content">
+        <div class="sidebar-header">
+          <a href="/" class="sidebar-brand"><i class="bi bi-water"></i> APS</a>
+          <button class="sidebar-close" id="sidebarCloseBtn" title="Close Sidebar" onclick="closeSidebar(); return false;">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        <ul class="sidebar-menu">
+        <% if (typeof isAuthenticated !== 'undefined' && isAuthenticated) { %>
+        <li><a href="/"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+        <li>
+          <a href="#" onclick="toggleSubmenu(event, 'jobs-menu')">
+            <i class="bi bi-briefcase"></i> Jobs <i class="bi bi-chevron-down"></i>
+          </a>
+          <ul class="sidebar-submenu" id="jobs-menu">
+            <li><a href="/jobs"><i class="bi bi-list"></i> All Jobs</a></li>
+            <li><a href="/jobs/calendar"><i class="bi bi-calendar3"></i> Calendar</a></li>
+          </ul>
+        </li>
+        <li>
+          <a href="#" onclick="toggleSubmenu(event, 'sales-menu')">
+            <i class="bi bi-cart"></i> Sales <i class="bi bi-chevron-down"></i>
+          </a>
+          <ul class="sidebar-submenu" id="sales-menu">
+            <li><a href="/sales"><i class="bi bi-list"></i> All Sales</a></li>
+            <li><a href="/sales/new"><i class="bi bi-plus-circle"></i> New Sale</a></li>
+          </ul>
+        </li>
+        <li>
+          <a href="#" onclick="toggleSubmenu(event, 'people-menu')">
+            <i class="bi bi-people"></i> People <i class="bi bi-chevron-down"></i>
+          </a>
+          <ul class="sidebar-submenu" id="people-menu">
+            <li><a href="/customers"><i class="bi bi-person"></i> Customers</a></li>
+            <li><a href="/sales-reps"><i class="bi bi-person-badge"></i> Sales Reps</a></li>
+            <li><a href="/installers"><i class="bi bi-tools"></i> Installers</a></li>
+            <li><a href="/employees"><i class="bi bi-person-workspace"></i> Employees</a></li>
+          </ul>
+        </li>
+        <li>
+          <a href="#" onclick="toggleSubmenu(event, 'payroll-menu')">
+            <i class="bi bi-clock-history"></i> Payroll <i class="bi bi-chevron-down"></i>
+          </a>
+          <ul class="sidebar-submenu" id="payroll-menu">
+            <li><a href="/time-entries"><i class="bi bi-clock"></i> Time Entries</a></li>
+            <li><a href="/pay-periods"><i class="bi bi-calendar-range"></i> Pay Periods</a></li>
+            <li><a href="/payroll-records"><i class="bi bi-cash-stack"></i> Payroll Records</a></li>
+            <li><a href="/payouts"><i class="bi bi-calendar-day"></i> Daily Payouts</a></li>
+            <li><a href="/payouts/weekly"><i class="bi bi-calendar-week"></i> Weekly Payouts</a></li>
+          </ul>
+        </li>
+        <li><a href="/invoices"><i class="bi bi-receipt"></i> Invoices</a></li>
+        <li>
+          <a href="#" onclick="toggleSubmenu(event, 'settings-menu')">
+            <i class="bi bi-gear"></i> Settings <i class="bi bi-chevron-down"></i>
+          </a>
+          <ul class="sidebar-submenu" id="settings-menu">
+            <li><a href="/products"><i class="bi bi-box"></i> Products</a></li>
+            <li><a href="/stores"><i class="bi bi-shop"></i> Stores</a></li>
+            <li><a href="/payments"><i class="bi bi-cash-coin"></i> Payments</a></li>
+            <li><a href="/settings"><i class="bi bi-building"></i> Company Settings</a></li>
+            <% if (typeof user !== 'undefined' && user && user.role === 'admin') { %>
+            <li><a href="/admin/users"><i class="bi bi-person-gear"></i> Users</a></li>
+            <% } %>
+          </ul>
+        </li>
+        <% if (typeof user !== 'undefined' && user && (user.isSalesRep || user.soldByOwner || user.isInstaller)) { %>
+        <li>
+          <a href="#" onclick="toggleSubmenu(event, 'my-menu')">
+            <i class="bi bi-person-circle"></i> My <i class="bi bi-chevron-down"></i>
+          </a>
+          <ul class="sidebar-submenu" id="my-menu">
+            <% if (typeof user !== 'undefined' && user && (user.isSalesRep || user.soldByOwner)) { %>
+            <li><a href="/my/sales"><i class="bi bi-receipt"></i> My Sales</a></li>
+            <% } %>
+            <% if (typeof user !== 'undefined' && user && user.isInstaller) { %>
+            <li><a href="/my/installs"><i class="bi bi-wrench"></i> My Installs</a></li>
+            <% } %>
+          </ul>
+        </li>
+        <% } %>
+        <li>
+          <a href="#" onclick="toggleSubmenu(event, 'user-menu')">
+            <i class="bi bi-person-circle"></i> <%= typeof user !== 'undefined' && user ? user.name : 'User' %> <i class="bi bi-chevron-down"></i>
+          </a>
+          <ul class="sidebar-submenu" id="user-menu">
+            <li>
+              <a href="/logout" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                <i class="bi bi-box-arrow-right"></i> Logout
+              </a>
+            </li>
+          </ul>
+        </li>
+        <% } else { %>
+        <li><a href="/login"><i class="bi bi-box-arrow-in-right"></i> Login</a></li>
+        <% } %>
+        </ul>
+      </div>
+    </aside>
+    <form id="logout-form" action="/logout" method="POST" style="display: none"></form>
+    <div class="main-content" id="mainContent">
+      <main class="container-fluid py-4" style="padding-top: 1rem;">
+      <% if (typeof success !== 'undefined' && success) { %> <% if (Array.isArray(success)) { %> <% for (var i = 0; i < success.length; i++) { %>
+      <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <%= success[i] %>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="alert"
+        ></button>
+      </div>
+      <% } %> <% } else { %>
+      <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <%= success %>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="alert"
+        ></button>
+      </div>
+      <% } %> <% } %> <% if (typeof error !== 'undefined' && error) { %> <% if (Array.isArray(error)) { %> <% for (var i = 0; i < error.length; i++) { %>
+      <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <%= error[i] %>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="alert"
+        ></button>
+      </div>
+      <% } %> <% } else { %>
+      <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <%= error %>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="alert"
+        ></button>
+      </div>
+      <% } %> <% } %>
+      <!-- Page content will be inserted here for sidebar layout -->
+    
     <script>
       // Define all functions globally first, before any onclick handlers try to use them
       function toggleSubmenu(event, menuId) {
@@ -771,46 +840,7 @@
       // Make it available globally immediately
       window.toggleSubmenu = toggleSubmenu;
       
-      // Define toggleSidebar placeholder IMMEDIATELY so onclick handlers can use it
-      // This will be replaced by the full function later, but ensures it exists now
-      window.toggleSidebar = function() {
-        console.log('toggleSidebar placeholder called');
-        const sidebar = document.getElementById('sidebar');
-        if (!sidebar) {
-          console.error('Sidebar not found in placeholder');
-          return;
-        }
-        // If full function is available, use it
-        if (typeof window._toggleSidebarFull === 'function') {
-          console.log('Using full toggleSidebar function');
-          return window._toggleSidebarFull();
-        }
-        // Otherwise, do a simple toggle
-        console.log('Full function not available, doing simple toggle');
-        const isCollapsed = sidebar.classList.contains('collapsed');
-        if (isCollapsed) {
-          sidebar.classList.remove('collapsed');
-          sidebar.style.setProperty('width', '250px', 'important');
-          sidebar.style.setProperty('flex', '0 0 250px', 'important');
-          const mainContent = document.querySelector('.main-content');
-          if (mainContent) {
-            mainContent.style.removeProperty('width');
-            mainContent.style.removeProperty('flex');
-          }
-        } else {
-          sidebar.classList.add('collapsed');
-          sidebar.style.setProperty('width', '60px', 'important');
-          sidebar.style.setProperty('flex', '0 0 60px', 'important');
-          const mainContent = document.querySelector('.main-content');
-          if (mainContent) {
-            mainContent.style.setProperty('width', 'calc(100% - 60px)', 'important');
-            mainContent.style.setProperty('flex', '1 1 calc(100% - 60px)', 'important');
-          }
-        }
-      };
-      console.log('toggleSidebar placeholder defined on window');
-      
-      // Define toggleSidebar and make it available immediately
+      // Define toggleSidebar function - this is the actual implementation
       function toggleSidebar() {
         console.log('toggleSidebar called');
         const sidebar = document.getElementById('sidebar');
@@ -985,37 +1015,9 @@
         }
       }
       // Make toggleSidebar available on window immediately
+      // Direct assignment - no recursion risk
       window.toggleSidebar = toggleSidebar;
-      window._toggleSidebarFull = toggleSidebar; // Also store as backup
       console.log('toggleSidebar assigned to window.toggleSidebar');
-      
-      // Use event delegation for toggle button - works even if button is recreated
-      // This must be set up after toggleSidebar is defined
-      setTimeout(function() {
-        document.addEventListener('click', function(e) {
-          // Check if click is on toggle button or its icon
-          const toggleBtn = document.getElementById('sidebarToggleBtn');
-          if (!toggleBtn) return;
-          
-          const clickedElement = e.target;
-          const isToggleClick = clickedElement === toggleBtn || 
-                               clickedElement.closest('#sidebarToggleBtn') === toggleBtn ||
-                               (toggleBtn.contains(clickedElement));
-          
-          if (isToggleClick && window.innerWidth > 768) {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Toggle button clicked via event delegation', clickedElement, 'toggleSidebar available:', typeof window.toggleSidebar);
-            if (typeof window.toggleSidebar === 'function') {
-              window.toggleSidebar();
-            } else {
-              console.error('toggleSidebar function not available on window');
-            }
-            return false;
-          }
-        }, true); // Use capture phase
-        console.log('Event delegation for toggle button set up, toggleSidebar available:', typeof window.toggleSidebar);
-      }, 100);
       
       function updateToggleButton() {
         const sidebar = document.getElementById('sidebar');
@@ -1340,6 +1342,3 @@
         }
       }, 1000);
     </script>
-    <% } %>
-  </body>
-</html>
