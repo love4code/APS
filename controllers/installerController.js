@@ -55,11 +55,14 @@ exports.detail = async (req, res) => {
       return res.redirect('/installers')
     }
 
-    // Get all jobs for this installer
-    const jobs = await Job.find({ installer: installer._id })
+    // Get all jobs for this installer (excluding sales)
+    const allJobs = await Job.find({ installer: installer._id })
       .populate('customer', 'name email phone')
       .populate('salesRep', 'name')
       .sort({ installDate: -1, createdAt: -1 })
+
+    // Filter out sales (only show jobs where isSale is not true)
+    const jobs = allJobs.filter(job => job.isSale !== true)
 
     // Get all payments to this installer
     const payments = await Payment.find({

@@ -166,6 +166,20 @@ app.use((req, res, next) => {
   }
 })
 
+// Load settings for all views
+app.use(async (req, res, next) => {
+  try {
+    const Settings = require('./models/Settings')
+    const settings = await Settings.getSettings()
+    res.locals.settings = settings || { layoutType: 'navbar' }
+    next()
+  } catch (error) {
+    console.error('Error loading settings:', error)
+    res.locals.settings = { layoutType: 'navbar' }
+    next()
+  }
+})
+
 // Health check route (no middleware)
 app.get('/health', (req, res) => {
   try {

@@ -13,8 +13,587 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/css/style.css" />
+    <% const layoutType = typeof settings !== 'undefined' && settings ? (settings.layoutType || 'navbar') : 'navbar' %>
+    <% if (layoutType === 'sidebar') { %>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        overflow-x: hidden;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      body:has(.sidebar-wrapper) {
+        height: 100vh;
+        overflow: hidden;
+      }
+      .sidebar-wrapper {
+        display: flex !important;
+        flex-direction: row !important;
+        flex: 1 1 auto;
+        width: 100%;
+        height: 100%;
+        min-height: 100vh;
+        overflow: hidden;
+        position: relative;
+        align-items: stretch;
+        box-sizing: border-box;
+      }
+      /* Ensure sidebar-wrapper always maintains flex display */
+      .sidebar-wrapper[style*="display"] {
+        display: flex !important;
+      }
+      .sidebar {
+        height: 100%;
+        min-height: 100vh;
+        background-color: #0d6efd;
+        color: white;
+        position: relative;
+        overflow: hidden;
+        transition: flex 0.3s ease, width 0.3s ease, min-width 0.3s ease, max-width 0.3s ease, opacity 0.3s ease;
+        padding: 0;
+        box-sizing: border-box;
+        flex-shrink: 0;
+        z-index: auto;
+      }
+      .sidebar:not(.collapsed) {
+        flex: 0 0 250px !important;
+        width: 250px !important;
+        min-width: 250px !important;
+        max-width: 250px !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        display: block !important;
+        z-index: auto !important;
+        position: relative !important;
+      }
+      .sidebar.collapsed {
+        flex: 0 0 60px !important;
+        width: 60px !important;
+        min-width: 60px !important;
+        max-width: 60px !important;
+        overflow: visible !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+      }
+      .sidebar-wrapper .sidebar.collapsed ~ .main-content {
+        flex: 1 1 calc(100% - 60px) !important;
+        width: calc(100% - 60px) !important;
+        margin-left: 0 !important;
+      }
+      /* When sidebar is hidden with display: none, main content should expand */
+      .sidebar-wrapper:has(.sidebar[style*="display: none"]) .main-content,
+      .sidebar-wrapper:has(.sidebar.collapsed[style*="display: none"]) .main-content {
+        width: 100% !important;
+        flex: 1 1 100% !important;
+        margin-left: 0 !important;
+      }
+      .sidebar.collapsed .sidebar-content {
+        opacity: 0;
+        pointer-events: none;
+        overflow: hidden;
+      }
+      .sidebar.collapsed .sidebar-header,
+      .sidebar.collapsed .sidebar-menu {
+        display: none;
+      }
+      /* Toggle button inside sidebar - hidden when expanded, visible when collapsed */
+      /* Button is a direct child of .sidebar, not .sidebar-content, so it's not affected by content opacity */
+      .sidebar > .sidebar-toggle:not(.mobile-only) {
+        position: absolute !important;
+        top: 1rem !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        margin: 0 !important;
+        width: 40px !important;
+        height: 40px !important;
+        align-items: center !important;
+        justify-content: center !important;
+        z-index: 1000 !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        visibility: visible !important;
+        display: none !important; /* Hidden by default */
+        cursor: pointer !important;
+      }
+      /* Show toggle button when sidebar is collapsed */
+      .sidebar.collapsed > .sidebar-toggle:not(.mobile-only) {
+        display: flex !important;
+      }
+      .sidebar-content {
+        width: 100%;
+        height: 100%;
+        overflow-y: auto;
+        position: relative;
+      }
+      /* When collapsed, ensure toggle button container doesn't hide it */
+      .sidebar.collapsed .sidebar-content {
+        overflow: visible;
+        position: relative;
+      }
+      .sidebar-header {
+        padding: 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .sidebar-brand {
+        color: white;
+        text-decoration: none;
+        font-size: 1.25rem;
+        font-weight: bold;
+        flex: 1;
+      }
+      .sidebar-close {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 1.5rem;
+        cursor: pointer;
+        padding: 0;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.25rem;
+        transition: background-color 0.2s;
+      }
+      .sidebar-close:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+      }
+      .sidebar-menu {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .sidebar-menu li {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .sidebar-menu a {
+        display: block;
+        padding: 0.75rem 1rem;
+        color: white;
+        text-decoration: none;
+        transition: background-color 0.2s;
+      }
+      .sidebar-menu a:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+      }
+      .sidebar-menu .dropdown-toggle::after {
+        float: right;
+        margin-top: 0.5rem;
+      }
+      .sidebar-submenu {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        background-color: rgba(0, 0, 0, 0.2);
+        display: none;
+      }
+      .sidebar-submenu.show {
+        display: block;
+      }
+      .sidebar-submenu a {
+        padding-left: 2rem;
+      }
+      .main-content {
+        flex: 1 1 auto;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        height: 100%;
+        transition: width 0.3s ease, flex 0.3s ease;
+        position: relative;
+        z-index: 1;
+      }
+      /* When sidebar is expanded, main content should take remaining space */
+      .sidebar-wrapper .sidebar:not(.collapsed) ~ .main-content {
+        flex: 1 1 auto !important;
+        width: auto !important;
+      }
+      .sidebar-toggle {
+        background-color: #0d6efd;
+        color: white;
+        border: none;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.25rem;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        transition: background-color 0.2s;
+      }
+      .sidebar-toggle:hover {
+        background-color: #0b5ed7;
+      }
+      /* Default: toggle button is hidden */
+      .sidebar-toggle:not(.mobile-only) {
+        display: none !important;
+      }
+      .sidebar-toggle:not(.mobile-only).visible {
+        display: block !important;
+      }
+      /* Toggle button inside sidebar - hidden when expanded, visible when collapsed */
+      .sidebar .sidebar-toggle:not(.mobile-only) {
+        display: none !important;
+        position: absolute !important;
+        top: 1rem !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        margin: 0 !important;
+        width: 40px !important;
+        height: 40px !important;
+        align-items: center !important;
+        justify-content: center !important;
+        z-index: 10 !important;
+        flex-shrink: 0 !important;
+      }
+      /* Show toggle button when sidebar is collapsed */
+      .sidebar.collapsed .sidebar-toggle:not(.mobile-only) {
+        display: flex !important;
+      }
+      @media (max-width: 768px) {
+        .sidebar {
+          position: fixed;
+          left: 0;
+          top: 0;
+          z-index: 1000;
+          margin-left: 0;
+          transform: translateX(-100%);
+          flex: 0 0 250px;
+          width: 250px;
+        }
+        .sidebar.show {
+          transform: translateX(0);
+        }
+        .sidebar.collapsed {
+          transform: translateX(-100%);
+          width: 250px;
+          margin-left: 0;
+        }
+        .main-content {
+          margin-left: 0 !important;
+        }
+      }
+      @media (min-width: 769px) {
+        .sidebar:not(.collapsed) {
+          position: relative !important;
+          transform: none !important;
+          flex: 0 0 250px !important;
+          width: 250px !important;
+          min-width: 250px !important;
+          max-width: 250px !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          display: block !important;
+          left: auto !important;
+          margin-left: 0 !important;
+        }
+        .sidebar.collapsed {
+          flex: 0 0 60px !important;
+          width: 60px !important;
+          min-width: 60px !important;
+          max-width: 60px !important;
+          overflow: visible !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          pointer-events: auto !important;
+          position: relative !important;
+          transform: none !important;
+          left: auto !important;
+          margin-left: 0 !important;
+          display: block !important;
+        }
+        .sidebar-toggle.mobile-only {
+          display: none !important;
+        }
+        .sidebar-toggle:not(.mobile-only) {
+          display: block;
+        }
+      }
+      @media (max-width: 768px) {
+        .sidebar-toggle.mobile-only {
+          display: block;
+        }
+        .sidebar-toggle:not(.mobile-only) {
+          display: none !important;
+        }
+      }
+    </style>
+    <% } %>
   </head>
   <body>
+    <% if (layoutType === 'sidebar') { %>
+    <!-- Sidebar Layout -->
+    <script>
+      // Define toggleSubmenu immediately so onclick handlers can use it
+      function toggleSubmenu(event, menuId) {
+        event.preventDefault();
+        event.stopPropagation();
+        const submenu = document.getElementById(menuId);
+        if (submenu) {
+          submenu.classList.toggle('show');
+        }
+      }
+      window.toggleSubmenu = toggleSubmenu;
+      
+      // Define toggleSidebar placeholder IMMEDIATELY so onclick handlers can use it
+      // This will be replaced by the full function later, but ensures it exists now
+      window.toggleSidebar = function() {
+        console.log('toggleSidebar placeholder called');
+        const sidebar = document.getElementById('sidebar');
+        if (!sidebar) {
+          console.error('Sidebar not found in placeholder');
+          return;
+        }
+        // If full function is available, use it
+        if (typeof window._toggleSidebarFull === 'function') {
+          console.log('Using full toggleSidebar function');
+          return window._toggleSidebarFull();
+        }
+        // Otherwise, do a simple toggle
+        console.log('Full function not available, doing simple toggle');
+        const isCollapsed = sidebar.classList.contains('collapsed');
+        const mainContent = document.querySelector('.main-content');
+        const wrapper = sidebar.parentElement;
+        
+        if (isCollapsed) {
+          // Expand sidebar
+          console.log('Expanding sidebar (placeholder)');
+          sidebar.classList.remove('collapsed');
+          sidebar.style.setProperty('position', 'relative', 'important');
+          sidebar.style.setProperty('display', 'block', 'important');
+          sidebar.style.setProperty('flex', '0 0 250px', 'important');
+          sidebar.style.setProperty('width', '250px', 'important');
+          sidebar.style.setProperty('min-width', '250px', 'important');
+          sidebar.style.setProperty('max-width', '250px', 'important');
+          
+          if (mainContent) {
+            mainContent.style.removeProperty('width');
+            mainContent.style.removeProperty('flex');
+            mainContent.style.removeProperty('margin-left');
+            mainContent.style.setProperty('position', 'relative', 'important');
+          }
+          
+          if (wrapper) {
+            wrapper.style.setProperty('display', 'flex', 'important');
+            wrapper.style.setProperty('flex-direction', 'row', 'important');
+          }
+          
+          // Force reflow
+          void sidebar.offsetWidth;
+          if (mainContent) void mainContent.offsetWidth;
+          console.log('Sidebar expanded, offsetWidth:', sidebar.offsetWidth);
+        } else {
+          // Collapse sidebar
+          console.log('Collapsing sidebar (placeholder)');
+          sidebar.classList.add('collapsed');
+          sidebar.style.setProperty('flex', '0 0 60px', 'important');
+          sidebar.style.setProperty('width', '60px', 'important');
+          sidebar.style.setProperty('min-width', '60px', 'important');
+          sidebar.style.setProperty('max-width', '60px', 'important');
+          
+          if (mainContent) {
+            mainContent.style.setProperty('width', 'calc(100% - 60px)', 'important');
+            mainContent.style.setProperty('flex', '1 1 calc(100% - 60px)', 'important');
+            mainContent.style.setProperty('margin-left', '0', 'important');
+          }
+          
+          // Force reflow
+          void sidebar.offsetWidth;
+          if (mainContent) void mainContent.offsetWidth;
+          console.log('Sidebar collapsed, offsetWidth:', sidebar.offsetWidth);
+        }
+      };
+      console.log('toggleSidebar placeholder defined on window in first script block');
+      
+      // Define closeSidebar immediately so onclick handlers can use it
+      function closeSidebar() {
+        console.log('=== closeSidebar called (early definition) ===');
+        const sidebar = document.getElementById('sidebar');
+        if (!sidebar) {
+          console.error('ERROR: Sidebar not found!');
+          return;
+        }
+        
+        console.log('Sidebar found:', sidebar);
+        console.log('Window width:', window.innerWidth);
+        console.log('Sidebar classes before:', sidebar.className);
+        console.log('Sidebar display before:', window.getComputedStyle(sidebar).display);
+        
+        if (window.innerWidth <= 768) {
+          sidebar.classList.remove('show');
+          console.log('Mobile sidebar closed');
+        } else {
+          // Desktop: collapse the sidebar to 60px strip
+          console.log('Closing desktop sidebar to 60px strip');
+          
+          // Add collapsed class
+          sidebar.classList.add('collapsed');
+          console.log('Added collapsed class, sidebar classes:', sidebar.className);
+          
+          // Set collapsed styles with !important - collapse to 60px strip
+          console.log('Setting collapsed styles to 60px...');
+          sidebar.style.setProperty('display', 'block', 'important');
+          sidebar.style.setProperty('flex', '0 0 60px', 'important');
+          sidebar.style.setProperty('width', '60px', 'important');
+          sidebar.style.setProperty('min-width', '60px', 'important');
+          sidebar.style.setProperty('max-width', '60px', 'important');
+          sidebar.style.setProperty('overflow', 'visible', 'important');
+          sidebar.style.setProperty('visibility', 'visible', 'important');
+          sidebar.style.setProperty('opacity', '1', 'important');
+          sidebar.style.setProperty('pointer-events', 'auto', 'important');
+          
+          console.log('Collapsed styles set. Sidebar style.width:', sidebar.style.width);
+          
+          const mainContent = document.querySelector('.main-content');
+          if (mainContent) {
+            mainContent.style.setProperty('width', 'calc(100% - 60px)', 'important');
+            mainContent.style.setProperty('flex', '1 1 calc(100% - 60px)', 'important');
+            mainContent.style.setProperty('margin-left', '0', 'important');
+            console.log('Main content adjusted for 60px sidebar');
+          } else {
+            console.warn('Main content not found!');
+          }
+          
+          // Force a reflow
+          void sidebar.offsetWidth;
+          if (mainContent) void mainContent.offsetWidth;
+          
+          const computedAfter = window.getComputedStyle(sidebar);
+          console.log('After collapse - computed display:', computedAfter.display);
+          console.log('After collapse - computed width:', computedAfter.width);
+          console.log('After collapse - sidebar.offsetWidth:', sidebar.offsetWidth);
+          console.log('Desktop sidebar closed to 60px, offsetWidth:', sidebar.offsetWidth);
+          
+          // Update toggle button visibility after a short delay
+          setTimeout(() => {
+            if (typeof updateToggleButton === 'function') {
+              updateToggleButton();
+            }
+          }, 10);
+        }
+        console.log('=== closeSidebar finished ===');
+      }
+      // Make it available globally immediately
+      window.closeSidebar = closeSidebar;
+    </script>
+    <button class="sidebar-toggle mobile-only" id="sidebarToggleBtnMobile" title="Toggle Sidebar">
+      <i class="bi bi-list"></i>
+    </button>
+    <div class="sidebar-wrapper">
+    <aside class="sidebar collapsed" id="sidebar">
+      <!-- Toggle button inside sidebar - visible when collapsed, positioned outside sidebar-content -->
+      <button class="sidebar-toggle" id="sidebarToggleBtn" title="Toggle Sidebar" onclick="event.preventDefault(); event.stopPropagation(); console.log('Toggle button onclick fired, window.toggleSidebar:', typeof window.toggleSidebar); if(typeof window.toggleSidebar === 'function') { console.log('Calling toggleSidebar'); window.toggleSidebar(); } else { console.error('toggleSidebar not found, trying direct call'); if(typeof toggleSidebar === 'function') { toggleSidebar(); } else { console.error('toggleSidebar not found anywhere'); } } return false;">
+        <i class="bi bi-list"></i>
+      </button>
+      <div class="sidebar-content">
+        <div class="sidebar-header">
+          <a href="/" class="sidebar-brand"><i class="bi bi-water"></i> APS</a>
+          <button class="sidebar-close" id="sidebarCloseBtn" title="Close Sidebar" onclick="closeSidebar(); return false;">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        <ul class="sidebar-menu">
+        <% if (typeof isAuthenticated !== 'undefined' && isAuthenticated) { %>
+        <li><a href="/"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+        <li>
+          <a href="#" onclick="toggleSubmenu(event, 'jobs-menu')">
+            <i class="bi bi-briefcase"></i> Jobs <i class="bi bi-chevron-down"></i>
+          </a>
+          <ul class="sidebar-submenu" id="jobs-menu">
+            <li><a href="/jobs"><i class="bi bi-list"></i> All Jobs</a></li>
+            <li><a href="/jobs/calendar"><i class="bi bi-calendar3"></i> Calendar</a></li>
+          </ul>
+        </li>
+        <li>
+          <a href="#" onclick="toggleSubmenu(event, 'sales-menu')">
+            <i class="bi bi-cart"></i> Sales <i class="bi bi-chevron-down"></i>
+          </a>
+          <ul class="sidebar-submenu" id="sales-menu">
+            <li><a href="/sales"><i class="bi bi-list"></i> All Sales</a></li>
+            <li><a href="/sales/new"><i class="bi bi-plus-circle"></i> New Sale</a></li>
+          </ul>
+        </li>
+        <li>
+          <a href="#" onclick="toggleSubmenu(event, 'people-menu')">
+            <i class="bi bi-people"></i> People <i class="bi bi-chevron-down"></i>
+          </a>
+          <ul class="sidebar-submenu" id="people-menu">
+            <li><a href="/customers"><i class="bi bi-person"></i> Customers</a></li>
+            <li><a href="/sales-reps"><i class="bi bi-person-badge"></i> Sales Reps</a></li>
+            <li><a href="/installers"><i class="bi bi-tools"></i> Installers</a></li>
+            <li><a href="/employees"><i class="bi bi-person-workspace"></i> Employees</a></li>
+          </ul>
+        </li>
+        <li>
+          <a href="#" onclick="toggleSubmenu(event, 'payroll-menu')">
+            <i class="bi bi-clock-history"></i> Payroll <i class="bi bi-chevron-down"></i>
+          </a>
+          <ul class="sidebar-submenu" id="payroll-menu">
+            <li><a href="/time-entries"><i class="bi bi-clock"></i> Time Entries</a></li>
+            <li><a href="/pay-periods"><i class="bi bi-calendar-range"></i> Pay Periods</a></li>
+            <li><a href="/payroll-records"><i class="bi bi-cash-stack"></i> Payroll Records</a></li>
+            <li><a href="/payouts"><i class="bi bi-calendar-day"></i> Daily Payouts</a></li>
+            <li><a href="/payouts/weekly"><i class="bi bi-calendar-week"></i> Weekly Payouts</a></li>
+          </ul>
+        </li>
+        <li><a href="/invoices"><i class="bi bi-receipt"></i> Invoices</a></li>
+        <li>
+          <a href="#" onclick="toggleSubmenu(event, 'settings-menu')">
+            <i class="bi bi-gear"></i> Settings <i class="bi bi-chevron-down"></i>
+          </a>
+          <ul class="sidebar-submenu" id="settings-menu">
+            <li><a href="/products"><i class="bi bi-box"></i> Products</a></li>
+            <li><a href="/stores"><i class="bi bi-shop"></i> Stores</a></li>
+            <li><a href="/payments"><i class="bi bi-cash-coin"></i> Payments</a></li>
+            <li><a href="/settings"><i class="bi bi-building"></i> Company Settings</a></li>
+            <% if (typeof user !== 'undefined' && user && user.role === 'admin') { %>
+            <li><a href="/admin/users"><i class="bi bi-person-gear"></i> Users</a></li>
+            <% } %>
+          </ul>
+        </li>
+        <% if (typeof user !== 'undefined' && user && (user.isSalesRep || user.soldByOwner || user.isInstaller)) { %>
+        <li>
+          <a href="#" onclick="toggleSubmenu(event, 'my-menu')">
+            <i class="bi bi-person-circle"></i> My <i class="bi bi-chevron-down"></i>
+          </a>
+          <ul class="sidebar-submenu" id="my-menu">
+            <% if (typeof user !== 'undefined' && user && (user.isSalesRep || user.soldByOwner)) { %>
+            <li><a href="/my/sales"><i class="bi bi-receipt"></i> My Sales</a></li>
+            <% } %>
+            <% if (typeof user !== 'undefined' && user && user.isInstaller) { %>
+            <li><a href="/my/installs"><i class="bi bi-wrench"></i> My Installs</a></li>
+            <% } %>
+          </ul>
+        </li>
+        <% } %>
+        <li>
+          <a href="#" onclick="toggleSubmenu(event, 'user-menu')">
+            <i class="bi bi-person-circle"></i> <%= typeof user !== 'undefined' && user ? user.name : 'User' %> <i class="bi bi-chevron-down"></i>
+          </a>
+          <ul class="sidebar-submenu" id="user-menu">
+            <li>
+              <a href="/logout" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                <i class="bi bi-box-arrow-right"></i> Logout
+              </a>
+            </li>
+          </ul>
+        </li>
+        <% } else { %>
+        <li><a href="/login"><i class="bi bi-box-arrow-in-right"></i> Login</a></li>
+        <% } %>
+        </ul>
+      </div>
+    </aside>
+    <form id="logout-form" action="/logout" method="POST" style="display: none"></form>
+    <div class="main-content" id="mainContent">
+      <main class="container-fluid py-4" style="padding-top: 1rem;">
+    <% } else { %>
+    <!-- Navbar Layout -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
       <div class="container-fluid">
         <a class="navbar-brand" href="/"><i class="bi bi-water"></i> APS</a>
@@ -140,7 +719,6 @@
         </div>
       </div>
     </nav>
-
     <main class="container-fluid py-4">
       <% if (typeof success !== 'undefined' && success) { %> <% if (Array.isArray(success)) { %> <% for (var i = 0; i < success.length; i++) { %>
       <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -180,5 +758,588 @@
       </div>
       <% } %> <% } %>
     </main>
+    <script>
+      // Define all functions globally first, before any onclick handlers try to use them
+      function toggleSubmenu(event, menuId) {
+        event.preventDefault();
+        event.stopPropagation();
+        const submenu = document.getElementById(menuId);
+        if (submenu) {
+          submenu.classList.toggle('show');
+        }
+      }
+      // Make it available globally immediately
+      window.toggleSubmenu = toggleSubmenu;
+      
+      // Define toggleSidebar placeholder IMMEDIATELY so onclick handlers can use it
+      // This will be replaced by the full function later, but ensures it exists now
+      window.toggleSidebar = function() {
+        console.log('toggleSidebar placeholder called');
+        const sidebar = document.getElementById('sidebar');
+        if (!sidebar) {
+          console.error('Sidebar not found in placeholder');
+          return;
+        }
+        // If full function is available, use it
+        if (typeof window._toggleSidebarFull === 'function') {
+          console.log('Using full toggleSidebar function');
+          return window._toggleSidebarFull();
+        }
+        // Otherwise, do a simple toggle
+        console.log('Full function not available, doing simple toggle');
+        const isCollapsed = sidebar.classList.contains('collapsed');
+        if (isCollapsed) {
+          sidebar.classList.remove('collapsed');
+          sidebar.style.setProperty('width', '250px', 'important');
+          sidebar.style.setProperty('flex', '0 0 250px', 'important');
+          const mainContent = document.querySelector('.main-content');
+          if (mainContent) {
+            mainContent.style.removeProperty('width');
+            mainContent.style.removeProperty('flex');
+          }
+        } else {
+          sidebar.classList.add('collapsed');
+          sidebar.style.setProperty('width', '60px', 'important');
+          sidebar.style.setProperty('flex', '0 0 60px', 'important');
+          const mainContent = document.querySelector('.main-content');
+          if (mainContent) {
+            mainContent.style.setProperty('width', 'calc(100% - 60px)', 'important');
+            mainContent.style.setProperty('flex', '1 1 calc(100% - 60px)', 'important');
+          }
+        }
+      };
+      console.log('toggleSidebar placeholder defined on window');
+      
+      // Define toggleSidebar and make it available immediately
+      function toggleSidebar() {
+        console.log('toggleSidebar called');
+        const sidebar = document.getElementById('sidebar');
+        console.log('Sidebar element:', sidebar);
+        if (!sidebar) {
+          console.error('Sidebar not found!');
+          return;
+        }
+        
+        const isMobile = window.innerWidth <= 768;
+        console.log('Is mobile:', isMobile, 'Window width:', window.innerWidth);
+        
+        if (isMobile) {
+          // Mobile: toggle show class
+          const hasShow = sidebar.classList.contains('show');
+          console.log('Mobile toggle - hasShow:', hasShow);
+          if (hasShow) {
+            sidebar.classList.remove('show');
+            console.log('Mobile sidebar hidden');
+          } else {
+            sidebar.classList.add('show');
+            console.log('Mobile sidebar shown');
+          }
+        } else {
+          // Desktop: toggle collapsed class
+          const hasCollapsed = sidebar.classList.contains('collapsed');
+          console.log('Desktop toggle - sidebar classes before:', sidebar.className);
+          console.log('Desktop toggle - hasCollapsed:', hasCollapsed);
+          
+          // Get computed styles before
+          const beforeStyles = window.getComputedStyle(sidebar);
+          console.log('Before - width:', beforeStyles.width, 'flex:', beforeStyles.flex, 'max-width:', beforeStyles.maxWidth);
+          
+          // Toggle the collapsed class
+          const willBeCollapsed = !hasCollapsed;
+          sidebar.classList.toggle('collapsed');
+          console.log('Toggled collapsed class, sidebar classes:', sidebar.className);
+          
+          // Get main content element
+          const mainContent = document.querySelector('.main-content');
+          
+          // Update inline styles based on collapsed state
+          if (willBeCollapsed) {
+            // Collapse - set all collapsed styles with !important - collapse to 60px strip
+            sidebar.style.setProperty('display', 'block', 'important');
+            sidebar.style.setProperty('flex', '0 0 60px', 'important');
+            sidebar.style.setProperty('width', '60px', 'important');
+            sidebar.style.setProperty('min-width', '60px', 'important');
+            sidebar.style.setProperty('max-width', '60px', 'important');
+            sidebar.style.setProperty('overflow', 'visible', 'important');
+            sidebar.style.setProperty('visibility', 'visible', 'important');
+            sidebar.style.setProperty('opacity', '1', 'important');
+            sidebar.style.setProperty('pointer-events', 'auto', 'important');
+            
+            console.log('Collapsed sidebar to 60px strip');
+            console.log('Sidebar offsetWidth after collapse:', sidebar.offsetWidth);
+            
+            // Adjust main content for 60px sidebar
+            if (mainContent) {
+              mainContent.style.setProperty('width', 'calc(100% - 60px)', 'important');
+              mainContent.style.setProperty('flex', '1 1 calc(100% - 60px)', 'important');
+              mainContent.style.setProperty('margin-left', '0', 'important');
+              console.log('Main content adjusted for 60px sidebar');
+            }
+          } else {
+            // Expand - remove collapsed class and restore visible styles with !important
+            console.log('Expanding sidebar...');
+            sidebar.classList.remove('collapsed');
+            console.log('Removed collapsed class, sidebar classes:', sidebar.className);
+            
+            // Don't clear all styles - just update what's needed for expansion
+            // This preserves the flexbox relationship
+            console.log('Setting expanded styles...');
+            
+            // Ensure sidebar is in normal flow with correct flex properties
+            sidebar.style.setProperty('position', 'relative', 'important');
+            sidebar.style.setProperty('display', 'block', 'important');
+            sidebar.style.setProperty('visibility', 'visible', 'important');
+            sidebar.style.setProperty('opacity', '1', 'important');
+            sidebar.style.setProperty('flex', '0 0 250px', 'important');
+            sidebar.style.setProperty('flex-shrink', '0', 'important');
+            sidebar.style.setProperty('flex-grow', '0', 'important');
+            sidebar.style.setProperty('flex-basis', '250px', 'important');
+            sidebar.style.setProperty('width', '250px', 'important');
+            sidebar.style.setProperty('min-width', '250px', 'important');
+            sidebar.style.setProperty('max-width', '250px', 'important');
+            // Ensure it's not positioned absolutely or fixed
+            sidebar.style.removeProperty('left');
+            sidebar.style.removeProperty('right');
+            sidebar.style.removeProperty('top');
+            sidebar.style.removeProperty('bottom');
+            sidebar.style.removeProperty('transform');
+            sidebar.style.removeProperty('z-index');
+            
+            console.log('Set expanded styles - width:', sidebar.style.width, 'flex:', sidebar.style.flex);
+            
+            // Force a reflow before checking dimensions
+            void sidebar.offsetWidth;
+            
+            console.log('Expanded sidebar - restored visible styles');
+            console.log('Sidebar offsetWidth after expand:', sidebar.offsetWidth);
+            console.log('Sidebar computed width:', window.getComputedStyle(sidebar).width);
+            
+            // Adjust main content to account for 250px sidebar
+            if (mainContent) {
+              // Remove all inline styles that might interfere
+              mainContent.style.removeProperty('width');
+              mainContent.style.removeProperty('flex');
+              mainContent.style.removeProperty('margin-left');
+              mainContent.style.removeProperty('left');
+              mainContent.style.removeProperty('right');
+              // Ensure main-content is in normal flow
+              mainContent.style.setProperty('position', 'relative', 'important');
+              // Force a reflow to ensure styles are applied
+              void mainContent.offsetWidth;
+              void sidebar.offsetWidth;
+              const mainStyles = window.getComputedStyle(mainContent);
+              const sidebarStyles = window.getComputedStyle(sidebar);
+              console.log('Main content after expand - width:', mainStyles.width, 'flex:', mainStyles.flex, 'offsetWidth:', mainContent.offsetWidth, 'position:', mainStyles.position);
+              console.log('Sidebar after expand - width:', sidebarStyles.width, 'flex:', sidebarStyles.flex, 'offsetWidth:', sidebar.offsetWidth, 'position:', sidebarStyles.position);
+              const wrapper = mainContent.parentElement;
+              const wrapperStyles = wrapper ? window.getComputedStyle(wrapper) : null;
+              console.log('Main content parent (sidebar-wrapper):', wrapper);
+              console.log('Sidebar-wrapper display:', wrapperStyles?.display, 'flex-direction:', wrapperStyles?.flexDirection, 'position:', wrapperStyles?.position);
+              
+              // Force sidebar-wrapper to maintain flex display
+              if (wrapper && wrapperStyles?.display !== 'flex') {
+                wrapper.style.setProperty('display', 'flex', 'important');
+                wrapper.style.setProperty('flex-direction', 'row', 'important');
+                console.log('FORCED sidebar-wrapper to display: flex');
+                // Force another reflow
+                void wrapper.offsetWidth;
+                void sidebar.offsetWidth;
+                void mainContent.offsetWidth;
+              }
+            }
+            
+            // Force another reflow after main content update
+            void sidebar.offsetWidth;
+            if (mainContent) void mainContent.offsetWidth;
+            
+            // Check final state
+            const finalStyles = window.getComputedStyle(sidebar);
+            console.log('Final - display:', finalStyles.display, 'width:', finalStyles.width, 'flex:', finalStyles.flex);
+            console.log('Final - sidebar.offsetWidth:', sidebar.offsetWidth);
+          }
+          
+          // Force a reflow
+          void sidebar.offsetWidth;
+          if (mainContent) void mainContent.offsetWidth;
+          
+          // Get computed styles after
+          const afterStyles = window.getComputedStyle(sidebar);
+          console.log('After - display:', afterStyles.display, 'position:', afterStyles.position, 'width:', afterStyles.width, 'flex:', afterStyles.flex);
+          console.log('After - sidebar.offsetWidth:', sidebar.offsetWidth);
+          
+          // Also check main content
+          if (mainContent) {
+            const mainStyles = window.getComputedStyle(mainContent);
+            console.log('Main content - width:', mainStyles.width, 'flex:', mainStyles.flex, 'offsetWidth:', mainContent.offsetWidth);
+          }
+          
+          const hasCollapsedAfter = sidebar.classList.contains('collapsed');
+          console.log('Desktop toggle - sidebar classes after:', sidebar.className);
+          console.log('Desktop toggle - hasCollapsedAfter:', hasCollapsedAfter);
+          console.log(hasCollapsedAfter ? 'Sidebar is now collapsed' : 'Sidebar is now expanded');
+          
+          // Update toggle button visibility after a short delay to ensure styles are applied
+          setTimeout(() => {
+            updateToggleButton();
+          }, 10);
+        }
+      }
+      // Make toggleSidebar available on window immediately
+      window.toggleSidebar = toggleSidebar;
+      window._toggleSidebarFull = toggleSidebar; // Also store as backup
+      console.log('toggleSidebar assigned to window.toggleSidebar');
+      
+      // Use event delegation for toggle button - works even if button is recreated
+      // This must be set up after toggleSidebar is defined
+      setTimeout(function() {
+        document.addEventListener('click', function(e) {
+          // Check if click is on toggle button or its icon
+          const toggleBtn = document.getElementById('sidebarToggleBtn');
+          if (!toggleBtn) return;
+          
+          const clickedElement = e.target;
+          const isToggleClick = clickedElement === toggleBtn || 
+                               clickedElement.closest('#sidebarToggleBtn') === toggleBtn ||
+                               (toggleBtn.contains(clickedElement));
+          
+          if (isToggleClick && window.innerWidth > 768) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Toggle button clicked via event delegation', clickedElement, 'toggleSidebar available:', typeof window.toggleSidebar);
+            if (typeof window.toggleSidebar === 'function') {
+              window.toggleSidebar();
+            } else {
+              console.error('toggleSidebar function not available on window');
+            }
+            return false;
+          }
+        }, true); // Use capture phase
+        console.log('Event delegation for toggle button set up, toggleSidebar available:', typeof window.toggleSidebar);
+      }, 100);
+      
+      function updateToggleButton() {
+        const sidebar = document.getElementById('sidebar');
+        const toggleBtn = document.getElementById('sidebarToggleBtn');
+        if (!toggleBtn || !sidebar) {
+          console.log('updateToggleButton - missing elements, toggleBtn:', toggleBtn, 'sidebar:', sidebar);
+          return;
+        }
+        
+        if (window.innerWidth > 768) {
+          // Check if sidebar is collapsed (either by class or display: none)
+          const computedStyle = window.getComputedStyle(sidebar);
+          const isCollapsed = sidebar.classList.contains('collapsed') || 
+                             sidebar.style.display === 'none' || 
+                             sidebar.style.display === 'none !important' ||
+                             computedStyle.display === 'none';
+          
+          console.log('updateToggleButton - isCollapsed:', isCollapsed, 'display:', computedStyle.display, 'sidebar.style.display:', sidebar.style.display);
+          
+          // Show toggle button when sidebar is closed (collapsed)
+          // Hide toggle button when sidebar is open (not collapsed)
+          if (isCollapsed) {
+            toggleBtn.classList.add('visible');
+            toggleBtn.style.setProperty('display', 'block', 'important');
+            console.log('Toggle button shown - sidebar is collapsed');
+          } else {
+            toggleBtn.classList.remove('visible');
+            toggleBtn.style.setProperty('display', 'none', 'important');
+            console.log('Toggle button hidden - sidebar is open');
+          }
+        }
+      }
+      function closeSidebar() {
+        console.log('=== closeSidebar called ===');
+        const sidebar = document.getElementById('sidebar');
+        if (!sidebar) {
+          console.error('ERROR: Sidebar not found!');
+          return;
+        }
+        
+        console.log('Sidebar found:', sidebar);
+        console.log('Window width:', window.innerWidth);
+        console.log('Sidebar classes before:', sidebar.className);
+        console.log('Sidebar display before:', window.getComputedStyle(sidebar).display);
+        
+        if (window.innerWidth <= 768) {
+          sidebar.classList.remove('show');
+          console.log('Mobile sidebar closed');
+        } else {
+          // Desktop: collapse the sidebar to 60px strip
+          console.log('Closing desktop sidebar to 60px strip');
+          
+          // Add collapsed class
+          sidebar.classList.add('collapsed');
+          console.log('Added collapsed class, sidebar classes:', sidebar.className);
+          
+          // Set collapsed styles with !important - collapse to 60px strip
+          console.log('Setting collapsed styles to 60px...');
+          sidebar.style.setProperty('display', 'block', 'important');
+          sidebar.style.setProperty('flex', '0 0 60px', 'important');
+          sidebar.style.setProperty('width', '60px', 'important');
+          sidebar.style.setProperty('min-width', '60px', 'important');
+          sidebar.style.setProperty('max-width', '60px', 'important');
+          sidebar.style.setProperty('overflow', 'visible', 'important');
+          sidebar.style.setProperty('visibility', 'visible', 'important');
+          sidebar.style.setProperty('opacity', '1', 'important');
+          sidebar.style.setProperty('pointer-events', 'auto', 'important');
+          
+          console.log('Collapsed styles set. Sidebar style.width:', sidebar.style.width);
+          
+          const mainContent = document.querySelector('.main-content');
+          if (mainContent) {
+            mainContent.style.setProperty('width', 'calc(100% - 60px)', 'important');
+            mainContent.style.setProperty('flex', '1 1 calc(100% - 60px)', 'important');
+            mainContent.style.setProperty('margin-left', '0', 'important');
+            console.log('Main content adjusted for 60px sidebar');
+          } else {
+            console.warn('Main content not found!');
+          }
+          
+          // Force a reflow
+          void sidebar.offsetWidth;
+          if (mainContent) void mainContent.offsetWidth;
+          
+          const computedAfter = window.getComputedStyle(sidebar);
+          console.log('After collapse - computed display:', computedAfter.display);
+          console.log('After collapse - computed width:', computedAfter.width);
+          console.log('After collapse - sidebar.offsetWidth:', sidebar.offsetWidth);
+          console.log('Desktop sidebar closed to 60px, offsetWidth:', sidebar.offsetWidth);
+          
+          // Update toggle button visibility after a short delay
+          setTimeout(() => {
+            updateToggleButton();
+          }, 10);
+        }
+        console.log('=== closeSidebar finished ===');
+      }
+      window.closeSidebar = closeSidebar;
+      // toggleSubmenu is already defined at the top of the script
+      
+      // Initialize sidebar functionality
+      function initSidebar() {
+        console.log('Initializing sidebar...');
+        const sidebar = document.getElementById('sidebar');
+        let toggleBtn = document.getElementById('sidebarToggleBtn');
+        let toggleBtnMobile = document.getElementById('sidebarToggleBtnMobile');
+        let closeBtn = document.getElementById('sidebarCloseBtn');
+        
+        console.log('Elements found - sidebar:', sidebar, 'toggleBtn:', toggleBtn, 'toggleBtnMobile:', toggleBtnMobile, 'closeBtn:', closeBtn);
+        
+        // Attach event listeners directly
+        if (toggleBtn) {
+          // Remove any existing listeners by cloning
+          const newToggleBtn = toggleBtn.cloneNode(true);
+          toggleBtn.parentNode.replaceChild(newToggleBtn, toggleBtn);
+          toggleBtn = newToggleBtn; // Update reference
+          
+          // Make sure it's clickable
+          toggleBtn.style.pointerEvents = 'auto';
+          toggleBtn.style.cursor = 'pointer';
+          toggleBtn.style.zIndex = '1000';
+          
+          toggleBtn.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Desktop toggle button clicked (onclick)', e);
+            if (typeof window.toggleSidebar === 'function') {
+              window.toggleSidebar();
+            } else {
+              console.error('window.toggleSidebar is not a function');
+            }
+            return false;
+          };
+          toggleBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Desktop toggle button clicked (addEventListener)', e);
+            if (typeof window.toggleSidebar === 'function') {
+              window.toggleSidebar();
+            } else {
+              console.error('window.toggleSidebar is not a function');
+            }
+            return false;
+          }, true); // Use capture phase
+          console.log('Desktop toggle button event listener attached to:', toggleBtn);
+          console.log('Toggle button styles:', {
+            display: window.getComputedStyle(toggleBtn).display,
+            pointerEvents: window.getComputedStyle(toggleBtn).pointerEvents,
+            zIndex: window.getComputedStyle(toggleBtn).zIndex
+          });
+        } else {
+          console.error('Desktop toggle button not found!');
+        }
+        
+        if (toggleBtnMobile) {
+          toggleBtnMobile.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Mobile toggle button clicked');
+            toggleSidebar();
+            return false;
+          };
+          console.log('Mobile toggle button event listener attached');
+        }
+        
+        if (closeBtn) {
+          // Remove any existing listeners by cloning
+          const newCloseBtn = closeBtn.cloneNode(true);
+          closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+          closeBtn = newCloseBtn; // Update reference
+          
+          closeBtn.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Close button clicked (onclick)');
+            closeSidebar();
+            return false;
+          };
+          closeBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Close button clicked (addEventListener)');
+            closeSidebar();
+            return false;
+          }, true); // Use capture phase
+          console.log('Close button event listener attached to:', closeBtn);
+        } else {
+          console.error('Close button not found!');
+        }
+        
+        // Make sure sidebar starts collapsed (60px strip) on desktop
+        if (window.innerWidth > 768 && sidebar) {
+          // Ensure collapsed class is present
+          if (!sidebar.classList.contains('collapsed')) {
+            sidebar.classList.add('collapsed');
+          }
+          sidebar.classList.remove('show'); // Remove show class if present
+          // Set collapsed styles
+          sidebar.style.setProperty('display', 'block', 'important');
+          sidebar.style.setProperty('flex', '0 0 60px', 'important');
+          sidebar.style.setProperty('width', '60px', 'important');
+          sidebar.style.setProperty('min-width', '60px', 'important');
+          sidebar.style.setProperty('max-width', '60px', 'important');
+          sidebar.style.setProperty('overflow', 'visible', 'important');
+          sidebar.style.setProperty('visibility', 'visible', 'important');
+          sidebar.style.setProperty('opacity', '1', 'important');
+          sidebar.style.setProperty('pointer-events', 'auto', 'important');
+          
+          const mainContent = document.querySelector('.main-content');
+          if (mainContent) {
+            mainContent.style.setProperty('width', 'calc(100% - 60px)', 'important');
+            mainContent.style.setProperty('flex', '1 1 calc(100% - 60px)', 'important');
+            mainContent.style.setProperty('margin-left', '0', 'important');
+          }
+          
+          console.log('Sidebar initialized - collapsed to 60px, sidebar classes:', sidebar.className);
+        } else if (window.innerWidth <= 768 && sidebar) {
+          // On mobile, make sure it starts hidden
+          sidebar.classList.remove('show');
+          if (!sidebar.classList.contains('collapsed')) {
+            sidebar.classList.add('collapsed');
+          }
+        }
+        
+        // Update toggle button visibility immediately and after a delay
+        updateToggleButton();
+        setTimeout(() => {
+          updateToggleButton();
+        }, 100);
+        setTimeout(() => {
+          updateToggleButton();
+        }, 500);
+      }
+      
+      // Close sidebar when clicking outside on mobile
+      document.addEventListener('click', function(event) {
+        const sidebar = document.getElementById('sidebar');
+        const toggle = document.getElementById('sidebarToggleBtn');
+        const toggleMobile = document.getElementById('sidebarToggleBtnMobile');
+        const closeBtn = document.getElementById('sidebarCloseBtn');
+        if (window.innerWidth <= 768 && sidebar) {
+          if (!sidebar.contains(event.target) && 
+              !toggle?.contains(event.target) && 
+              !toggleMobile?.contains(event.target) && 
+              !closeBtn?.contains(event.target)) {
+            sidebar.classList.remove('show');
+          }
+        }
+      });
+      
+      // Handle window resize
+      window.addEventListener('resize', function() {
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar && window.innerWidth > 768) {
+          sidebar.classList.remove('show');
+        }
+        updateToggleButton();
+      });
+      
+      // Test function to verify toggle works
+      window.testToggle = function() {
+        console.log('=== TEST TOGGLE ===');
+        const sidebar = document.getElementById('sidebar');
+        const toggleBtn = document.getElementById('sidebarToggleBtn');
+        console.log('Sidebar:', sidebar);
+        console.log('Toggle button:', toggleBtn);
+        console.log('toggleSidebar function:', typeof window.toggleSidebar);
+        console.log('Sidebar has collapsed class:', sidebar?.classList.contains('collapsed'));
+        if (typeof window.toggleSidebar === 'function') {
+          console.log('Calling toggleSidebar...');
+          window.toggleSidebar();
+        }
+      };
+      
+      // Initialize when DOM is ready
+      console.log('Sidebar script loaded, readyState:', document.readyState);
+      console.log('toggleSidebar available:', typeof window.toggleSidebar);
+      
+      // Try to initialize immediately
+      try {
+        initSidebar();
+      } catch (e) {
+        console.error('Error initializing sidebar immediately:', e);
+      }
+      
+      // Also initialize when DOM is ready
+      if (document.readyState === 'loading') {
+        console.log('Adding DOMContentLoaded listener');
+        document.addEventListener('DOMContentLoaded', function() {
+          console.log('DOMContentLoaded fired, calling initSidebar');
+          try {
+            initSidebar();
+          } catch (e) {
+            console.error('Error initializing sidebar on DOMContentLoaded:', e);
+          }
+        });
+      } else {
+        console.log('DOM already ready, calling initSidebar again');
+        setTimeout(() => {
+          try {
+            initSidebar();
+            console.log('After initSidebar - toggleSidebar available:', typeof window.toggleSidebar);
+            console.log('Toggle button element:', document.getElementById('sidebarToggleBtn'));
+          } catch (e) {
+            console.error('Error initializing sidebar on timeout:', e);
+          }
+        }, 100);
+      }
+      
+      // Also try after a longer delay to ensure everything is loaded
+      setTimeout(() => {
+        const toggleBtn = document.getElementById('sidebarToggleBtn');
+        console.log('Delayed check - Toggle button:', toggleBtn);
+        console.log('Delayed check - toggleSidebar:', typeof window.toggleSidebar);
+        if (toggleBtn) {
+          console.log('Toggle button computed styles:', {
+            display: window.getComputedStyle(toggleBtn).display,
+            pointerEvents: window.getComputedStyle(toggleBtn).pointerEvents,
+            zIndex: window.getComputedStyle(toggleBtn).zIndex,
+            visibility: window.getComputedStyle(toggleBtn).visibility
+          });
+        }
+      }, 1000);
+    </script>
+    <% } %>
   </body>
 </html>

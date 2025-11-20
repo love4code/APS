@@ -77,6 +77,24 @@
 
         <div class="card mb-4">
           <div class="card-header">
+            <h5 class="mb-0">Display Settings</h5>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <label for="layoutType" class="form-label">Navigation Layout</label>
+                <select class="form-select" id="layoutType" name="layoutType">
+                  <option value="navbar" <%= (settings.layoutType || 'navbar') === 'navbar' ? 'selected' : '' %>>Navbar (Top Navigation)</option>
+                  <option value="sidebar" <%= settings.layoutType === 'sidebar' ? 'selected' : '' %>>Sidebar (Left Navigation)</option>
+                </select>
+                <small class="form-text text-muted">Choose between top navbar or left sidebar navigation</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mb-4">
+          <div class="card-header">
             <h5 class="mb-0">Invoice Settings</h5>
           </div>
           <div class="card-body">

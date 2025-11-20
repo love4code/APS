@@ -1,4 +1,11 @@
   </main>
+  <% const layoutType = typeof settings !== 'undefined' && settings ? (settings.layoutType || 'navbar') : 'navbar' %>
+  <% if (layoutType === 'sidebar') { %>
+    </div>
+    <!-- Close main-content -->
+    </div>
+    <!-- Close sidebar-wrapper -->
+  <% } %>
 
   <footer class="bg-light py-3 mt-5">
     <div class="container-fluid text-center text-muted">
