@@ -54,6 +54,7 @@ exports.getDashboard = async (req, res, next) => {
     }
 
     // Get jobs with populated data - exclude sales from recent jobs
+    // Sort by install date (earliest first) to show which jobs need to be completed first
     let jobs = []
     try {
       jobs = await Job.find({ isSale: { $ne: true } }) // Exclude sales from jobs
@@ -77,8 +78,6 @@ exports.getDashboard = async (req, res, next) => {
           select: 'name',
           options: { lean: true }
         })
-        .sort({ createdAt: -1 })
-        .limit(50)
         .lean()
         .maxTimeMS(5000)
 
@@ -95,6 +94,33 @@ exports.getDashboard = async (req, res, next) => {
         installDate: job.installDate || null,
         invoicedDate: job.invoicedDate || null
       }))
+
+      // Sort jobs by install date (earliest first)
+      // Jobs with install dates come first, ordered by date
+      // Jobs without install dates come after, sorted by createdAt
+      jobs.sort((a, b) => {
+        const aHasDate = a.installDate && new Date(a.installDate).getTime() > 0
+        const bHasDate = b.installDate && new Date(b.installDate).getTime() > 0
+
+        if (aHasDate && bHasDate) {
+          // Both have install dates - sort by date (earliest first)
+          return new Date(a.installDate) - new Date(b.installDate)
+        } else if (aHasDate && !bHasDate) {
+          // A has date, B doesn't - A comes first
+          return -1
+        } else if (!aHasDate && bHasDate) {
+          // B has date, A doesn't - B comes first
+          return 1
+        } else {
+          // Neither has date - sort by createdAt (most recent first)
+          const aCreated = a.createdAt ? new Date(a.createdAt).getTime() : 0
+          const bCreated = b.createdAt ? new Date(b.createdAt).getTime() : 0
+          return bCreated - aCreated
+        }
+      })
+
+      // Limit to 6 most important jobs (earliest install dates)
+      jobs = jobs.slice(0, 6)
     } catch (err) {
       console.error('Error fetching jobs:', err)
       console.error('Error details:', {
@@ -150,7 +176,7 @@ exports.getDashboard = async (req, res, next) => {
     // Get recent sales (all sales, not just pool sales) - with error handling
     let recentSales = []
     try {
-      // Get all sales (isSale: true)
+      // Get all sales (isSale: true) - limit to 6 most recent
       recentSales = await Job.find({ isSale: true })
         .populate({
           path: 'customer',
@@ -168,7 +194,7 @@ exports.getDashboard = async (req, res, next) => {
           options: { lean: true }
         })
         .sort({ createdAt: -1 })
-        .limit(20)
+        .limit(6)
         .lean()
         .maxTimeMS(5000)
 
@@ -194,6 +220,94 @@ exports.getDashboard = async (req, res, next) => {
     const safeJobs = Array.isArray(jobs) ? jobs : []
     const safeRecentSales = Array.isArray(recentSales) ? recentSales : []
 
+    // Calculate chart data
+    let chartData = {
+      salesByMonth: [],
+      jobStatusCounts: {},
+      salesByRep: [],
+      installerPerformance: []
+    }
+
+    try {
+      // Sales by month (last 6 months)
+      const sixMonthsAgo = new Date()
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+      
+      const allSales = await Job.find({
+        isSale: true,
+        createdAt: { $gte: sixMonthsAgo }
+      }).select('createdAt totalPrice').lean().maxTimeMS(5000)
+
+      // Group sales by month
+      const salesByMonthMap = {}
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+      
+      allSales.forEach(sale => {
+        if (sale.createdAt) {
+          const date = new Date(sale.createdAt)
+          const monthKey = `${date.getFullYear()}-${date.getMonth()}`
+          const monthLabel = `${monthNames[date.getMonth()]} ${date.getFullYear()}`
+          
+          if (!salesByMonthMap[monthKey]) {
+            salesByMonthMap[monthKey] = {
+              month: monthLabel,
+              total: 0,
+              count: 0
+            }
+          }
+          salesByMonthMap[monthKey].total += sale.totalPrice || 0
+          salesByMonthMap[monthKey].count += 1
+        }
+      })
+      
+      chartData.salesByMonth = Object.values(salesByMonthMap).sort((a, b) => {
+        const aParts = a.month.split(' ')
+        const bParts = b.month.split(' ')
+        if (aParts[1] !== bParts[1]) return aParts[1] - bParts[1]
+        return monthNames.indexOf(aParts[0]) - monthNames.indexOf(bParts[0])
+      })
+
+      // Job status counts
+      const allJobsStatus = await Job.find({ isSale: { $ne: true } })
+        .select('status')
+        .lean()
+        .maxTimeMS(3000)
+      
+      chartData.jobStatusCounts = {
+        pending: 0,
+        scheduled: 0,
+        complete: 0,
+        delayed: 0,
+        delivered: 0
+      }
+      
+      allJobsStatus.forEach(job => {
+        const status = job.status || 'pending'
+        if (chartData.jobStatusCounts.hasOwnProperty(status)) {
+          chartData.jobStatusCounts[status]++
+        } else {
+          chartData.jobStatusCounts[status] = 1
+        }
+      })
+
+      // Sales by rep (for pie chart)
+      chartData.salesByRep = safeSalesReps.map(rep => ({
+        name: rep.name || 'Unknown',
+        total: rep.salesTotal || 0,
+        count: rep.totalSales || 0
+      })).filter(rep => rep.total > 0)
+
+      // Installer performance
+      chartData.installerPerformance = safeInstallers.map(installer => ({
+        name: installer.name || 'Unknown',
+        scheduled: installer.scheduled || 0,
+        completed: installer.completed || 0
+      }))
+    } catch (err) {
+      console.error('Error calculating chart data:', err)
+      // Keep default empty chart data
+    }
+
     // req.user is already a plain object from loadUser middleware (.lean())
     // Ensure all required variables are set for the view
     res.locals.isAuthenticated = res.locals.isAuthenticated || false
@@ -215,6 +329,7 @@ exports.getDashboard = async (req, res, next) => {
         salesReps: safeSalesReps || [],
         jobs: safeJobs || [],
         recentSales: safeRecentSales || [],
+        chartData: chartData,
         user: req.user || null,
         isAuthenticated: res.locals.isAuthenticated || false
       })

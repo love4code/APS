@@ -49,3 +49,252 @@ main {
   font-size: 0.75rem;
   padding: 0.35em 0.65em;
 }
+
+/* Mobile-friendly dashboard styles */
+.dashboard-section {
+  margin-bottom: 1.5rem;
+}
+
+.dashboard-section h2 {
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+/* Two-column layout for desktop */
+@media (min-width: 992px) {
+  .dashboard-cards-column {
+    max-height: calc(100vh - 150px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 1rem;
+  }
+
+  .dashboard-cards-column::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .dashboard-cards-column::-webkit-scrollbar-track {
+    background: #f8f9fa;
+    border-radius: 4px;
+  }
+
+  .dashboard-cards-column::-webkit-scrollbar-thumb {
+    background: #dee2e6;
+    border-radius: 4px;
+  }
+
+  .dashboard-cards-column::-webkit-scrollbar-thumb:hover {
+    background: #adb5bd;
+  }
+
+  .dashboard-graphs-column {
+    max-height: calc(100vh - 150px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-left: 1rem;
+  }
+
+  .dashboard-graphs-column::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .dashboard-graphs-column::-webkit-scrollbar-track {
+    background: #f8f9fa;
+    border-radius: 4px;
+  }
+
+  .dashboard-graphs-column::-webkit-scrollbar-thumb {
+    background: #dee2e6;
+    border-radius: 4px;
+  }
+
+  .dashboard-graphs-column::-webkit-scrollbar-thumb:hover {
+    background: #adb5bd;
+  }
+
+  /* Two-column grid for cards on desktop */
+  .dashboard-card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+}
+
+/* Horizontal scroll for mobile */
+@media (max-width: 991px) {
+  .dashboard-card-grid {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 1rem;
+    padding-bottom: 0.5rem;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+
+  .dashboard-card-grid::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .dashboard-card-grid::-webkit-scrollbar-track {
+    background: #f8f9fa;
+    border-radius: 3px;
+  }
+
+  .dashboard-card-grid::-webkit-scrollbar-thumb {
+    background: #dee2e6;
+    border-radius: 3px;
+  }
+
+  .dashboard-card-grid::-webkit-scrollbar-thumb:hover {
+    background: #adb5bd;
+  }
+}
+
+.dashboard-card {
+  flex: 0 0 auto;
+  min-width: 280px;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.dashboard-card .card-body {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.dashboard-card .card-title {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.dashboard-card .card-body-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-card .card-body-button {
+  margin-top: auto;
+  padding-top: 0.75rem;
+}
+
+.dashboard-card .card-text {
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
+.dashboard-card .btn {
+  min-height: 38px;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .container-fluid {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .dashboard-section {
+    margin-bottom: 1.25rem;
+  }
+
+  .dashboard-section h2 {
+    font-size: 1.125rem;
+    margin-bottom: 0.75rem;
+    padding-left: 0.25rem;
+  }
+
+  .dashboard-card {
+    min-width: 85vw;
+    max-width: 85vw;
+    flex: 0 0 auto;
+  }
+
+  .dashboard-card .card-body {
+    padding: 0.875rem;
+  }
+
+  .dashboard-card .card-title {
+    font-size: 0.9375rem;
+  }
+
+  .dashboard-card .card-text {
+    font-size: 0.8125rem;
+  }
+
+  .dashboard-card-scroll {
+    gap: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+
+  /* Better touch targets on mobile */
+  .btn {
+    min-height: 44px;
+    padding: 0.625rem 1rem;
+    font-size: 0.9375rem;
+  }
+
+  .btn-sm {
+    min-height: 38px;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.875rem;
+  }
+
+  /* Optimize badge spacing */
+  .badge {
+    font-size: 0.6875rem;
+    padding: 0.375em 0.625em;
+    margin: 0.125rem;
+  }
+
+  /* Better spacing for card content */
+  .card-body > *:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Improve text hierarchy */
+  .card-title + .card-text {
+    margin-top: 0.25rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .dashboard-card {
+    min-width: 90vw;
+    max-width: 90vw;
+  }
+
+  .dashboard-section h2 {
+    font-size: 1rem;
+  }
+
+  .dashboard-card .card-body {
+    padding: 0.75rem;
+  }
+}
+
+/* Chart styling */
+.dashboard-graphs-column .card {
+  margin-bottom: 1rem;
+}
+
+.dashboard-graphs-column canvas {
+  max-height: 300px;
+}
+
+@media (min-width: 992px) {
+  .dashboard-graphs-column canvas {
+    max-height: 250px;
+  }
+}

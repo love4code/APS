@@ -77,20 +77,34 @@
       }
       
       /* Sidebar layout styles */
+      /* Ensure html and body take full height */
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      
       /* Body styles only apply when sidebar layout is visible */
       @media (min-width: 769px) {
+        html {
+          height: 100vh !important;
+          overflow: hidden;
+        }
         body:has(.sidebar-layout) {
           margin: 0;
           padding: 0;
-          overflow-x: hidden;
-          height: 100vh;
+          overflow: hidden;
+          height: 100vh !important;
+          min-height: 100vh !important;
+          max-height: 100vh !important;
           display: flex;
           flex-direction: column;
         }
         body:has(.sidebar-wrapper) {
-          height: 100vh;
-          overflow-x: hidden;
-          overflow-y: auto;
+          height: 100vh !important;
+          min-height: 100vh !important;
+          max-height: 100vh !important;
+          overflow: hidden;
         }
       }
       @media (min-width: 769px) {
@@ -99,9 +113,9 @@
           flex-direction: row !important;
           flex: 1 1 auto;
           width: 100%;
-          height: 100vh;
-          min-height: 100vh;
-          max-height: 100vh;
+          height: 100vh !important;
+          min-height: 100vh !important;
+          max-height: 100vh !important;
           overflow: hidden;
           position: relative;
           align-items: stretch;
@@ -109,6 +123,8 @@
           top: 0;
           margin-top: 0;
           padding-top: 0;
+          margin: 0;
+          padding: 0;
         }
         /* Ensure sidebar-wrapper always maintains flex display */
         .sidebar-wrapper[style*="display"] {
@@ -116,9 +132,9 @@
         }
       }
       .sidebar {
-        height: 100vh;
-        min-height: 100vh;
-        max-height: 100vh;
+        height: 100vh !important;
+        min-height: 100vh !important;
+        max-height: 100vh !important;
         background-color: #0d6efd;
         color: white;
         position: relative;
@@ -131,6 +147,7 @@
         z-index: auto;
         align-self: stretch;
         top: 0;
+        margin: 0;
         margin-top: 0;
       }
       .sidebar:not(.collapsed) {

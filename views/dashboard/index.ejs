@@ -1,233 +1,489 @@
 <%- include('../partials/header', { title: 'Dashboard' }) %>
 
 <div class="container-fluid">
-  <div class="text-center mb-4">
-    <h1 class="h3">Dashboard</h1>
+  <div class="text-center mb-3 mb-md-4">
+    <h1 class="h3 h4-md">Dashboard</h1>
   </div>
 
-  <!-- Installers Row -->
-  <div class="mb-4">
-    <h2 class="h5 mb-3">Installers</h2>
-    <div
-      class="d-flex flex-row flex-nowrap overflow-auto pb-3"
-      style="gap: 1rem"
-    >
-      <% if (installers && installers.length > 0) { %> <% installers.forEach(installer => { %> <% if (installer && installer._id) { %>
-      <div class="card" style="min-width: 250px">
-        <div class="card-body">
-          <h5 class="card-title">
-            <a
-              href="/installers/<%= installer._id.toString() %>"
-              class="text-decoration-none"
-            >
-              <%= installer.name || 'Unknown' %>
-            </a>
-          </h5>
-          <p class="card-text text-muted small">
-            <%= installer.email || 'No email' %>
-          </p>
-          <div class="d-flex justify-content-between">
-            <span class="badge bg-info"
-              >Scheduled: <%= installer.scheduled || 0 %></span
-            >
-            <span class="badge bg-success"
-              >Completed: <%= installer.completed || 0 %></span
-            >
+  <!-- Two Column Layout on Desktop -->
+  <div class="row g-3">
+    <!-- Left Column: Scrollable Cards (Desktop only) -->
+    <div class="col-12 col-lg-6 dashboard-cards-column">
+      <div class="dashboard-cards-container">
+        <!-- Installers Section -->
+        <div class="dashboard-section">
+          <h2>Installers</h2>
+          <div class="dashboard-card-grid">
+            <% if (installers && installers.length > 0) { %> <% installers.forEach(installer => { %> <% if (installer && installer._id) { %>
+            <div class="card dashboard-card">
+              <div class="card-body">
+                <h5 class="card-title">
+                  <a
+                    href="/installers/<%= installer._id.toString() %>"
+                    class="text-decoration-none"
+                  >
+                    <%= installer.name || 'Unknown' %>
+                  </a>
+                </h5>
+                <p class="card-text text-muted small">
+                  <%= installer.email || 'No email' %>
+                </p>
+                <div class="d-flex flex-wrap justify-content-between mb-2" style="gap: 0.5rem;">
+                  <span class="badge bg-info"
+                    >Scheduled: <%= installer.scheduled || 0 %></span
+                  >
+                  <span class="badge bg-success"
+                    >Completed: <%= installer.completed || 0 %></span
+                  >
+                </div>
+                <div class="mt-2">
+                  <a
+                    href="/installers/<%= installer._id.toString() %>"
+                    class="btn btn-sm btn-outline-primary w-100"
+                  >
+                    View Details
+                  </a>
+                </div>
+              </div>
+            </div>
+            <% } %> <% }) %> <% } else { %>
+            <div class="card dashboard-card">
+              <div class="card-body text-muted">No installers found</div>
+            </div>
+            <% } %>
           </div>
-          <div class="mt-2">
-            <a
-              href="/installers/<%= installer._id.toString() %>"
-              class="btn btn-sm btn-outline-primary w-100"
-            >
-              View Details
-            </a>
+        </div>
+
+        <!-- Sales Reps Section -->
+        <div class="dashboard-section">
+          <h2>Sales Reps</h2>
+          <div class="dashboard-card-grid">
+            <% if (salesReps && salesReps.length > 0) { %> <% salesReps.forEach(rep => { %> <% if (rep && rep._id) { %>
+            <div class="card dashboard-card">
+              <div class="card-body">
+                <h5 class="card-title">
+                  <a
+                    href="/sales-reps/<%= rep._id.toString() %>"
+                    class="text-decoration-none"
+                  >
+                    <%= rep.name || 'Unknown' %>
+                  </a>
+                </h5>
+                <p class="card-text text-muted small">
+                  <%= rep.email || 'No email' %>
+                </p>
+                <div class="mb-2">
+                  <p class="mb-1 small">
+                    <strong>Total Sales:</strong> <%= rep.totalSales || 0 %>
+                  </p>
+                  <p class="mb-0 small">
+                    <strong>Sales Total:</strong> $<%= (rep.salesTotal || 0).toFixed(2) %>
+                  </p>
+                </div>
+                <div class="mt-2">
+                  <a
+                    href="/sales-reps/<%= rep._id.toString() %>"
+                    class="btn btn-sm btn-outline-primary w-100"
+                  >
+                    View Details
+                  </a>
+                </div>
+              </div>
+            </div>
+            <% } %> <% }) %> <% } else { %>
+            <div class="card dashboard-card">
+              <div class="card-body text-muted">No sales reps found</div>
+            </div>
+            <% } %>
+          </div>
+        </div>
+
+        <!-- Recent Sales Section -->
+        <div class="dashboard-section">
+          <h2>Recent Sales</h2>
+          <div class="dashboard-card-grid">
+            <% if (recentSales && recentSales.length > 0) { %> <% recentSales.forEach(sale => { %> <% if (sale && sale._id) { %>
+            <div class="card dashboard-card">
+              <div class="card-body">
+                <div class="card-body-content">
+                  <div class="d-flex flex-wrap justify-content-between align-items-start mb-2" style="gap: 0.5rem;">
+                    <% 
+                      let deliveryStatusClass = 'secondary';
+                      let deliveryStatusText = 'Not Ordered';
+                      if (sale.deliveryDate) {
+                        deliveryStatusClass = 'success';
+                        deliveryStatusText = 'Delivered';
+                      } else if (sale.orderDate) {
+                        deliveryStatusClass = 'warning';
+                        deliveryStatusText = 'Ordered';
+                      }
+                    %>
+                    <span class="badge bg-<%= deliveryStatusClass %>">
+                      <%= deliveryStatusText %>
+                    </span>
+                    <span class="badge bg-<%= sale.isPaid ? 'success' : 'danger' %>">
+                      <%= sale.isPaid ? 'Paid' : 'Unpaid' %>
+                    </span>
+                  </div>
+                  <h5 class="card-title">
+                    <%= sale.customer && sale.customer.name ? sale.customer.name : 'Unknown Customer' %>
+                  </h5>
+                  <p class="card-text small mb-1">
+                    <strong>Total:</strong> $<%= (sale.totalPrice || 0).toFixed(2) %>
+                  </p>
+                  <p class="card-text small mb-1">
+                    <strong>Sold by:</strong>
+                    <%= sale.soldByOwner ? 'Owner' : (sale.salesRep && sale.salesRep.name ? sale.salesRep.name : 'N/A') %>
+                  </p>
+                  <% if (sale.orderDate) { %>
+                  <p class="card-text small mb-1">
+                    <strong>Order Date:</strong> <%= (() => { const d = new Date(sale.orderDate); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); })() %>
+                  </p>
+                  <% } %>
+                  <% if (sale.deliveryDate) { %>
+                  <p class="card-text small mb-1">
+                    <strong>Delivery Date:</strong> <%= (() => { const d = new Date(sale.deliveryDate); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); })() %>
+                  </p>
+                  <% } else if (sale.orderDate) { %>
+                  <p class="card-text small mb-1 text-warning">
+                    <strong>Status:</strong> Awaiting Delivery
+                  </p>
+                  <% } %>
+                  <% if (typeof sale.invoicedDate !== 'undefined' && sale.invoicedDate) { %>
+                  <p class="card-text small mb-2">
+                    <strong>Invoiced Date:</strong> <%= (() => { const d = new Date(sale.invoicedDate); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); })() %>
+                  </p>
+                  <% } %>
+                </div>
+                <div class="card-body-button">
+                  <a
+                    href="/jobs/<%= sale._id.toString() %>"
+                    class="btn btn-sm btn-primary w-100"
+                    >View Details</a
+                  >
+                </div>
+              </div>
+            </div>
+            <% } %> <% }) %> <% } else { %>
+            <div class="card dashboard-card">
+              <div class="card-body text-muted">No sales found</div>
+            </div>
+            <% } %>
+          </div>
+        </div>
+
+        <!-- Recent Jobs Section -->
+        <div class="dashboard-section">
+          <h2>Recent Jobs</h2>
+          <div class="dashboard-card-grid">
+            <% if (jobs && jobs.length > 0) { %> <% jobs.forEach(job => { %> <% if (job && job._id) { %>
+            <div class="card dashboard-card">
+              <div class="card-body">
+                <div class="card-body-content">
+                  <div class="d-flex flex-wrap justify-content-between align-items-start mb-2" style="gap: 0.5rem;">
+                    <% let statusClass = 'secondary'; if (job.status === 'complete') statusClass = 'success'; else if (job.status === 'delayed') statusClass = 'warning'; else if (job.status === 'delivered') statusClass = 'info'; %>
+                    <span class="badge bg-<%= statusClass %>">
+                      <%= job.status || 'pending' %>
+                    </span>
+                    <span class="badge bg-<%= job.isPaid ? 'success' : 'danger' %>">
+                      <%= job.isPaid ? 'Paid' : 'Unpaid' %>
+                    </span>
+                  </div>
+                  <h5 class="card-title">
+                    <%= job.customer && job.customer.name ? job.customer.name : 'Unknown Customer' %>
+                  </h5>
+                  <p class="card-text small mb-1">
+                    <strong>Total:</strong> $<%= (job.totalPrice || 0).toFixed(2) %>
+                  </p>
+                  <p class="card-text small mb-1">
+                    <strong>Sold by:</strong>
+                    <%= job.soldByOwner ? 'Owner' : (job.salesRep && job.salesRep.name ? job.salesRep.name : 'N/A') %>
+                  </p>
+                  <p class="card-text small mb-1">
+                    <strong>Installer:</strong> <%= job.installer && job.installer.name ? job.installer.name : 'Not assigned' %>
+                  </p>
+                  <% if (job.installDate) { %>
+                  <p class="card-text small mb-1">
+                    <strong>Install Date:</strong> <%= (() => { const d = new Date(job.installDate); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); })() %>
+                  </p>
+                  <% } %>
+                  <% if (typeof job.invoicedDate !== 'undefined' && job.invoicedDate) { %>
+                  <p class="card-text small mb-2">
+                    <strong>Invoiced Date:</strong> <%= (() => { const d = new Date(job.invoicedDate); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); })() %>
+                  </p>
+                  <% } %>
+                </div>
+                <div class="card-body-button">
+                  <a
+                    href="/jobs/<%= job._id.toString() %>"
+                    class="btn btn-sm btn-primary w-100"
+                    >View Details</a
+                  >
+                </div>
+              </div>
+            </div>
+            <% } %> <% }) %> <% } else { %>
+            <div class="card dashboard-card">
+              <div class="card-body text-muted">No jobs found</div>
+            </div>
+            <% } %>
           </div>
         </div>
       </div>
-      <% } %> <% }) %> <% } else { %>
-      <div class="card" style="min-width: 250px">
-        <div class="card-body text-muted">No installers found</div>
-      </div>
-      <% } %>
     </div>
-  </div>
 
-  <!-- Sales Reps Row -->
-  <div class="mb-4">
-    <h2 class="h5 mb-3">Sales Reps</h2>
-    <div
-      class="d-flex flex-row flex-nowrap overflow-auto pb-3"
-      style="gap: 1rem"
-    >
-      <% if (salesReps && salesReps.length > 0) { %> <% salesReps.forEach(rep => { %> <% if (rep && rep._id) { %>
-      <div class="card" style="min-width: 250px">
-        <div class="card-body">
-          <h5 class="card-title">
-            <a
-              href="/sales-reps/<%= rep._id.toString() %>"
-              class="text-decoration-none"
-            >
-              <%= rep.name || 'Unknown' %>
-            </a>
-          </h5>
-          <p class="card-text text-muted small">
-            <%= rep.email || 'No email' %>
-          </p>
-          <div>
-            <p class="mb-1">
-              <strong>Total Sales:</strong> <%= rep.totalSales || 0 %>
-            </p>
-            <p class="mb-0">
-              <strong>Sales Total:</strong> $<%= (rep.salesTotal || 0).toFixed(2) %>
-            </p>
+    <!-- Right Column: Graphs (Desktop only) -->
+    <div class="col-12 col-lg-6 dashboard-graphs-column">
+      <div class="dashboard-graphs-container">
+        <!-- Sales by Month Chart -->
+        <div class="dashboard-section">
+          <h2>Sales by Month</h2>
+          <div class="card">
+            <div class="card-body">
+              <div style="height: 250px; position: relative;">
+                <canvas id="salesByMonthChart"></canvas>
+              </div>
+            </div>
           </div>
-          <div class="mt-2">
-            <a
-              href="/sales-reps/<%= rep._id.toString() %>"
-              class="btn btn-sm btn-outline-primary w-100"
-            >
-              View Details
-            </a>
+        </div>
+
+        <!-- Job Status Distribution -->
+        <div class="dashboard-section">
+          <h2>Job Status Distribution</h2>
+          <div class="card">
+            <div class="card-body">
+              <div style="height: 250px; position: relative;">
+                <canvas id="jobStatusChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sales by Sales Rep -->
+        <div class="dashboard-section">
+          <h2>Sales by Sales Rep</h2>
+          <div class="card">
+            <div class="card-body">
+              <div style="height: 250px; position: relative;">
+                <canvas id="salesByRepChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Installer Performance -->
+        <div class="dashboard-section">
+          <h2>Installer Performance</h2>
+          <div class="card">
+            <div class="card-body">
+              <div style="height: 250px; position: relative;">
+                <canvas id="installerPerformanceChart"></canvas>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-      <% } %> <% }) %> <% } else { %>
-      <div class="card" style="min-width: 250px">
-        <div class="card-body text-muted">No sales reps found</div>
-      </div>
-      <% } %>
-    </div>
-  </div>
-
-  <!-- Recent Sales Row -->
-  <div class="mb-4">
-    <h2 class="h5 mb-3">Recent Sales</h2>
-    <div
-      class="d-flex flex-row flex-nowrap overflow-auto pb-3"
-      style="gap: 1rem"
-    >
-      <% if (recentSales && recentSales.length > 0) { %> <% recentSales.forEach(sale => { %> <% if (sale && sale._id) { %>
-      <div class="card" style="min-width: 320px">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-start mb-2">
-            <% 
-              let deliveryStatusClass = 'secondary';
-              let deliveryStatusText = 'Not Ordered';
-              if (sale.deliveryDate) {
-                deliveryStatusClass = 'success';
-                deliveryStatusText = 'Delivered';
-              } else if (sale.orderDate) {
-                deliveryStatusClass = 'warning';
-                deliveryStatusText = 'Ordered';
-              }
-            %>
-            <span class="badge bg-<%= deliveryStatusClass %>">
-              <%= deliveryStatusText %>
-            </span>
-            <span class="badge bg-<%= sale.isPaid ? 'success' : 'danger' %>">
-              <%= sale.isPaid ? 'Paid' : 'Unpaid' %>
-            </span>
-          </div>
-          <h5 class="card-title">
-            <%= sale.customer && sale.customer.name ? sale.customer.name : 'Unknown Customer' %>
-          </h5>
-          <p class="card-text small mb-1">
-            <strong>Total:</strong> $<%= (sale.totalPrice || 0).toFixed(2) %>
-          </p>
-          <p class="card-text small mb-1">
-            <strong>Sold by:</strong>
-            <%= sale.soldByOwner ? 'Owner' : (sale.salesRep && sale.salesRep.name ? sale.salesRep.name : 'N/A') %>
-          </p>
-          <% if (sale.orderDate) { %>
-          <p class="card-text small mb-1">
-            <strong>Order Date:</strong> <%= (() => { const d = new Date(sale.orderDate); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); })() %>
-          </p>
-          <% } %>
-          <% if (sale.deliveryDate) { %>
-          <p class="card-text small mb-1">
-            <strong>Delivery Date:</strong> <%= (() => { const d = new Date(sale.deliveryDate); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); })() %>
-          </p>
-          <% } else if (sale.orderDate) { %>
-          <p class="card-text small mb-1 text-warning">
-            <strong>Status:</strong> Awaiting Delivery
-          </p>
-          <% } %>
-          <% if (typeof sale.invoicedDate !== 'undefined' && sale.invoicedDate) { %>
-          <p class="card-text small mb-2">
-            <strong>Invoiced Date:</strong> <%= (() => { const d = new Date(sale.invoicedDate); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); })() %>
-          </p>
-          <% } %>
-          <a
-            href="/jobs/<%= sale._id.toString() %>"
-            class="btn btn-sm btn-primary"
-            >View Details</a
-          >
-        </div>
-      </div>
-      <% } %> <% }) %> <% } else { %>
-      <div class="card" style="min-width: 320px">
-        <div class="card-body text-muted">No sales found</div>
-      </div>
-      <% } %>
-    </div>
-  </div>
-
-  <!-- Jobs Row -->
-  <div class="mb-4">
-    <h2 class="h5 mb-3">Recent Jobs</h2>
-    <div
-      class="d-flex flex-row flex-nowrap overflow-auto pb-3"
-      style="gap: 1rem"
-    >
-      <% if (jobs && jobs.length > 0) { %> <% jobs.forEach(job => { %> <% if (job && job._id) { %>
-      <div class="card" style="min-width: 300px">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-start mb-2">
-            <% let statusClass = 'secondary'; if (job.status === 'complete') statusClass = 'success'; else if (job.status === 'delayed') statusClass = 'warning'; else if (job.status === 'delivered') statusClass = 'info'; %>
-            <span class="badge bg-<%= statusClass %>">
-              <%= job.status || 'pending' %>
-            </span>
-            <span class="badge bg-<%= job.isPaid ? 'success' : 'danger' %>">
-              <%= job.isPaid ? 'Paid' : 'Unpaid' %>
-            </span>
-          </div>
-          <h5 class="card-title">
-            <%= job.customer && job.customer.name ? job.customer.name : 'Unknown Customer' %>
-          </h5>
-          <p class="card-text small mb-1">
-            <strong>Total:</strong> $<%= (job.totalPrice || 0).toFixed(2) %>
-          </p>
-          <p class="card-text small mb-1">
-            <strong>Sold by:</strong>
-            <%= job.soldByOwner ? 'Owner' : (job.salesRep && job.salesRep.name ? job.salesRep.name : 'N/A') %>
-          </p>
-          <p class="card-text small mb-1">
-            <strong>Installer:</strong> <%= job.installer && job.installer.name ? job.installer.name : 'Not assigned' %>
-          </p>
-          <% if (job.installDate) { %>
-          <p class="card-text small mb-1">
-            <strong>Install Date:</strong> <%= (() => { const d = new Date(job.installDate); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); })() %>
-          </p>
-          <% } %>
-          <% if (typeof job.invoicedDate !== 'undefined' && job.invoicedDate) { %>
-          <p class="card-text small mb-2">
-            <strong>Invoiced Date:</strong> <%= (() => { const d = new Date(job.invoicedDate); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); })() %>
-          </p>
-          <% } %>
-          <a
-            href="/jobs/<%= job._id.toString() %>"
-            class="btn btn-sm btn-primary"
-            >View Details</a
-          >
-        </div>
-      </div>
-      <% } %> <% }) %> <% } else { %>
-      <div class="card" style="min-width: 300px">
-        <div class="card-body text-muted">No jobs found</div>
-      </div>
-      <% } %>
     </div>
   </div>
 </div>
+
+<!-- Chart.js Library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+  // Prepare chart data from server
+  const chartData = <%- JSON.stringify(typeof chartData !== 'undefined' ? chartData : {
+    salesByMonth: [],
+    jobStatusCounts: {},
+    salesByRep: [],
+    installerPerformance: []
+  }) %>;
+
+  // Sales by Month Chart
+  const salesByMonthCtx = document.getElementById('salesByMonthChart');
+  if (salesByMonthCtx && chartData.salesByMonth && chartData.salesByMonth.length > 0) {
+    new Chart(salesByMonthCtx, {
+      type: 'line',
+      data: {
+        labels: chartData.salesByMonth.map(item => item.month),
+        datasets: [{
+          label: 'Sales Total ($)',
+          data: chartData.salesByMonth.map(item => item.total),
+          borderColor: 'rgb(13, 110, 253)',
+          backgroundColor: 'rgba(13, 110, 253, 0.1)',
+          tension: 0.4,
+          fill: true
+        }, {
+          label: 'Number of Sales',
+          data: chartData.salesByMonth.map(item => item.count),
+          borderColor: 'rgb(25, 135, 84)',
+          backgroundColor: 'rgba(25, 135, 84, 0.1)',
+          tension: 0.4,
+          fill: true,
+          yAxisID: 'y1'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top'
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            position: 'left',
+            title: {
+              display: true,
+              text: 'Sales Total ($)'
+            }
+          },
+          y1: {
+            type: 'linear',
+            display: true,
+            position: 'right',
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Number of Sales'
+            },
+            grid: {
+              drawOnChartArea: false
+            }
+          }
+        }
+      }
+    });
+  } else if (salesByMonthCtx) {
+    salesByMonthCtx.parentElement.parentElement.innerHTML = '<div class="card-body text-muted text-center">No sales data available</div>';
+  }
+
+  // Job Status Distribution Chart
+  const jobStatusCtx = document.getElementById('jobStatusChart');
+  if (jobStatusCtx && chartData.jobStatusCounts) {
+    const statusData = chartData.jobStatusCounts;
+    const labels = Object.keys(statusData);
+    const data = Object.values(statusData);
+    
+    if (data.some(val => val > 0)) {
+      new Chart(jobStatusCtx, {
+        type: 'doughnut',
+        data: {
+          labels: labels.map(label => label.charAt(0).toUpperCase() + label.slice(1)),
+          datasets: [{
+            data: data,
+            backgroundColor: [
+              'rgb(108, 117, 125)',
+              'rgb(13, 110, 253)',
+              'rgb(25, 135, 84)',
+              'rgb(255, 193, 7)',
+              'rgb(13, 202, 240)'
+            ]
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom'
+            }
+          }
+        }
+      });
+    } else {
+      jobStatusCtx.parentElement.parentElement.innerHTML = '<div class="card-body text-muted text-center">No job status data available</div>';
+    }
+  }
+
+  // Sales by Sales Rep Chart
+  const salesByRepCtx = document.getElementById('salesByRepChart');
+  if (salesByRepCtx && chartData.salesByRep && chartData.salesByRep.length > 0) {
+    new Chart(salesByRepCtx, {
+      type: 'pie',
+      data: {
+        labels: chartData.salesByRep.map(item => item.name),
+        datasets: [{
+          data: chartData.salesByRep.map(item => item.total),
+          backgroundColor: [
+            'rgb(13, 110, 253)',
+            'rgb(25, 135, 84)',
+            'rgb(255, 193, 7)',
+            'rgb(220, 53, 69)',
+            'rgb(111, 66, 193)',
+            'rgb(253, 126, 20)',
+            'rgb(32, 201, 151)',
+            'rgb(232, 62, 140)'
+          ]
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom'
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const label = context.label || '';
+                const value = '$' + context.parsed.toFixed(2);
+                const rep = chartData.salesByRep[context.dataIndex];
+                const count = rep ? rep.count : 0;
+                return label + ': ' + value + ' (' + count + ' sales)';
+              }
+            }
+          }
+        }
+      }
+    });
+  } else if (salesByRepCtx) {
+    salesByRepCtx.parentElement.parentElement.innerHTML = '<div class="card-body text-muted text-center">No sales rep data available</div>';
+  }
+
+  // Installer Performance Chart
+  const installerPerformanceCtx = document.getElementById('installerPerformanceChart');
+  if (installerPerformanceCtx && chartData.installerPerformance && chartData.installerPerformance.length > 0) {
+    new Chart(installerPerformanceCtx, {
+      type: 'bar',
+      data: {
+        labels: chartData.installerPerformance.map(item => item.name),
+        datasets: [{
+          label: 'Scheduled',
+          data: chartData.installerPerformance.map(item => item.scheduled),
+          backgroundColor: 'rgb(13, 110, 253)'
+        }, {
+          label: 'Completed',
+          data: chartData.installerPerformance.map(item => item.completed),
+          backgroundColor: 'rgb(25, 135, 84)'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top'
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              stepSize: 1
+            }
+          }
+        }
+      }
+    });
+  } else if (installerPerformanceCtx) {
+    installerPerformanceCtx.parentElement.parentElement.innerHTML = '<div class="card-body text-muted text-center">No installer data available</div>';
+  }
+</script>
 
 <%- include('../partials/footer') %>
