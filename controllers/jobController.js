@@ -1079,12 +1079,43 @@ exports.uploadImage = async (req, res) => {
     // Process each image
     for (const file of files) {
       try {
+        // Verify temp file exists before processing
+        const fs = require('fs')
+        if (!fs.existsSync(file.path)) {
+          console.error(`Temp file does not exist: ${file.path}`)
+          errors.push(file.originalname)
+          continue
+        }
+
         // Process image and create multiple sizes
         const processedImages = await imageService.processJobImage(
           file.path,
           req.params.id,
           file.originalname
         )
+
+        // Verify processed images were created
+        if (!processedImages.thumbnailPath || !processedImages.mediumPath || !processedImages.largePath) {
+          console.error(`Failed to process image: ${file.originalname}`, processedImages)
+          errors.push(file.originalname)
+          continue
+        }
+
+        // Verify files actually exist on disk before saving to database
+        const path = require('path')
+        const publicDir = path.join(__dirname, '..', 'public')
+        const thumbnailFullPath = path.join(publicDir, processedImages.thumbnailPath)
+        const mediumFullPath = path.join(publicDir, processedImages.mediumPath)
+        const largeFullPath = path.join(publicDir, processedImages.largePath)
+
+        if (!fs.existsSync(thumbnailFullPath) || !fs.existsSync(mediumFullPath) || !fs.existsSync(largeFullPath)) {
+          console.error(`Processed image files do not exist for: ${file.originalname}`)
+          console.error(`Thumbnail: ${thumbnailFullPath} - exists: ${fs.existsSync(thumbnailFullPath)}`)
+          console.error(`Medium: ${mediumFullPath} - exists: ${fs.existsSync(mediumFullPath)}`)
+          console.error(`Large: ${largeFullPath} - exists: ${fs.existsSync(largeFullPath)}`)
+          errors.push(file.originalname)
+          continue
+        }
 
         // Save image metadata to database
         const jobImage = new JobImage({
@@ -1133,9 +1164,46 @@ exports.uploadImage = async (req, res) => {
       }
     }
 
+    // Check if this is an AJAX request
+    const isAjax = req.xhr ||
+                   req.headers['x-requested-with'] === 'XMLHttpRequest' ||
+                   req.headers.accept?.indexOf('json') > -1;
+
+    if (isAjax) {
+      if (uploadedImages.length > 0) {
+        return res.status(200).json({
+          success: true,
+          message: uploadedImages.length === 1 
+            ? `Image "${uploadedImages[0]}" uploaded successfully`
+            : `${uploadedImages.length} images uploaded successfully`,
+          uploadedCount: uploadedImages.length,
+          errorCount: errors.length
+        })
+      } else {
+        return res.status(400).json({
+          success: false,
+          error: errors.length > 0 
+            ? `Failed to upload ${errors.length} image(s)`
+            : 'No images were uploaded'
+        })
+      }
+    }
+
     res.redirect(`/jobs/${req.params.id}`)
   } catch (error) {
     console.error('Upload images error:', error)
+    
+    const isAjax = req.xhr ||
+                   req.headers['x-requested-with'] === 'XMLHttpRequest' ||
+                   req.headers.accept?.indexOf('json') > -1;
+
+    if (isAjax) {
+      return res.status(500).json({
+        success: false,
+        error: error.message || 'Error uploading images'
+      })
+    }
+
     req.flash('error', error.message || 'Error uploading images')
     res.redirect(`/jobs/${req.params.id}`)
   }

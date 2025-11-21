@@ -46,9 +46,10 @@ async function processJobImage(imagePath, jobId, originalFilename) {
   // Always use JPEG extension for processed images for better compression
   const outputExt = '.jpg'
 
-  // Process thumbnail (200x200)
+  // Process thumbnail (200x200) - auto-rotate based on EXIF
   const thumbnailPath = path.join(baseDir, `${baseFilename}-thumb${outputExt}`)
   const thumbnailBuffer = await sharp(imagePath)
+    .rotate() // Auto-rotate based on EXIF orientation
     .resize(IMAGE_SIZES.thumbnail.width, IMAGE_SIZES.thumbnail.height, {
       fit: 'inside',
       withoutEnlargement: true
@@ -59,9 +60,10 @@ async function processJobImage(imagePath, jobId, originalFilename) {
   results.thumbnailPath = `uploads/jobs/${jobId}/${path.basename(thumbnailPath)}`
   results.thumbnailSize = thumbnailBuffer.length
 
-  // Process medium (800x800)
+  // Process medium (800x800) - auto-rotate based on EXIF
   const mediumPath = path.join(baseDir, `${baseFilename}-medium${outputExt}`)
   const mediumBuffer = await sharp(imagePath)
+    .rotate() // Auto-rotate based on EXIF orientation
     .resize(IMAGE_SIZES.medium.width, IMAGE_SIZES.medium.height, {
       fit: 'inside',
       withoutEnlargement: true
@@ -72,9 +74,10 @@ async function processJobImage(imagePath, jobId, originalFilename) {
   results.mediumPath = `uploads/jobs/${jobId}/${path.basename(mediumPath)}`
   results.mediumSize = mediumBuffer.length
 
-  // Process large (1920x1920)
+  // Process large (1920x1920) - auto-rotate based on EXIF
   const largePath = path.join(baseDir, `${baseFilename}-large${outputExt}`)
   const largeBuffer = await sharp(imagePath)
+    .rotate() // Auto-rotate based on EXIF orientation
     .resize(IMAGE_SIZES.large.width, IMAGE_SIZES.large.height, {
       fit: 'inside',
       withoutEnlargement: true

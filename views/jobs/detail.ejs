@@ -160,13 +160,13 @@
       <div class="card mb-4">
         <div class="card-body">
           <h5 class="card-title">Upload Images</h5>
-          <form action="/jobs/<%= job._id %>/images/upload" method="POST" enctype="multipart/form-data" id="imageUploadForm">
+          <form id="imageUploadForm">
             <div class="mb-3">
-              <input type="file" class="form-control" name="images" id="imageInput" accept="image/*" multiple required>
-              <small class="form-text text-muted">Supported formats: JPG, PNG, GIF. Max size per file: 10MB. You can select multiple images at once.</small>
-              <div id="selectedFiles" class="mt-2 small text-muted"></div>
+              <input type="file" class="form-control" name="images" id="imageInput" accept="image/*" multiple>
+              <small class="form-text text-muted">Supported formats: JPG, PNG, GIF. Max size per file: 10MB. Files larger than 10MB will be skipped. You can select multiple images at once.</small>
+              <div id="fileList" class="mt-3"></div>
             </div>
-            <button type="submit" class="btn btn-primary">
+            <button type="button" id="uploadBtn" class="btn btn-primary" disabled>
               <i class="bi bi-upload"></i> Upload Images
             </button>
             <a href="/jobs/<%= job._id %>/images" class="btn btn-outline-secondary">
@@ -185,8 +185,13 @@
             <% images.forEach(image => { %>
             <div class="col-6 col-md-4 col-lg-3">
               <div class="card">
-                <a href="/<%= image.mediumPath %>" class="lightbox-link" data-medium="/<%= image.mediumPath %>" data-large="/<%= image.largePath %>">
-                  <img src="/<%= image.thumbnailPath %>" class="card-img-top" alt="<%= image.originalFilename %>" style="height: 200px; object-fit: cover; cursor: pointer;">
+                <% 
+                  const thumbPath = image.thumbnailPath.charAt(0) === '/' ? image.thumbnailPath : '/' + image.thumbnailPath;
+                  const mediumPath = image.mediumPath.charAt(0) === '/' ? image.mediumPath : '/' + image.mediumPath;
+                  const largePath = image.largePath.charAt(0) === '/' ? image.largePath : '/' + image.largePath;
+                %>
+                <a href="<%= mediumPath %>" class="lightbox-link" data-medium="<%= mediumPath %>" data-large="<%= largePath %>">
+                  <img src="<%= mediumPath %>" class="card-img-top thumbnail-img" alt="<%= image.originalFilename %>" onerror="console.error('Image failed to load:', this.src); this.style.backgroundColor='#f0f0f0'; this.alt='Image not found';">
                 </a>
                 <div class="card-body p-2">
                   <p class="card-text small mb-1 text-truncate" title="<%= image.originalFilename %>">
@@ -339,56 +344,401 @@
     transform: translateY(-5px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
   }
+  
+  /* Use medium images as thumbnails with CSS resizing for better quality */
+  .thumbnail-img {
+    height: 200px;
+    width: 100%;
+    object-fit: cover;
+    cursor: pointer;
+    image-rendering: -webkit-optimize-contrast; /* Better quality when scaling down */
+    image-rendering: crisp-edges;
+  }
+  
+  /* Ensure lightbox modal appears above all content */
+  #lightboxModal {
+    z-index: 10060 !important;
+  }
+  #lightboxModal.show {
+    display: block !important;
+  }
+  /* Ensure backdrop is BELOW modal */
+  body.modal-open .modal-backdrop {
+    z-index: 10050 !important;
+    background-color: rgba(0, 0, 0, 0.75) !important;
+  }
+  /* Force modal to be on top */
+  #lightboxModal.modal.show {
+    z-index: 10060 !important;
+  }
+  
+  /* Spinning animation for upload icon */
+  .spin {
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
 </style>
 
 <script>
-  // Show selected file names
+  // Image upload with progress tracking
   document.addEventListener('DOMContentLoaded', function() {
     const fileInput = document.getElementById('imageInput');
-    const selectedFilesDiv = document.getElementById('selectedFiles');
-    
-    if (fileInput && selectedFilesDiv) {
+    const fileListDiv = document.getElementById('fileList');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const imageUploadForm = document.getElementById('imageUploadForm');
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    let selectedFiles = [];
+
+    // Handle file selection
+    if (fileInput && fileListDiv) {
       fileInput.addEventListener('change', function(e) {
-        const files = e.target.files;
-        if (files.length > 0) {
-          const fileNames = Array.from(files).map(f => f.name).join(', ');
-          const count = files.length;
-          selectedFilesDiv.innerHTML = `<strong>${count}</strong> file(s) selected: ${fileNames.substring(0, 100)}${fileNames.length > 100 ? '...' : ''}`;
-        } else {
-          selectedFilesDiv.innerHTML = '';
+        const files = Array.from(e.target.files);
+        selectedFiles = [];
+        const skippedFiles = [];
+        
+        // Filter and validate files
+        files.forEach((file, index) => {
+          if (file.size > MAX_FILE_SIZE) {
+            // Track files that are too large
+            skippedFiles.push({
+              name: file.name,
+              size: file.size,
+              reason: 'too_large'
+            });
+            return;
+          }
+          if (!file.type.startsWith('image/')) {
+            // Track non-image files
+            skippedFiles.push({
+              name: file.name,
+              size: file.size,
+              reason: 'not_image'
+            });
+            return;
+          }
+          selectedFiles.push({
+            file: file,
+            id: `file-${Date.now()}-${index}`,
+            status: 'pending', // pending, uploading, success, error
+            progress: 0
+          });
+        });
+
+        // Show warning if files were skipped
+        if (skippedFiles.length > 0) {
+          const tooLarge = skippedFiles.filter(f => f.reason === 'too_large');
+          const notImage = skippedFiles.filter(f => f.reason === 'not_image');
+          let message = '';
+          if (tooLarge.length > 0) {
+            message += `${tooLarge.length} file(s) skipped (too large, max 10MB). `;
+          }
+          if (notImage.length > 0) {
+            message += `${notImage.length} file(s) skipped (not an image). `;
+          }
+          if (message) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-warning alert-dismissible fade show mt-2';
+            alertDiv.innerHTML = `
+              <i class="bi bi-exclamation-triangle"></i> ${message}
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            fileListDiv.parentElement.insertBefore(alertDiv, fileListDiv);
+            setTimeout(() => {
+              alertDiv.remove();
+            }, 5000);
+          }
         }
+
+        renderFileList();
+        updateUploadButton();
+      });
+    }
+
+    // Render file list with progress bars
+    function renderFileList() {
+      if (selectedFiles.length === 0) {
+        fileListDiv.innerHTML = '';
+        return;
+      }
+
+      let html = '<div class="list-group">';
+      selectedFiles.forEach(fileData => {
+        const sizeMB = (fileData.file.size / (1024 * 1024)).toFixed(2);
+        const statusClass = {
+          'pending': 'secondary',
+          'uploading': 'primary',
+          'success': 'success',
+          'error': 'danger'
+        }[fileData.status] || 'secondary';
+        
+        const statusIcon = {
+          'pending': 'bi-clock',
+          'uploading': 'bi-arrow-repeat spin',
+          'success': 'bi-check-circle',
+          'error': 'bi-x-circle'
+        }[fileData.status] || 'bi-clock';
+
+        html += `
+          <div class="list-group-item" id="${fileData.id}">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <div class="flex-grow-1">
+                <strong>${fileData.file.name}</strong>
+                <small class="text-muted d-block">${sizeMB} MB</small>
+              </div>
+              <div>
+                <span class="badge bg-${statusClass}">
+                  <i class="bi ${statusIcon}"></i>
+                  <span class="status-text">${fileData.status === 'pending' ? 'Ready' : fileData.status === 'uploading' ? 'Uploading...' : fileData.status === 'success' ? 'Uploaded' : 'Error'}</span>
+                </span>
+              </div>
+            </div>
+            ${fileData.status === 'uploading' || fileData.status === 'pending' ? `
+              <div class="progress" style="height: 8px;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated bg-${statusClass}" 
+                     role="progressbar" 
+                     style="width: ${fileData.progress}%"
+                     aria-valuenow="${fileData.progress}" 
+                     aria-valuemin="0" 
+                     aria-valuemax="100">
+                </div>
+              </div>
+            ` : ''}
+            ${fileData.status === 'error' ? `
+              <small class="text-danger">${fileData.errorMessage || 'Upload failed'}</small>
+            ` : ''}
+          </div>
+        `;
+      });
+      html += '</div>';
+      fileListDiv.innerHTML = html;
+    }
+
+    // Update upload button state
+    function updateUploadButton() {
+      const hasPendingFiles = selectedFiles.some(f => f.status === 'pending');
+      const isUploading = selectedFiles.some(f => f.status === 'uploading');
+      uploadBtn.disabled = !hasPendingFiles || isUploading;
+      if (isUploading) {
+        uploadBtn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Uploading...';
+      } else {
+        uploadBtn.innerHTML = '<i class="bi bi-upload"></i> Upload Images';
+      }
+    }
+
+    // Upload files one by one
+    uploadBtn.addEventListener('click', async function() {
+      const pendingFiles = selectedFiles.filter(f => f.status === 'pending');
+      if (pendingFiles.length === 0) return;
+
+      uploadBtn.disabled = true;
+      
+      for (const fileData of pendingFiles) {
+        await uploadFile(fileData);
+      }
+
+      // Refresh page after all uploads complete (or show success message)
+      const allComplete = selectedFiles.every(f => f.status === 'success' || f.status === 'error');
+      if (allComplete) {
+        const successCount = selectedFiles.filter(f => f.status === 'success').length;
+        if (successCount > 0) {
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        }
+      }
+    });
+
+    // Upload individual file with progress tracking
+    async function uploadFile(fileData) {
+      fileData.status = 'uploading';
+      fileData.progress = 0;
+      renderFileList();
+      updateUploadButton();
+
+      const formData = new FormData();
+      formData.append('images', fileData.file);
+
+      return new Promise((resolve) => {
+        const xhr = new XMLHttpRequest();
+
+        // Track upload progress
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            fileData.progress = Math.round((e.loaded / e.total) * 100);
+            renderFileList();
+          }
+        });
+
+        // Handle completion
+        xhr.addEventListener('load', () => {
+          if (xhr.status === 200) {
+            try {
+              const response = JSON.parse(xhr.responseText);
+              if (response.success) {
+                fileData.status = 'success';
+                fileData.progress = 100;
+              } else {
+                fileData.status = 'error';
+                fileData.errorMessage = response.error || 'Upload failed';
+              }
+            } catch {
+              // If response is not JSON, assume success (redirect response)
+              fileData.status = 'success';
+              fileData.progress = 100;
+            }
+          } else if (xhr.status === 302) {
+            // Redirect response means success
+            fileData.status = 'success';
+            fileData.progress = 100;
+          } else {
+            fileData.status = 'error';
+            try {
+              const response = JSON.parse(xhr.responseText);
+              fileData.errorMessage = response.error || 'Upload failed';
+            } catch {
+              fileData.errorMessage = `Upload failed (${xhr.status})`;
+            }
+          }
+          renderFileList();
+          updateUploadButton();
+          resolve();
+        });
+
+        // Handle errors
+        xhr.addEventListener('error', () => {
+          fileData.status = 'error';
+          fileData.errorMessage = 'Network error';
+          renderFileList();
+          updateUploadButton();
+          resolve();
+        });
+
+        // Handle abort
+        xhr.addEventListener('abort', () => {
+          fileData.status = 'error';
+          fileData.errorMessage = 'Upload cancelled';
+          renderFileList();
+          updateUploadButton();
+          resolve();
+        });
+
+        // Send request
+        xhr.open('POST', `/jobs/<%= job._id %>/images/upload`);
+        xhr.send(formData);
       });
     }
     
-    // Lightbox functionality
-    const lightboxLinks = document.querySelectorAll('.lightbox-link');
-    const lightboxModal = new bootstrap.Modal(document.getElementById('lightboxModal'));
-    const lightboxImage = document.getElementById('lightboxImage');
-    const lightboxTitle = document.getElementById('lightboxTitle');
-    const lightboxDownloadLink = document.getElementById('lightboxDownloadLink');
+    // Lightbox functionality - initialize after DOM is ready
+    function initLightbox() {
+      const lightboxModalEl = document.getElementById('lightboxModal');
+      if (!lightboxModalEl) {
+        console.warn('Lightbox modal element not found');
+        return;
+      }
 
-    lightboxLinks.forEach(link => {
-      link.addEventListener('click', function(e) {
-        e.preventDefault();
-        const mediumPath = this.getAttribute('data-medium');
-        const largePath = this.getAttribute('data-large');
-        const altText = this.querySelector('img').alt;
+      // Initialize Bootstrap modal with backdrop click enabled
+      let lightboxModal;
+      try {
+        lightboxModal = bootstrap.Modal.getOrCreateInstance(lightboxModalEl, {
+          backdrop: true,
+          keyboard: true,
+          focus: true
+        });
+      } catch (e) {
+        lightboxModal = new bootstrap.Modal(lightboxModalEl, {
+          backdrop: true,
+          keyboard: true,
+          focus: true
+        });
+      }
 
-        lightboxImage.src = mediumPath;
-        lightboxImage.alt = altText;
-        lightboxTitle.textContent = altText;
-        lightboxDownloadLink.href = largePath;
+      const lightboxImage = document.getElementById('lightboxImage');
+      const lightboxTitle = document.getElementById('lightboxTitle');
+      const lightboxDownloadLink = document.getElementById('lightboxDownloadLink');
 
-        lightboxModal.show();
+      if (!lightboxImage || !lightboxTitle || !lightboxDownloadLink) {
+        console.warn('Lightbox elements not found');
+        return;
+      }
+
+      // Handle clicks on lightbox links (use event delegation for dynamically loaded images)
+      document.addEventListener('click', function(e) {
+        const lightboxLink = e.target.closest('.lightbox-link');
+        if (lightboxLink) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          const mediumPath = lightboxLink.getAttribute('data-medium');
+          const largePath = lightboxLink.getAttribute('data-large');
+          const img = lightboxLink.querySelector('img');
+          const altText = img ? img.alt : 'Image';
+
+          if (mediumPath && largePath) {
+            lightboxImage.src = mediumPath;
+            lightboxImage.alt = altText;
+            lightboxTitle.textContent = altText;
+            lightboxDownloadLink.href = largePath;
+
+            // Show modal
+            lightboxModal.show();
+          }
+        }
       });
-    });
 
-    // Close lightbox on escape key
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') {
-        lightboxModal.hide();
+      // Ensure escape key works
+      const escapeHandler = function(e) {
+        if (e.key === 'Escape' && lightboxModalEl.classList.contains('show')) {
+          lightboxModal.hide();
+        }
+      };
+      document.addEventListener('keydown', escapeHandler);
+
+      // Prevent modal content clicks from closing the modal
+      const modalContent = lightboxModalEl.querySelector('.modal-content');
+      if (modalContent) {
+        modalContent.addEventListener('click', function(e) {
+          e.stopPropagation();
+        });
+      }
+
+      // Explicitly handle backdrop clicks
+      lightboxModalEl.addEventListener('click', function(e) {
+        // Only close if clicking directly on the modal element (backdrop area)
+        if (e.target === lightboxModalEl) {
+          e.preventDefault();
+          e.stopPropagation();
+          lightboxModal.hide();
+        }
+      });
+
+      // Also handle backdrop element clicks (Bootstrap creates this)
+      document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('modal-backdrop') && 
+            lightboxModalEl.classList.contains('show')) {
+          lightboxModal.hide();
+        }
+      });
+    }
+
+    // Initialize lightbox when DOM is ready
+    initLightbox();
+
+    // Re-initialize if images are loaded dynamically (after page refresh or AJAX)
+    const observer = new MutationObserver(function(mutations) {
+      const lightboxLinks = document.querySelectorAll('.lightbox-link');
+      if (lightboxLinks.length > 0) {
+        // Links exist, ensure handlers are attached
+        // (handlers are already attached via event delegation, so this is just a check)
       }
     });
+
+    const imageGallery = document.getElementById('imageGallery');
+    if (imageGallery) {
+      observer.observe(imageGallery, { childList: true, subtree: true });
+    }
   });
 </script>
 

@@ -47,8 +47,13 @@
           <tbody>
             <% images.forEach(image => { %>
             <tr>
+              <% 
+                const thumbPath = image.thumbnailPath.charAt(0) === '/' ? image.thumbnailPath : '/' + image.thumbnailPath;
+                const mediumPath = image.mediumPath.charAt(0) === '/' ? image.mediumPath : '/' + image.mediumPath;
+                const largePath = image.largePath.charAt(0) === '/' ? image.largePath : '/' + image.largePath;
+              %>
               <td>
-                <img src="/<%= image.thumbnailPath %>" alt="<%= image.originalFilename %>" style="width: 80px; height: 80px; object-fit: cover; border-radius: 4px;">
+                <img src="<%= mediumPath %>" alt="<%= image.originalFilename %>" style="width: 80px; height: 80px; object-fit: cover; border-radius: 4px; image-rendering: -webkit-optimize-contrast;" onerror="console.error('Image failed to load:', this.src); this.style.backgroundColor='#f0f0f0'; this.alt='Image not found';">
               </td>
               <td>
                 <strong><%= image.originalFilename %></strong>
@@ -70,13 +75,13 @@
               </td>
               <td>
                 <div class="btn-group-vertical btn-group-sm" role="group">
-                  <a href="/<%= image.thumbnailPath %>" target="_blank" class="btn btn-outline-secondary btn-sm">
+                  <a href="<%= thumbPath %>" target="_blank" class="btn btn-outline-secondary btn-sm">
                     <i class="bi bi-image"></i> Thumbnail (200x200)
                   </a>
-                  <a href="/<%= image.mediumPath %>" target="_blank" class="btn btn-outline-primary btn-sm">
+                  <a href="<%= mediumPath %>" target="_blank" class="btn btn-outline-primary btn-sm">
                     <i class="bi bi-image"></i> Medium (800x800)
                   </a>
-                  <a href="/<%= image.largePath %>" target="_blank" class="btn btn-outline-info btn-sm">
+                  <a href="<%= largePath %>" target="_blank" class="btn btn-outline-info btn-sm">
                     <i class="bi bi-image"></i> Large (1920x1920)
                   </a>
                 </div>
@@ -103,8 +108,13 @@
         <% images.forEach(image => { %>
         <div class="col-6 col-md-4 col-lg-3">
           <div class="card">
-            <a href="/<%= image.mediumPath %>" class="lightbox-link" data-medium="/<%= image.mediumPath %>" data-large="/<%= image.largePath %>">
-              <img src="/<%= image.thumbnailPath %>" class="card-img-top" alt="<%= image.originalFilename %>" style="height: 200px; object-fit: cover; cursor: pointer;">
+            <% 
+              const thumbPath = image.thumbnailPath.charAt(0) === '/' ? image.thumbnailPath : '/' + image.thumbnailPath;
+              const mediumPath = image.mediumPath.charAt(0) === '/' ? image.mediumPath : '/' + image.mediumPath;
+              const largePath = image.largePath.charAt(0) === '/' ? image.largePath : '/' + image.largePath;
+            %>
+            <a href="<%= mediumPath %>" class="lightbox-link" data-medium="<%= mediumPath %>" data-large="<%= largePath %>">
+              <img src="<%= mediumPath %>" class="card-img-top thumbnail-img" alt="<%= image.originalFilename %>" onerror="console.error('Image failed to load:', this.src); this.style.backgroundColor='#f0f0f0'; this.alt='Image not found';">
             </a>
             <div class="card-body p-2">
               <p class="card-text small mb-0 text-truncate" title="<%= image.originalFilename %>">
@@ -161,39 +171,131 @@
     transform: translateY(-5px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
   }
+  
+  /* Use medium images as thumbnails with CSS resizing for better quality */
+  .thumbnail-img {
+    height: 200px;
+    width: 100%;
+    object-fit: cover;
+    cursor: pointer;
+    image-rendering: -webkit-optimize-contrast; /* Better quality when scaling down */
+    image-rendering: crisp-edges;
+  }
+  
+  /* Ensure lightbox modal appears above all content */
+  #lightboxModal {
+    z-index: 10060 !important;
+  }
+  #lightboxModal.show {
+    display: block !important;
+  }
+  /* Ensure backdrop is BELOW modal */
+  body.modal-open .modal-backdrop {
+    z-index: 10050 !important;
+    background-color: rgba(0, 0, 0, 0.75) !important;
+  }
+  /* Force modal to be on top */
+  #lightboxModal.modal.show {
+    z-index: 10060 !important;
+  }
 </style>
 
 <script>
-  // Lightbox functionality
+  // Lightbox functionality - initialize after DOM is ready
   document.addEventListener('DOMContentLoaded', function() {
-    const lightboxLinks = document.querySelectorAll('.lightbox-link');
-    const lightboxModal = new bootstrap.Modal(document.getElementById('lightboxModal'));
-    const lightboxImage = document.getElementById('lightboxImage');
-    const lightboxTitle = document.getElementById('lightboxTitle');
-    const lightboxDownloadLink = document.getElementById('lightboxDownloadLink');
-
-    lightboxLinks.forEach(link => {
-      link.addEventListener('click', function(e) {
-        e.preventDefault();
-        const mediumPath = this.getAttribute('data-medium');
-        const largePath = this.getAttribute('data-large');
-        const altText = this.querySelector('img').alt;
-
-        lightboxImage.src = mediumPath;
-        lightboxImage.alt = altText;
-        lightboxTitle.textContent = altText;
-        lightboxDownloadLink.href = largePath;
-
-        lightboxModal.show();
-      });
-    });
-
-    // Close lightbox on escape key
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') {
-        lightboxModal.hide();
+    function initLightbox() {
+      const lightboxModalEl = document.getElementById('lightboxModal');
+      if (!lightboxModalEl) {
+        console.warn('Lightbox modal element not found');
+        return;
       }
-    });
+
+      // Initialize Bootstrap modal with backdrop click enabled
+      let lightboxModal;
+      try {
+        lightboxModal = bootstrap.Modal.getOrCreateInstance(lightboxModalEl, {
+          backdrop: true,
+          keyboard: true,
+          focus: true
+        });
+      } catch (e) {
+        lightboxModal = new bootstrap.Modal(lightboxModalEl, {
+          backdrop: true,
+          keyboard: true,
+          focus: true
+        });
+      }
+
+      const lightboxImage = document.getElementById('lightboxImage');
+      const lightboxTitle = document.getElementById('lightboxTitle');
+      const lightboxDownloadLink = document.getElementById('lightboxDownloadLink');
+
+      if (!lightboxImage || !lightboxTitle || !lightboxDownloadLink) {
+        console.warn('Lightbox elements not found');
+        return;
+      }
+
+      // Handle clicks on lightbox links (use event delegation for dynamically loaded images)
+      document.addEventListener('click', function(e) {
+        const lightboxLink = e.target.closest('.lightbox-link');
+        if (lightboxLink) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          const mediumPath = lightboxLink.getAttribute('data-medium');
+          const largePath = lightboxLink.getAttribute('data-large');
+          const img = lightboxLink.querySelector('img');
+          const altText = img ? img.alt : 'Image';
+
+          if (mediumPath && largePath) {
+            lightboxImage.src = mediumPath;
+            lightboxImage.alt = altText;
+            lightboxTitle.textContent = altText;
+            lightboxDownloadLink.href = largePath;
+
+            // Show modal
+            lightboxModal.show();
+          }
+        }
+      });
+
+      // Ensure escape key works
+      const escapeHandler = function(e) {
+        if (e.key === 'Escape' && lightboxModalEl.classList.contains('show')) {
+          lightboxModal.hide();
+        }
+      };
+      document.addEventListener('keydown', escapeHandler);
+
+      // Prevent modal content clicks from closing the modal
+      const modalContent = lightboxModalEl.querySelector('.modal-content');
+      if (modalContent) {
+        modalContent.addEventListener('click', function(e) {
+          e.stopPropagation();
+        });
+      }
+
+      // Explicitly handle backdrop clicks
+      lightboxModalEl.addEventListener('click', function(e) {
+        // Only close if clicking directly on the modal element (backdrop area)
+        if (e.target === lightboxModalEl) {
+          e.preventDefault();
+          e.stopPropagation();
+          lightboxModal.hide();
+        }
+      });
+
+      // Also handle backdrop element clicks (Bootstrap creates this)
+      document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('modal-backdrop') && 
+            lightboxModalEl.classList.contains('show')) {
+          lightboxModal.hide();
+        }
+      });
+    }
+
+    // Initialize lightbox when DOM is ready
+    initLightbox();
   });
 </script>
 
