@@ -260,12 +260,16 @@
                     <%= new Date(payment.datePaid).toLocaleDateString() %>
                   </td>
                   <td>
-                    <a href="/jobs/<%= payment.job._id %>">
-                      Job #<%= payment.job._id.toString().slice(-6) %>
-                    </a>
+                    <% if (payment.job) { %>
+                      <a href="/jobs/<%= payment.job._id %>">
+                        Job #<%= payment.job._id.toString().slice(-6) %>
+                      </a>
+                    <% } else { %>
+                      N/A
+                    <% } %>
                   </td>
                   <td>
-                    <% if (payment.job.customer) { %><%= payment.job.customer.name %><% } else { %>N/A<% } %>
+                    <% if (payment.job && payment.job.customer) { %><%= payment.job.customer.name %><% } else { %>N/A<% } %>
                   </td>
                   <td><strong>$<%= payment.amount.toFixed(2) %></strong></td>
                   <td>

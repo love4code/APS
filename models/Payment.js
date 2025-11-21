@@ -4,16 +4,21 @@ const paymentSchema = new mongoose.Schema({
   job: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Job',
-    required: true
+    required: false
   },
   recipient: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    refPath: 'recipientModel',
+    required: true
+  },
+  recipientModel: {
+    type: String,
+    enum: ['User', 'Employee'],
     required: true
   },
   recipientType: {
     type: String,
-    enum: ['installer', 'salesRep'],
+    enum: ['installer', 'salesRep', 'employee'],
     required: true
   },
   amount: {
@@ -30,6 +35,10 @@ const paymentSchema = new mongoose.Schema({
     type: String,
     enum: ['cash', 'check', 'bank_transfer', 'other'],
     default: 'cash'
+  },
+  checkNumber: {
+    type: String,
+    default: ''
   },
   notes: {
     type: String,

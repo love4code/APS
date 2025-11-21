@@ -2,6 +2,7 @@ const Employee = require('../models/Employee')
 const TimeEntry = require('../models/TimeEntry')
 const PayrollRecord = require('../models/PayrollRecord')
 const PercentagePayout = require('../models/PercentagePayout')
+const Payment = require('../models/Payment')
 const mongoose = require('mongoose')
 
 exports.list = async (req, res) => {
@@ -701,10 +702,10 @@ exports.detail = async (req, res) => {
       weekEndDate.setUTCHours(23, 59, 59, 999)
     }
 
-    // Query payouts for the week based on createdAt (submission date)
+    // Query payouts for the week based on date (payout date, not submission date)
     const weeklyPayoutQuery = {}
     if (weekStartDate && weekEndDate) {
-      weeklyPayoutQuery.createdAt = { $gte: weekStartDate, $lte: weekEndDate }
+      weeklyPayoutQuery.date = { $gte: weekStartDate, $lte: weekEndDate }
     }
 
     const weeklyPayouts = await PercentagePayout.find(weeklyPayoutQuery)
@@ -713,92 +714,140 @@ exports.detail = async (req, res) => {
       .sort({ createdAt: 1 })
       .lean()
 
+    // Check employee pay type to determine if daily payouts should be shown
+    const payTypes = Array.isArray(employee.payType) ? employee.payType : [employee.payType]
+    const hasPercentage = payTypes.includes('percentage')
+    const hasHourly = payTypes.includes('hourly')
+    const isHourlyOnly = hasHourly && !hasPercentage
+
     // Filter payouts to only include this employee's payouts
     const employeeIdStrWeekly = employee._id.toString()
     let weeklyTotal = 0
     let weeklyPayoutCount = 0
     const weeklyPayoutDetails = []
 
-    weeklyPayouts.forEach(payout => {
-      if (payout.employeePayouts && payout.employeePayouts.length > 0) {
-        payout.employeePayouts.forEach(empPayout => {
-          if (!empPayout.employee) {
-            return
-          }
+    // Only include daily payouts if employee is percentage-based (not hourly-only)
+    if (!isHourlyOnly) {
+      weeklyPayouts.forEach(payout => {
+        if (payout.employeePayouts && payout.employeePayouts.length > 0) {
+          payout.employeePayouts.forEach(empPayout => {
+            if (!empPayout.employee) {
+              return
+            }
 
-          // Extract employee ID string from various formats
-          let epEmployeeIdStr = null
-          try {
-            if (typeof empPayout.employee === 'object') {
-              if (empPayout.employee._id) {
-                // Populated employee object
-                epEmployeeIdStr = empPayout.employee._id.toString()
-              } else if (
-                empPayout.employee.toString &&
-                typeof empPayout.employee.toString === 'function'
-              ) {
-                // It's an ObjectId - call toString() directly
-                epEmployeeIdStr = empPayout.employee.toString()
+            // Extract employee ID string from various formats
+            let epEmployeeIdStr = null
+            try {
+              if (typeof empPayout.employee === 'object') {
+                if (empPayout.employee._id) {
+                  // Populated employee object
+                  epEmployeeIdStr = empPayout.employee._id.toString()
+                } else if (
+                  empPayout.employee.toString &&
+                  typeof empPayout.employee.toString === 'function'
+                ) {
+                  // It's an ObjectId - call toString() directly
+                  epEmployeeIdStr = empPayout.employee.toString()
+                } else {
+                  // Fallback: try to convert to string
+                  epEmployeeIdStr = String(empPayout.employee)
+                }
               } else {
-                // Fallback: try to convert to string
                 epEmployeeIdStr = String(empPayout.employee)
               }
-            } else {
-              epEmployeeIdStr = String(empPayout.employee)
+            } catch (e) {
+              return
             }
-          } catch (e) {
-            return
-          }
 
-          // Check if this payout is for the current employee
-          if (epEmployeeIdStr === employeeIdStrWeekly) {
-            // Include ALL payouts (percentage and hourly)
-            weeklyTotal += empPayout.payoutAmount || 0
-            weeklyPayoutCount += 1
-            weeklyPayoutDetails.push({
-              date: payout.date,
-              createdAt: payout.createdAt,
-              payoutAmount: empPayout.payoutAmount || 0,
-              payType: empPayout.payType,
-              percentageRate: empPayout.percentageRate,
-              hourlyRate: empPayout.hourlyRate,
-              hours: empPayout.hours,
-              payoutId: payout._id
-            })
-          }
-        })
-      }
-    })
+            // Check if this payout is for the current employee
+            if (epEmployeeIdStr === employeeIdStrWeekly) {
+              // Include payouts for percentage-based employees
+              weeklyTotal += empPayout.payoutAmount || 0
+              weeklyPayoutCount += 1
+              weeklyPayoutDetails.push({
+                date: payout.date,
+                createdAt: payout.createdAt,
+                payoutAmount: empPayout.payoutAmount || 0,
+                payType: empPayout.payType,
+                percentageRate: empPayout.percentageRate,
+                hourlyRate: empPayout.hourlyRate,
+                hours: empPayout.hours,
+                payoutId: payout._id
+              })
+            }
+          })
+        }
+      })
 
-    // Sort weekly payouts by date
-    weeklyPayoutDetails.sort(
-      (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
-    )
+      // Sort weekly payouts by date (payout date, not submission date)
+      weeklyPayoutDetails.sort(
+        (a, b) => new Date(a.date) - new Date(b.date)
+      )
+    }
 
     // Get payroll records for the week
     let weeklyPayroll = []
     let weeklyPayrollTotal = 0
 
     if (weekStartDate && weekEndDate) {
+      // Fetch all payroll records for this employee
+      // We'll filter in memory to check both creation date and pay period overlap
       const weeklyPayrollRecords = await PayrollRecord.find({
         employee: employee._id
       })
         .populate('payPeriod', 'name startDate endDate')
         .lean()
 
-      // Filter payroll records to only include those that overlap with the selected week
+      // Normalize week dates for comparison
+      const weekStart = new Date(weekStartDate)
+      weekStart.setUTCHours(0, 0, 0, 0)
+      const weekEnd = new Date(weekEndDate)
+      weekEnd.setUTCHours(23, 59, 59, 999)
+
+      // Filter payroll records to include those that:
+      // 1. Were created during the selected week, OR
+      // 2. Have a pay period that overlaps with the selected week
       weeklyPayroll = weeklyPayrollRecords.filter(record => {
-        if (
-          !record.payPeriod ||
-          !record.payPeriod.startDate ||
-          !record.payPeriod.endDate
-        ) {
-          return false
+        // Check if record was created during the week
+        if (record.createdAt) {
+          const createdAt = new Date(record.createdAt)
+          if (createdAt >= weekStart && createdAt <= weekEnd) {
+            return true
+          }
         }
-        const payPeriodStart = new Date(record.payPeriod.startDate)
-        const payPeriodEnd = new Date(record.payPeriod.endDate)
+
         // Check if pay period overlaps with selected week
-        return payPeriodStart <= weekEndDate && payPeriodEnd >= weekStartDate
+        if (
+          record.payPeriod &&
+          record.payPeriod.startDate &&
+          record.payPeriod.endDate
+        ) {
+          const payPeriodStart = new Date(record.payPeriod.startDate)
+          const payPeriodEnd = new Date(record.payPeriod.endDate)
+          
+          // Normalize dates for comparison
+          payPeriodStart.setUTCHours(0, 0, 0, 0)
+          payPeriodEnd.setUTCHours(23, 59, 59, 999)
+          
+          // Check if pay period overlaps with selected week
+          // Overlap occurs if: payPeriodStart <= weekEnd AND payPeriodEnd >= weekStart
+          if (payPeriodStart <= weekEnd && payPeriodEnd >= weekStart) {
+            return true
+          }
+        }
+
+        return false
+      })
+
+      // Sort payroll records by pay period start date (or createdAt if no pay period)
+      weeklyPayroll.sort((a, b) => {
+        const dateA = a.payPeriod?.startDate 
+          ? new Date(a.payPeriod.startDate) 
+          : (a.createdAt ? new Date(a.createdAt) : new Date(0))
+        const dateB = b.payPeriod?.startDate 
+          ? new Date(b.payPeriod.startDate) 
+          : (b.createdAt ? new Date(b.createdAt) : new Date(0))
+        return dateA - dateB
       })
 
       // Calculate total payroll for the week (gross pay + daily payouts)
@@ -808,6 +857,92 @@ exports.detail = async (req, res) => {
         0
       )
     }
+
+    // Get time entries for the week
+    let weeklyTimeEntries = []
+    let weeklyTimeEntriesTotal = 0
+
+    if (weekStartDate && weekEndDate) {
+      // Normalize week dates for time entry query
+      const weekStart = new Date(weekStartDate)
+      weekStart.setUTCHours(0, 0, 0, 0)
+      const weekEnd = new Date(weekEndDate)
+      weekEnd.setUTCHours(23, 59, 59, 999)
+
+      // Query time entries for this week
+      weeklyTimeEntries = await TimeEntry.find({
+        employee: employee._id,
+        date: {
+          $gte: weekStart,
+          $lte: weekEnd
+        }
+      })
+        .populate('jobs.job', 'customer totalPrice')
+        .populate('jobs.job.customer', 'name')
+        .sort({ date: 1, createdAt: 1 })
+        .lean()
+
+      // Calculate payout amount for each time entry
+      // For hourly employees: calculate based on hourly rate
+      // For percentage employees: also calculate (they may have both pay types)
+      const hourlyRate = employee.hourlyRate || 0
+      const overtimeMultiplier = employee.defaultOvertimeMultiplier || 1.5
+
+      weeklyTimeEntries.forEach(entry => {
+        if (entry.approved && hourlyRate > 0) {
+          const regularHours = (entry.hoursWorked || 0) - (entry.overtimeHours || 0)
+          const overtimeHours = entry.overtimeHours || 0
+          const regularPay = regularHours * hourlyRate
+          const overtimePay = overtimeHours * hourlyRate * overtimeMultiplier
+          entry.calculatedPay = regularPay + overtimePay
+          weeklyTimeEntriesTotal += entry.calculatedPay
+        } else {
+          entry.calculatedPay = 0
+        }
+      })
+    }
+
+    // For percentage employees: add time entries total to weekly total (daily payouts + time entries)
+    // For hourly-only employees: weekly total is just time entries (no daily payouts shown)
+    if (isHourlyOnly) {
+      // Hourly-only: weekly total is just time entries (daily payouts not shown)
+      weeklyTotal = weeklyTimeEntriesTotal
+    } else if (hasPercentage) {
+      // Percentage employees: add daily payouts + time entries
+      weeklyTotal = weeklyTotal + weeklyTimeEntriesTotal
+    }
+
+    // Get payments for this employee with date filtering
+    const paymentDateFrom = req.query.paymentDateFrom || ''
+    const paymentDateTo = req.query.paymentDateTo || ''
+    
+    const paymentQuery = {
+      recipient: employee._id,
+      recipientType: 'employee',
+      recipientModel: 'Employee'
+    }
+    
+    if (paymentDateFrom || paymentDateTo) {
+      paymentQuery.datePaid = {}
+      if (paymentDateFrom) {
+        const fromDate = new Date(paymentDateFrom)
+        fromDate.setHours(0, 0, 0, 0)
+        paymentQuery.datePaid.$gte = fromDate
+      }
+      if (paymentDateTo) {
+        const toDate = new Date(paymentDateTo)
+        toDate.setHours(23, 59, 59, 999)
+        paymentQuery.datePaid.$lte = toDate
+      }
+    }
+    
+    const employeePayments = await Payment.find(paymentQuery)
+      .populate('job', 'customer totalPrice')
+      .populate('job.customer', 'name')
+      .populate('createdBy', 'name')
+      .sort({ datePaid: -1 })
+    
+    const totalPaymentsAmount = employeePayments.reduce((sum, p) => sum + (p.amount || 0), 0)
 
     res.render('employees/detail', {
       title: `${employee.firstName} ${employee.lastName}`,
@@ -824,8 +959,14 @@ exports.detail = async (req, res) => {
       weeklyPayoutDetails,
       weeklyPayroll,
       weeklyPayrollTotal,
+      weeklyTimeEntries,
+      weeklyTimeEntriesTotal,
       weekStart: weekStartDate ? weekStartDate.toISOString().split('T')[0] : '',
-      weekEnd: weekEndDate ? weekEndDate.toISOString().split('T')[0] : ''
+      weekEnd: weekEndDate ? weekEndDate.toISOString().split('T')[0] : '',
+      employeePayments,
+      totalPaymentsAmount,
+      paymentDateFrom,
+      paymentDateTo
     })
   } catch (error) {
     console.error('Error loading employee:', error)

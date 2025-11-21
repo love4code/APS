@@ -8,9 +8,72 @@
     </a>
   </div>
 
+  <!-- Filters -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0">Filters</h5>
+    </div>
+    <div class="card-body">
+      <form method="GET" action="/payments" class="row g-3">
+        <div class="col-md-3">
+          <label for="recipientType" class="form-label">Recipient Type</label>
+          <select class="form-select" id="recipientType" name="recipientType">
+            <option value="">All Types</option>
+            <option value="installer"<% if (filters && filters.recipientType === 'installer') { %> selected<% } %>>Installer</option>
+            <option value="salesRep"<% if (filters && filters.recipientType === 'salesRep') { %> selected<% } %>>Sales Rep</option>
+            <option value="employee"<% if (filters && filters.recipientType === 'employee') { %> selected<% } %>>Employee</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="recipient" class="form-label">Recipient</label>
+          <select class="form-select" id="recipient" name="recipient">
+            <option value="">All Recipients</option>
+            <optgroup label="Installers">
+              <% if (installers && installers.length > 0) { %>
+                <% installers.forEach(installer => { %>
+                  <option value="<%= installer._id %>"<% if (filters && filters.recipient === installer._id.toString()) { %> selected<% } %>><%= installer.name %></option>
+                <% }) %>
+              <% } %>
+            </optgroup>
+            <optgroup label="Sales Reps">
+              <% if (salesReps && salesReps.length > 0) { %>
+                <% salesReps.forEach(rep => { %>
+                  <option value="<%= rep._id %>"<% if (filters && filters.recipient === rep._id.toString()) { %> selected<% } %>><%= rep.name %></option>
+                <% }) %>
+              <% } %>
+            </optgroup>
+            <optgroup label="Employees">
+              <% if (employees && employees.length > 0) { %>
+                <% employees.forEach(employee => { %>
+                  <option value="<%= employee._id %>"<% if (filters && filters.recipient === employee._id.toString()) { %> selected<% } %>><%= employee.firstName %> <%= employee.lastName %></option>
+                <% }) %>
+              <% } %>
+            </optgroup>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label for="dateFrom" class="form-label">Date From</label>
+          <input type="date" class="form-control" id="dateFrom" name="dateFrom" value="<%= filters && filters.dateFrom ? filters.dateFrom : '' %>">
+        </div>
+        <div class="col-md-2">
+          <label for="dateTo" class="form-label">Date To</label>
+          <input type="date" class="form-control" id="dateTo" name="dateTo" value="<%= filters && filters.dateTo ? filters.dateTo : '' %>">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button type="submit" class="btn btn-primary w-100 me-2">
+            <i class="bi bi-search"></i> Filter
+          </button>
+          <a href="/payments" class="btn btn-outline-secondary">
+            <i class="bi bi-x-circle"></i> Clear
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Totals Summary -->
   <div class="row mb-4">
-    <div class="col-md-4">
+    <div class="col-md-3">
       <div class="card bg-primary text-white">
         <div class="card-body">
           <h5 class="card-title">Total Payments</h5>
@@ -18,7 +81,7 @@
         </div>
       </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
       <div class="card bg-success text-white">
         <div class="card-body">
           <h5 class="card-title">To Installers</h5>
@@ -26,11 +89,19 @@
         </div>
       </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
       <div class="card bg-info text-white">
         <div class="card-body">
           <h5 class="card-title">To Sales Reps</h5>
           <h2 class="mb-0">$<%= totals.toSalesReps.toFixed(2) %></h2>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card bg-warning text-white">
+        <div class="card-body">
+          <h5 class="card-title">To Employees</h5>
+          <h2 class="mb-0">$<%= (totals.toEmployees || 0).toFixed(2) %></h2>
         </div>
       </div>
     </div>
@@ -63,24 +134,48 @@
                       <a href="/installers/<%= payment.recipient._id %>">
                         <%= payment.recipient.name %>
                       </a>
-                    <% } else { %>
+                    <% } else if (payment.recipientType === 'salesRep') { %>
                       <a href="/sales-reps/<%= payment.recipient._id %>">
                         <%= payment.recipient.name %>
                       </a>
+                    <% } else if (payment.recipientType === 'employee') { %>
+                      <a href="/employees/<%= payment.recipient._id %>">
+                        <%= payment.recipient.firstName %> <%= payment.recipient.lastName %>
+                      </a>
+                    <% } else { %>
+                      <%= payment.recipient.name || (payment.recipient.firstName + ' ' + payment.recipient.lastName) %>
                     <% } %>
                   </td>
                   <td>
-                    <span class="badge bg-<%= payment.recipientType === 'installer' ? 'success' : 'info' %>">
-                      <%= payment.recipientType === 'installer' ? 'Installer' : 'Sales Rep' %>
+                    <% 
+                      let badgeClass = 'secondary';
+                      let badgeText = 'Unknown';
+                      if (payment.recipientType === 'installer') {
+                        badgeClass = 'success';
+                        badgeText = 'Installer';
+                      } else if (payment.recipientType === 'salesRep') {
+                        badgeClass = 'info';
+                        badgeText = 'Sales Rep';
+                      } else if (payment.recipientType === 'employee') {
+                        badgeClass = 'warning';
+                        badgeText = 'Employee';
+                      }
+                    %>
+                    <span class="badge bg-<%= badgeClass %>">
+                      <%= badgeText %>
                     </span>
                   </td>
                   <td>
-                    <a href="/jobs/<%= payment.job._id %>">
-                      Job #<%= payment.job._id.toString().slice(-6) %>
-                    </a>
+                    <% if (payment.job) { %>
+                      <a href="/jobs/<%= payment.job._id %>">
+                        Job #<%= payment.job._id.toString().slice(-6) %>
+                      </a>
+                    <% } else { %>
+                      N/A
+                    <% } %>
                   </td>
                   <td>
-                    <% if (payment.job.customer) { %>
+                    <% if (payment.job && payment.job.customer) { %>
                       <a href="/customers/<%= payment.job.customer._id %>">
                         <%= payment.job.customer.name %>
                       </a>
@@ -93,6 +188,9 @@
                     <span class="badge bg-secondary">
                       <%= payment.paymentMethod.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) %>
                     </span>
+                    <% if (payment.paymentMethod === 'check' && payment.checkNumber) { %>
+                      <br><small class="text-muted">Check #<%= payment.checkNumber %></small>
+                    <% } %>
                   </td>
                   <td>
                     <a href="/payments/<%= payment._id %>" class="btn btn-sm btn-outline-primary">View</a>

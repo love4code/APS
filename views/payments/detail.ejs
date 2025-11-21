@@ -41,6 +41,11 @@ $${payment.amount.toFixed(2)}` }) %>
                   => l.toUpperCase()) %>
                 </span>
               </p>
+              <% if (payment.paymentMethod === 'check' && payment.checkNumber) { %>
+              <p>
+                <strong>Check Number:</strong> <%= payment.checkNumber %>
+              </p>
+              <% } %>
             </div>
             <div class="col-md-6">
               <p>
@@ -50,11 +55,18 @@ $${payment.amount.toFixed(2)}` }) %>
                   <%= payment.recipient.name %>
                 </a>
                 <span class="badge bg-success ms-2">Installer</span>
-                <% } else { %>
+                <% } else if (payment.recipientType === 'salesRep') { %>
                 <a href="/sales-reps/<%= payment.recipient._id %>">
                   <%= payment.recipient.name %>
                 </a>
                 <span class="badge bg-info ms-2">Sales Rep</span>
+                <% } else if (payment.recipientType === 'employee') { %>
+                <a href="/employees/<%= payment.recipient._id %>">
+                  <%= payment.recipient.firstName %> <%= payment.recipient.lastName %>
+                </a>
+                <span class="badge bg-warning ms-2">Employee</span>
+                <% } else { %>
+                <%= payment.recipient.name || (payment.recipient.firstName + ' ' + payment.recipient.lastName) %>
                 <% } %>
               </p>
               <p>
@@ -82,32 +94,36 @@ $${payment.amount.toFixed(2)}` }) %>
           <h5 class="mb-0">Related Job</h5>
         </div>
         <div class="card-body">
-          <p>
-            <strong>Job:</strong>
-            <a href="/jobs/<%= payment.job._id %>">
-              Job #<%= payment.job._id.toString().slice(-6) %>
-            </a>
-          </p>
-          <p>
-            <strong>Customer:</strong>
-            <% if (payment.job.customer) { %>
-            <a href="/customers/<%= payment.job.customer._id %>">
-              <%= payment.job.customer.name %>
-            </a>
-            <% } else { %> N/A <% } %>
-          </p>
-          <p>
-            <strong>Job Total:</strong> $<%= (payment.job.totalPrice ||
-            0).toFixed(2) %>
-          </p>
-          <p>
-            <strong>Job Status:</strong>
-            <span
-              class="badge bg-<%= payment.job.status === 'complete' ? 'success' : 'secondary' %>"
-            >
-              <%= payment.job.status %>
-            </span>
-          </p>
+          <% if (payment.job) { %>
+            <p>
+              <strong>Job:</strong>
+              <a href="/jobs/<%= payment.job._id %>">
+                Job #<%= payment.job._id.toString().slice(-6) %>
+              </a>
+            </p>
+            <p>
+              <strong>Customer:</strong>
+              <% if (payment.job.customer) { %>
+              <a href="/customers/<%= payment.job.customer._id %>">
+                <%= payment.job.customer.name %>
+              </a>
+              <% } else { %> N/A <% } %>
+            </p>
+            <p>
+              <strong>Job Total:</strong> $<%= (payment.job.totalPrice ||
+              0).toFixed(2) %>
+            </p>
+            <p>
+              <strong>Job Status:</strong>
+              <span
+                class="badge bg-<%= payment.job.status === 'complete' ? 'success' : 'secondary' %>"
+              >
+                <%= payment.job.status %>
+              </span>
+            </p>
+          <% } else { %>
+            <p><strong>Job:</strong> N/A</p>
+          <% } %>
         </div>
       </div>
     </div>

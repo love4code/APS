@@ -36,6 +36,9 @@
             // No alerts, all children are content
             pageContent = sidebarChildren;
           }
+          
+          // Filter out modals - they should stay in place
+          pageContent = pageContent.filter(el => !el.classList.contains('modal'));
         }
         
         // Also check for content as siblings of sidebar-layout
@@ -45,11 +48,12 @@
           const sidebarIndex = siblings.indexOf(sidebarLayout);
           const afterSidebar = siblings.slice(sidebarIndex + 1);
           
-          // Filter out layout divs, scripts, footer
+          // Filter out layout divs, scripts, footer, and modals
           const siblingContent = afterSidebar.filter(el => 
             el.nodeType === 1 &&
             !el.classList.contains('navbar-layout') &&
             !el.classList.contains('sidebar-layout') &&
+            !el.classList.contains('modal') &&
             el.tagName !== 'SCRIPT' &&
             el.tagName !== 'FOOTER' &&
             el.id !== 'navbar-content-target'
@@ -78,6 +82,7 @@
           // Remove content from navbar main on large screens (keep in sidebar)
           const navbarContent = Array.from(navbarMain.children).filter(el => 
             !el.classList.contains('alert') &&
+            !el.classList.contains('modal') &&
             el.id !== 'navbar-content-target'
           );
           navbarContent.forEach(el => el.remove());
@@ -129,11 +134,12 @@
                 });
               }
             } else {
-              // Small screen: ensure content is in navbar
-              if (sidebarMain) {
-                const sidebarContent = Array.from(sidebarMain.children).filter(el => 
-                  !el.classList.contains('alert')
-                );
+            // Small screen: ensure content is in navbar
+            if (sidebarMain) {
+              const sidebarContent = Array.from(sidebarMain.children).filter(el => 
+                !el.classList.contains('alert') &&
+                !el.classList.contains('modal')
+              );
                 
                 if (sidebarContent.length > 0) {
                   const navbarAlerts = navbarMain.querySelectorAll('.alert');

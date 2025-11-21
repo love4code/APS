@@ -298,3 +298,73 @@ main {
     max-height: 250px;
   }
 }
+
+/* Modal z-index fix - ensure modals are above sidebar */
+.modal-backdrop {
+  z-index: 1050 !important;
+  pointer-events: auto !important;
+}
+
+.modal {
+  z-index: 1055 !important;
+  pointer-events: none !important; /* Allow clicks to pass through to content */
+}
+
+/* Modal dialog and content should be interactive */
+.modal-dialog {
+  pointer-events: auto !important;
+  z-index: 1056 !important;
+}
+
+.modal-content {
+  pointer-events: auto !important;
+  z-index: 1057 !important;
+  position: relative !important;
+}
+
+.modal-body {
+  pointer-events: auto !important;
+  z-index: 1 !important;
+  position: relative !important;
+}
+
+/* Ensure all form elements in modal are interactive */
+.modal input,
+.modal select,
+.modal textarea,
+.modal button {
+  pointer-events: auto !important;
+  cursor: text !important;
+}
+
+.modal button {
+  cursor: pointer !important;
+}
+
+.modal input:disabled,
+.modal select:disabled,
+.modal textarea:disabled,
+.modal button:disabled {
+  pointer-events: none !important;
+  cursor: not-allowed !important;
+}
+
+/* Ensure employee dropdown in modal is above modal content */
+.modal .employee-dropdown {
+  z-index: 1060 !important;
+  position: absolute !important;
+  pointer-events: auto !important;
+}
+
+.modal .employee-option {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+/* Ensure modal header and footer are interactive */
+.modal-header,
+.modal-footer {
+  pointer-events: auto !important;
+  z-index: 1 !important;
+  position: relative !important;
+}

@@ -7,8 +7,8 @@
 
       <form method="POST" action="<%= payment ? `/payments/${payment._id}` : '/payments' %>">
         <div class="mb-3">
-          <label for="job" class="form-label">Job *</label>
-          <select class="form-select" id="job" name="job" required>
+          <label for="job" class="form-label">Job<% if (!fromEmployeePage) { %> *<% } %></label>
+          <select class="form-select" id="job" name="job"<% if (!fromEmployeePage) { %> required<% } %>>
             <option value="">Select a job...</option>
             <% jobs.forEach(job => { %>
               <option value="<%= job._id %>"<% if ((payment && payment.job && payment.job._id.toString() === job._id.toString()) || (selectedJob && selectedJob._id.toString() === job._id.toString())) { %> selected<% } %>>
@@ -26,6 +26,7 @@
             <option value="">Select type...</option>
             <option value="installer"<% if ((payment && payment.recipientType === 'installer') || recipientType === 'installer') { %> selected<% } %>>Installer</option>
             <option value="salesRep"<% if ((payment && payment.recipientType === 'salesRep') || recipientType === 'salesRep') { %> selected<% } %>>Sales Rep</option>
+            <option value="employee"<% if ((payment && payment.recipientType === 'employee') || recipientType === 'employee') { %> selected<% } %>>Employee</option>
           </select>
         </div>
 
@@ -35,15 +36,27 @@
             <option value="">Select recipient...</option>
             <!-- Installers -->
             <optgroup label="Installers" id="installerGroup" style="display: none;">
-              <% installers.forEach(installer => { %>
-                <option value="<%= installer._id %>"<% if ((payment && payment.recipientType === 'installer' && payment.recipient && payment.recipient._id.toString() === installer._id.toString()) || (selectedRecipient && selectedRecipient._id.toString() === installer._id.toString() && recipientType === 'installer')) { %> selected<% } %>><%= installer.name %></option>
-              <% }) %>
+              <% if (installers && installers.length > 0) { %>
+                <% installers.forEach(installer => { %>
+                  <option value="<%= installer._id %>"<% if ((payment && payment.recipientType === 'installer' && payment.recipient && payment.recipient._id.toString() === installer._id.toString()) || (selectedRecipient && selectedRecipient._id.toString() === installer._id.toString() && recipientType === 'installer')) { %> selected<% } %>><%= installer.name %></option>
+                <% }) %>
+              <% } %>
             </optgroup>
             <!-- Sales Reps -->
             <optgroup label="Sales Reps" id="salesRepGroup" style="display: none;">
-              <% salesReps.forEach(rep => { %>
-                <option value="<%= rep._id %>"<% if ((payment && payment.recipientType === 'salesRep' && payment.recipient && payment.recipient._id.toString() === rep._id.toString()) || (selectedRecipient && selectedRecipient._id.toString() === rep._id.toString() && recipientType === 'salesRep')) { %> selected<% } %>><%= rep.name %></option>
-              <% }) %>
+              <% if (salesReps && salesReps.length > 0) { %>
+                <% salesReps.forEach(rep => { %>
+                  <option value="<%= rep._id %>"<% if ((payment && payment.recipientType === 'salesRep' && payment.recipient && payment.recipient._id.toString() === rep._id.toString()) || (selectedRecipient && selectedRecipient._id.toString() === rep._id.toString() && recipientType === 'salesRep')) { %> selected<% } %>><%= rep.name %></option>
+                <% }) %>
+              <% } %>
+            </optgroup>
+            <!-- Employees -->
+            <optgroup label="Employees" id="employeeGroup" style="display: none;">
+              <% if (employees && employees.length > 0) { %>
+                <% employees.forEach(employee => { %>
+                  <option value="<%= employee._id %>"<% if ((payment && payment.recipientType === 'employee' && payment.recipient && payment.recipient._id.toString() === employee._id.toString()) || (selectedRecipient && selectedRecipient._id.toString() === employee._id.toString() && recipientType === 'employee')) { %> selected<% } %>><%= employee.firstName %> <%= employee.lastName %></option>
+                <% }) %>
+              <% } %>
             </optgroup>
           </select>
         </div>
@@ -55,7 +68,7 @@
               <span class="input-group-text">$</span>
               <input type="number" class="form-control" id="amount" name="amount" 
                 step="0.01" min="0" 
-                value="<%= payment ? payment.amount.toFixed(2) : '' %>" 
+                value="<%= payment ? payment.amount.toFixed(2) : (weeklyTotal ? weeklyTotal.toFixed(2) : '') %>" 
                 required>
             </div>
           </div>
@@ -69,12 +82,19 @@
 
         <div class="mb-3">
           <label for="paymentMethod" class="form-label">Payment Method</label>
-          <select class="form-select" id="paymentMethod" name="paymentMethod">
+          <select class="form-select" id="paymentMethod" name="paymentMethod" onchange="toggleCheckNumber()">
             <option value="cash"<% if (payment && payment.paymentMethod === 'cash') { %> selected<% } %>>Cash</option>
             <option value="check"<% if (payment && payment.paymentMethod === 'check') { %> selected<% } %>>Check</option>
             <option value="bank_transfer"<% if (payment && payment.paymentMethod === 'bank_transfer') { %> selected<% } %>>Bank Transfer</option>
             <option value="other"<% if (payment && payment.paymentMethod === 'other') { %> selected<% } %>>Other</option>
           </select>
+        </div>
+
+        <div class="mb-3" id="checkNumberGroup" style="display: none;">
+          <label for="checkNumber" class="form-label">Check Number</label>
+          <input type="text" class="form-control" id="checkNumber" name="checkNumber" 
+            value="<%= payment && payment.checkNumber ? payment.checkNumber : '' %>" 
+            placeholder="Enter check number">
         </div>
 
         <div class="mb-3">
@@ -96,31 +116,74 @@
     const type = document.getElementById('recipientType').value
     const installerGroup = document.getElementById('installerGroup')
     const salesRepGroup = document.getElementById('salesRepGroup')
+    const employeeGroup = document.getElementById('employeeGroup')
     const recipientSelect = document.getElementById('recipient')
     
     // Hide all options first
     installerGroup.style.display = 'none'
     salesRepGroup.style.display = 'none'
+    employeeGroup.style.display = 'none'
     
     // Show relevant group
     if (type === 'installer') {
       installerGroup.style.display = 'block'
     } else if (type === 'salesRep') {
       salesRepGroup.style.display = 'block'
+    } else if (type === 'employee') {
+      employeeGroup.style.display = 'block'
     }
     
     // Reset selection
     recipientSelect.value = ''
   }
   
+  function toggleCheckNumber() {
+    const paymentMethod = document.getElementById('paymentMethod').value
+    const checkNumberGroup = document.getElementById('checkNumberGroup')
+    const checkNumberInput = document.getElementById('checkNumber')
+    
+    if (paymentMethod === 'check') {
+      checkNumberGroup.style.display = 'block'
+      checkNumberInput.removeAttribute('disabled')
+    } else {
+      checkNumberGroup.style.display = 'none'
+      checkNumberInput.setAttribute('disabled', 'disabled')
+      // Clear check number if not check payment
+      if (paymentMethod !== 'check') {
+        checkNumberInput.value = ''
+      }
+    }
+  }
+  
   // Initialize on page load
   document.addEventListener('DOMContentLoaded', function() {
     updateRecipientOptions()
-    // If recipientType is pre-selected, make sure the correct group is shown
-    const recipientTypeSelect = document.getElementById('recipientType')
-    if (recipientTypeSelect.value) {
-      updateRecipientOptions()
-    }
+    toggleCheckNumber()
+    
+    // Auto-populate employee if coming from employee page
+    <% if (fromEmployeePage && selectedRecipient && selectedRecipientType === 'employee') { %>
+      const recipientTypeSelect = document.getElementById('recipientType')
+      const recipientSelect = document.getElementById('recipient')
+      
+      // Set recipient type to employee
+      if (recipientTypeSelect) {
+        recipientTypeSelect.value = 'employee'
+        updateRecipientOptions()
+        
+        // Set the employee after a short delay to ensure options are loaded
+        setTimeout(() => {
+          if (recipientSelect) {
+            recipientSelect.value = '<%= selectedRecipient._id %>'
+          }
+        }, 100)
+      }
+    <% } else { %>
+      // If recipientType is pre-selected, make sure the correct group is shown
+      const recipientTypeSelect = document.getElementById('recipientType')
+      if (recipientTypeSelect && recipientTypeSelect.value) {
+        updateRecipientOptions()
+      }
+    <% } %>
   })
 </script>
 

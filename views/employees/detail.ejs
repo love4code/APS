@@ -16,6 +16,9 @@
       <a href="/time-entries/new?employeeId=<%= employee._id %>" class="btn btn-primary">
         <i class="bi bi-clock"></i> Add Time Entry
       </a>
+      <a href="/payments/new?employeeId=<%= employee._id %>" class="btn btn-success">
+        <i class="bi bi-cash-coin"></i> Record Payment
+      </a>
       <% if (canCalculatePayout) { %>
         <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#calculatePayoutModal">
           <i class="bi bi-calculator"></i> Calculate Daily Payout
@@ -396,7 +399,7 @@
               <!-- Weekly Summary -->
               <% if (typeof weeklyTotal !== 'undefined') { %>
                 <div class="row mb-3">
-                  <div class="col-md-4">
+                  <div class="col-md-3">
                     <div class="card bg-light">
                       <div class="card-body text-center">
                         <h4 class="text-success mb-0">$<%= (weeklyTotal || 0).toFixed(2) %></h4>
@@ -404,7 +407,7 @@
                       </div>
                     </div>
                   </div>
-                  <div class="col-md-4">
+                  <div class="col-md-3">
                     <div class="card bg-light">
                       <div class="card-body text-center">
                         <h4 class="text-primary mb-0">$<%= (weeklyPayrollTotal || 0).toFixed(2) %></h4>
@@ -412,10 +415,25 @@
                       </div>
                     </div>
                   </div>
-                  <div class="col-md-4">
+                  <div class="col-md-3">
                     <div class="card bg-light">
                       <div class="card-body text-center">
-                        <h4 class="text-info mb-0">$<%= ((weeklyTotal || 0) + (weeklyPayrollTotal || 0)).toFixed(2) %></h4>
+                        <h4 class="text-warning mb-0">$<%= (weeklyTimeEntriesTotal || 0).toFixed(2) %></h4>
+                        <p class="text-muted mb-0">Time Entries</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-3">
+                    <div class="card bg-light">
+                      <div class="card-body text-center">
+                        <%
+                          // Calculate total weekly
+                          // For percentage employees: weeklyTotal already includes daily payouts + time entries
+                          // For hourly employees: weeklyTotal is just time entries
+                          // So we only need to add weeklyPayrollTotal
+                          const totalWeekly = (weeklyTotal || 0) + (weeklyPayrollTotal || 0);
+                        %>
+                        <h4 class="text-info mb-0">$<%= totalWeekly.toFixed(2) %></h4>
                         <p class="text-muted mb-0">Total Weekly</p>
                       </div>
                     </div>
@@ -423,14 +441,14 @@
                 </div>
 
                 <!-- Weekly Payout Details -->
-                <% if (weeklyPayoutDetails && weeklyPayoutDetails.length > 0) { %>
+                <% if ((weeklyPayoutDetails && weeklyPayoutDetails.length > 0) || (weeklyPayroll && weeklyPayroll.length > 0) || (weeklyTimeEntries && weeklyTimeEntries.length > 0)) { %>
                   <div class="table-responsive">
                     <table class="table table-sm table-striped">
                       <thead>
                         <tr>
                           <th>Date</th>
                           <th>Type</th>
-                          <th>Rate</th>
+                          <th>Rate/Details</th>
                           <th>Submitted</th>
                           <th>Amount</th>
                           <th>Actions</th>
@@ -503,14 +521,173 @@
                             </tr>
                           <% }) %>
                         <% } %>
+                        <% if (weeklyTimeEntries && weeklyTimeEntries.length > 0) { %>
+                          <% weeklyTimeEntries.forEach(entry => { %>
+                            <tr>
+                              <td>
+                                <% const entryDate = entry.date ? new Date(entry.date) : null; %>
+                                <% const entryDateStr = entryDate ? (entryDate.getUTCMonth() + 1) + '/' + entryDate.getUTCDate() + '/' + entryDate.getUTCFullYear() : 'N/A'; %>
+                                <%= entryDateStr %>
+                              </td>
+                              <td>
+                                <span class="badge bg-warning">Time Entry</span>
+                                <% if (!entry.approved) { %>
+                                  <span class="badge bg-secondary">Pending</span>
+                                <% } %>
+                              </td>
+                              <td>
+                                <small>
+                                  <%= (entry.hoursWorked || 0).toFixed(2) %> hrs
+                                  <% if (entry.overtimeHours && entry.overtimeHours > 0) { %>
+                                    (<%= (entry.overtimeHours || 0).toFixed(2) %> OT)
+                                  <% } %>
+                                  <% if (entry.type && entry.type !== 'regular') { %>
+                                    - <%= entry.type %>
+                                  <% } %>
+                                </small>
+                              </td>
+                              <td>
+                                <% if (entry.createdAt) { %>
+                                  <% const createdDate = new Date(entry.createdAt); %>
+                                  <small class="text-muted"><%= (createdDate.getUTCMonth() + 1) + '/' + createdDate.getUTCDate() + '/' + createdDate.getUTCFullYear() %></small>
+                                <% } else { %>
+                                  <small class="text-muted">N/A</small>
+                                <% } %>
+                              </td>
+                              <td class="text-success fw-bold">
+                                <% if (entry.calculatedPay && entry.calculatedPay > 0) { %>
+                                  $<%= (entry.calculatedPay || 0).toFixed(2) %>
+                                <% } else { %>
+                                  <span class="text-muted">-</span>
+                                <% } %>
+                              </td>
+                              <td>
+                                <a href="/time-entries/<%= entry._id %>" class="btn btn-sm btn-outline-primary">View</a>
+                              </td>
+                            </tr>
+                          <% }) %>
+                        <% } %>
                       </tbody>
                     </table>
                   </div>
                 <% } else { %>
-                  <p class="text-muted">No payouts found for this week.</p>
+                  <p class="text-muted">No payouts, payroll records, or time entries found for this week.</p>
                 <% } %>
               <% } else { %>
                 <p class="text-muted">Select a week to view weekly payouts.</p>
+              <% } %>
+            </div>
+          </div>
+
+          <!-- Payments -->
+          <div class="card mb-4">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="card-title mb-0">Payments</h5>
+                <a href="/payments/new?employeeId=<%= employee._id %>" class="btn btn-sm btn-success">
+                  <i class="bi bi-plus-circle"></i> Record Payment
+                </a>
+              </div>
+
+              <!-- Payment Date Filter -->
+              <div class="card mb-3">
+                <div class="card-body">
+                  <form method="GET" action="/employees/<%= employee._id %>" class="row g-3">
+                    <input type="hidden" name="weekStart" value="<%= typeof weekStart !== 'undefined' ? weekStart : '' %>">
+                    <input type="hidden" name="weekEnd" value="<%= typeof weekEnd !== 'undefined' ? weekEnd : '' %>">
+                    <div class="col-md-5">
+                      <label for="paymentDateFrom" class="form-label">Date From</label>
+                      <input type="date" class="form-control" id="paymentDateFrom" name="paymentDateFrom" value="<%= typeof paymentDateFrom !== 'undefined' ? paymentDateFrom : '' %>">
+                    </div>
+                    <div class="col-md-5">
+                      <label for="paymentDateTo" class="form-label">Date To</label>
+                      <input type="date" class="form-control" id="paymentDateTo" name="paymentDateTo" value="<%= typeof paymentDateTo !== 'undefined' ? paymentDateTo : '' %>">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                      <button type="submit" class="btn btn-primary w-100 me-2">
+                        <i class="bi bi-search"></i> Filter
+                      </button>
+                    </div>
+                  </form>
+                  <% if (typeof paymentDateFrom !== 'undefined' && paymentDateFrom) { %>
+                    <div class="mt-2">
+                      <a href="/employees/<%= employee._id %>?weekStart=<%= typeof weekStart !== 'undefined' ? weekStart : '' %>&weekEnd=<%= typeof weekEnd !== 'undefined' ? weekEnd : '' %>" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-x-circle"></i> Clear Filter
+                      </a>
+                    </div>
+                  <% } %>
+                </div>
+              </div>
+
+              <!-- Payment Summary -->
+              <% if (typeof totalPaymentsAmount !== 'undefined') { %>
+                <div class="mb-3">
+                  <strong>Total Payments: </strong>
+                  <span class="text-success fs-5">$<%= (totalPaymentsAmount || 0).toFixed(2) %></span>
+                </div>
+              <% } %>
+
+              <!-- Payments Table -->
+              <% if (typeof employeePayments !== 'undefined' && employeePayments && employeePayments.length > 0) { %>
+                <div class="table-responsive">
+                  <table class="table table-sm table-striped">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Job</th>
+                        <th>Customer</th>
+                        <th>Amount</th>
+                        <th>Method</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <% employeePayments.forEach(payment => { %>
+                        <tr>
+                          <td>
+                            <% 
+                              const pDate = payment.datePaid ? new Date(payment.datePaid) : null;
+                              const pDateStr = pDate ? (pDate.getUTCMonth() + 1) + '/' + pDate.getUTCDate() + '/' + pDate.getUTCFullYear() : 'N/A';
+                            %>
+                            <%= pDateStr %>
+                          </td>
+                          <td>
+                            <% if (payment.job) { %>
+                              <a href="/jobs/<%= payment.job._id %>">
+                                Job #<%= payment.job._id.toString().slice(-6) %>
+                              </a>
+                            <% } else { %>
+                              N/A
+                            <% } %>
+                          </td>
+                          <td>
+                            <% if (payment.job && payment.job.customer) { %>
+                              <a href="/customers/<%= payment.job.customer._id %>">
+                                <%= payment.job.customer.name %>
+                              </a>
+                            <% } else { %>
+                              N/A
+                            <% } %>
+                          </td>
+                          <td class="text-success fw-bold">$<%= (payment.amount || 0).toFixed(2) %></td>
+                          <td>
+                            <span class="badge bg-secondary">
+                              <%= payment.paymentMethod ? payment.paymentMethod.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'N/A' %>
+                            </span>
+                            <% if (payment.paymentMethod === 'check' && payment.checkNumber) { %>
+                              <br><small class="text-muted">Check #<%= payment.checkNumber %></small>
+                            <% } %>
+                          </td>
+                          <td>
+                            <a href="/payments/<%= payment._id %>" class="btn btn-sm btn-outline-primary">View</a>
+                          </td>
+                        </tr>
+                      <% }) %>
+                    </tbody>
+                  </table>
+                </div>
+              <% } else { %>
+                <p class="text-muted">No payments recorded<% if (typeof paymentDateFrom !== 'undefined' && paymentDateFrom) { %> for the selected date range<% } %>.</p>
               <% } %>
             </div>
           </div>
@@ -524,6 +701,9 @@
           <div class="d-grid gap-2">
             <a href="/time-entries/new?employeeId=<%= employee._id %>" class="btn btn-outline-primary">
               <i class="bi bi-clock"></i> Add Time Entry
+            </a>
+            <a href="/payments/new?employeeId=<%= employee._id %>" class="btn btn-outline-success">
+              <i class="bi bi-cash-coin"></i> Record Payment
             </a>
             <% if (canCalculatePayout) { %>
               <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#calculatePayoutModal">
@@ -935,94 +1115,304 @@
 
   function initializeEmployeeSearch() {
     document.querySelectorAll('.employee-search-wrapper').forEach(wrapper => {
+      // Skip if already initialized
+      if (wrapper.dataset.initialized === 'true') {
+        return;
+      }
+      wrapper.dataset.initialized = 'true';
+      
       const searchInput = wrapper.querySelector('.employee-search-input');
       const employeeIdInput = wrapper.querySelector('.employee-id-input');
       const row = wrapper.closest('.employee-payout-row');
       const percentageRateInput = row.querySelector('.percentage-rate');
       const payoutAmountSpan = row.querySelector('.payout-amount');
       
-      initEmployeeSearch(wrapper, searchInput, employeeIdInput, percentageRateInput, payoutAmountSpan);
+      if (searchInput && employeeIdInput) {
+        initEmployeeSearch(wrapper, searchInput, employeeIdInput, percentageRateInput, payoutAmountSpan);
+      }
     });
   }
 
-  // Load employees when modal opens
-  document.getElementById('calculatePayoutModal').addEventListener('show.bs.modal', async function() {
-    const date = document.getElementById('payoutDate').value;
-    await loadEmployees(date);
+  // Ensure modal is at body level (not moved by content organization script)
+  function ensureModalAtBodyLevel() {
+    const modal = document.getElementById('calculatePayoutModal');
+    if (!modal) return;
     
-    // Pre-select the current employee if we're on an employee detail page
-    const currentEmployeeId = '<%= employee._id %>';
-    const currentEmployeeName = '<%= employee.firstName %> <%= employee.lastName %>';
-    
-    if (currentEmployeeId && currentEmployeeId !== 'undefined') {
-      // Find the employee in availableEmployees
-      const currentEmployee = availableEmployees.find(emp => emp._id === currentEmployeeId);
-      if (currentEmployee) {
-        // Pre-fill the first employee input with the current employee
-        const firstRow = document.querySelector('.employee-payout-row');
-        if (firstRow) {
-          const searchInput = firstRow.querySelector('.employee-search-input');
-          const employeeIdInput = firstRow.querySelector('.employee-id-input');
-          
-          if (searchInput && employeeIdInput) {
-            searchInput.value = currentEmployeeName;
-            employeeIdInput.value = currentEmployeeId;
+    // If modal is not a direct child of body, move it there
+    if (modal.parentElement !== document.body) {
+      console.log('Moving modal to body level...');
+      const parent = modal.parentElement;
+      document.body.appendChild(modal);
+      console.log('Modal moved to body');
+    }
+  }
+
+  // Setup modal event listener when DOM is ready
+  function setupModalListener() {
+    const modal = document.getElementById('calculatePayoutModal');
+    if (!modal) {
+      console.error('Modal not found, retrying...');
+      setTimeout(setupModalListener, 100);
+      return;
+    }
+
+    // Ensure modal is at body level
+    ensureModalAtBodyLevel();
+
+    // Remove any existing listeners by using a flag
+    if (modal.dataset.listenerAttached === 'true') {
+      return; // Already attached
+    }
+    modal.dataset.listenerAttached = 'true';
+
+    // Add event listener for when modal opens
+    modal.addEventListener('show.bs.modal', async function() {
+      console.log('=== MODAL OPENING ===');
+      
+      // Ensure modal is at body level
+      ensureModalAtBodyLevel();
+      
+      // Force modal to be visible and interactive immediately
+      const modalDialog = modal.querySelector('.modal-dialog');
+      const modalContent = modal.querySelector('.modal-content');
+      const modalBody = modal.querySelector('.modal-body');
+      const form = document.getElementById('payoutForm');
+      
+      console.log('Modal elements:', {
+        modal: modal,
+        dialog: modalDialog,
+        content: modalContent,
+        body: modalBody,
+        form: form
+      });
+      
+      // Force styles immediately
+      if (modal) {
+        modal.style.display = 'block';
+        modal.style.pointerEvents = 'none';
+        modal.classList.add('show');
+      }
+      if (modalDialog) {
+        modalDialog.style.pointerEvents = 'auto';
+        modalDialog.style.zIndex = '1056';
+      }
+      if (modalContent) {
+        modalContent.style.pointerEvents = 'auto';
+        modalContent.style.zIndex = '1057';
+      }
+      if (modalBody) {
+        modalBody.style.pointerEvents = 'auto';
+      }
+      if (form) {
+        form.style.pointerEvents = 'auto';
+        form.querySelectorAll('input, select, textarea, button').forEach(el => {
+          if (el.type !== 'hidden') {
+            el.disabled = false;
+            el.readOnly = false;
+            el.style.pointerEvents = 'auto';
+            el.style.opacity = '1';
+            el.removeAttribute('readonly');
+            el.removeAttribute('disabled');
+          }
+        });
+      }
+
+      const date = document.getElementById('payoutDate').value;
+      await loadEmployees(date);
+      
+      // Pre-select the current employee if we're on an employee detail page
+      const currentEmployeeId = '<%= employee._id %>';
+      const currentEmployeeName = '<%= employee.firstName %> <%= employee.lastName %>';
+      
+      if (currentEmployeeId && currentEmployeeId !== 'undefined') {
+        // Find the employee in availableEmployees
+        const currentEmployee = availableEmployees.find(emp => emp._id === currentEmployeeId);
+        if (currentEmployee) {
+          // Pre-fill the first employee input with the current employee
+          const firstRow = document.querySelector('.employee-payout-row');
+          if (firstRow) {
+            const searchInput = firstRow.querySelector('.employee-search-input');
+            const employeeIdInput = firstRow.querySelector('.employee-id-input');
             
-            // Auto-select pay type and fill in rate if available
-            const payTypeSelect = firstRow.querySelector('.pay-type-select');
-            const percentageRateInput = firstRow.querySelector('.percentage-rate');
-            const hourlyRateInput = firstRow.querySelector('.hourly-rate');
-            const hoursInput = firstRow.querySelector('.hours');
-            
-            const payTypes = Array.isArray(currentEmployee.payType) ? currentEmployee.payType : [currentEmployee.payType];
-            const hasPercentage = payTypes.includes('percentage');
-            const hasHourly = payTypes.includes('hourly');
-            
-            if (hasPercentage && hasHourly) {
-              // Default to percentage if both available
-              payTypeSelect.value = 'percentage';
-              if (percentageRateInput && currentEmployee.percentageRate) {
-                percentageRateInput.value = currentEmployee.percentageRate;
-              }
-            } else if (hasPercentage) {
-              payTypeSelect.value = 'percentage';
-              if (percentageRateInput && currentEmployee.percentageRate) {
-                percentageRateInput.value = currentEmployee.percentageRate;
-              }
-            } else if (hasHourly) {
-              payTypeSelect.value = 'hourly';
-              if (hourlyRateInput && currentEmployee.hourlyRate) {
-                hourlyRateInput.value = currentEmployee.hourlyRate;
-              }
-              // Auto-populate hours if available from time entries
-              const date = document.getElementById('payoutDate').value;
-              if (date && timeEntriesByEmployee[currentEmployeeId]) {
-                const hoursWorked = timeEntriesByEmployee[currentEmployeeId];
-                if (hoursInput && hoursWorked > 0) {
-                  hoursInput.value = hoursWorked.toFixed(2);
+            if (searchInput && employeeIdInput) {
+              searchInput.value = currentEmployeeName;
+              employeeIdInput.value = currentEmployeeId;
+              
+              // Auto-select pay type and fill in rate if available
+              const payTypeSelect = firstRow.querySelector('.pay-type-select');
+              const percentageRateInput = firstRow.querySelector('.percentage-rate');
+              const hourlyRateInput = firstRow.querySelector('.hourly-rate');
+              const hoursInput = firstRow.querySelector('.hours');
+              
+              const payTypes = Array.isArray(currentEmployee.payType) ? currentEmployee.payType : [currentEmployee.payType];
+              const hasPercentage = payTypes.includes('percentage');
+              const hasHourly = payTypes.includes('hourly');
+              
+              if (hasPercentage && hasHourly) {
+                // Default to percentage if both available
+                payTypeSelect.value = 'percentage';
+                if (percentageRateInput && currentEmployee.percentageRate) {
+                  percentageRateInput.value = currentEmployee.percentageRate;
+                }
+              } else if (hasPercentage) {
+                payTypeSelect.value = 'percentage';
+                if (percentageRateInput && currentEmployee.percentageRate) {
+                  percentageRateInput.value = currentEmployee.percentageRate;
+                }
+              } else if (hasHourly) {
+                payTypeSelect.value = 'hourly';
+                if (hourlyRateInput && currentEmployee.hourlyRate) {
+                  hourlyRateInput.value = currentEmployee.hourlyRate;
+                }
+                // Auto-populate hours if available from time entries
+                const date = document.getElementById('payoutDate').value;
+                if (date && timeEntriesByEmployee[currentEmployeeId]) {
+                  const hoursWorked = timeEntriesByEmployee[currentEmployeeId];
+                  if (hoursInput && hoursWorked > 0) {
+                    hoursInput.value = hoursWorked.toFixed(2);
+                  }
                 }
               }
+              
+              // Trigger toggle to show/hide appropriate inputs
+              if (payTypeSelect) {
+                togglePayTypeInput(payTypeSelect);
+              }
+              
+              // Recalculate payout
+              calculatePayout();
             }
-            
-            // Trigger toggle to show/hide appropriate inputs
-            if (payTypeSelect) {
-              togglePayTypeInput(payTypeSelect);
-            }
-            
-            // Recalculate payout
-            calculatePayout();
           }
         }
       }
-    }
-  });
+    });
 
-  // Reload employees when date changes
-  document.getElementById('payoutDate').addEventListener('change', async function() {
-    await loadEmployees(this.value);
-    // Clear labor costs to force recalculation
-    document.getElementById('laborCosts').value = '0';
-  });
+    // Also listen for when modal is fully shown
+    modal.addEventListener('shown.bs.modal', function() {
+      console.log('=== MODAL FULLY SHOWN ===');
+      
+      // Ensure modal is at body level
+      ensureModalAtBodyLevel();
+      
+      // Force all elements to be interactive
+      const modalDialog = modal.querySelector('.modal-dialog');
+      const modalContent = modal.querySelector('.modal-content');
+      const modalBody = modal.querySelector('.modal-body');
+      const form = document.getElementById('payoutForm');
+      
+      console.log('Modal structure check:', {
+        modalParent: modal.parentElement?.tagName,
+        modalDisplay: window.getComputedStyle(modal).display,
+        modalZIndex: window.getComputedStyle(modal).zIndex,
+        dialogPointerEvents: modalDialog ? window.getComputedStyle(modalDialog).pointerEvents : 'N/A',
+        contentPointerEvents: modalContent ? window.getComputedStyle(modalContent).pointerEvents : 'N/A'
+      });
+      
+      // Remove any blocking styles
+      if (modal) {
+        modal.style.pointerEvents = 'none';
+      }
+      
+      if (modalDialog) {
+        modalDialog.style.pointerEvents = 'auto';
+        modalDialog.style.zIndex = '1056';
+        modalDialog.style.position = 'relative';
+      }
+      
+      if (modalContent) {
+        modalContent.style.pointerEvents = 'auto';
+        modalContent.style.zIndex = '1057';
+        modalContent.style.position = 'relative';
+      }
+      
+      if (modalBody) {
+        modalBody.style.pointerEvents = 'auto';
+        modalBody.style.zIndex = '1';
+        modalBody.style.position = 'relative';
+      }
+      
+      if (form) {
+        form.style.pointerEvents = 'auto';
+        form.style.position = 'relative';
+        
+        // Add click listeners to test if clicks are working
+        form.addEventListener('click', function(e) {
+          console.log('Form clicked:', e.target, e.currentTarget);
+        }, true);
+        
+        form.querySelectorAll('input, select, textarea, button').forEach((el, index) => {
+          if (el.type !== 'hidden') {
+            el.disabled = false;
+            el.readOnly = false;
+            el.style.pointerEvents = 'auto';
+            el.style.opacity = '1';
+            el.style.cursor = el.tagName === 'BUTTON' ? 'pointer' : 'text';
+            el.style.position = 'relative';
+            el.style.zIndex = '10';
+            el.removeAttribute('readonly');
+            el.removeAttribute('disabled');
+            
+            // Add click test
+            el.addEventListener('click', function(e) {
+              console.log(`Element ${index} (${el.tagName}) clicked:`, el);
+              e.stopPropagation();
+              if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
+                this.focus();
+              }
+            }, { once: false });
+            
+            // Force focus capability
+            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
+              el.addEventListener('mousedown', function(e) {
+                e.stopPropagation();
+                console.log('Mousedown on input:', el);
+              });
+            }
+          }
+        });
+        
+        // Make buttons clickable
+        form.querySelectorAll('button').forEach(btn => {
+          btn.style.pointerEvents = 'auto';
+          btn.style.cursor = 'pointer';
+          btn.style.zIndex = '10';
+          btn.disabled = false;
+          btn.addEventListener('click', function(e) {
+            console.log('Button clicked:', btn, e);
+            e.stopPropagation();
+          });
+        });
+      }
+      
+      // Check for backdrop
+      const backdrop = document.querySelector('.modal-backdrop');
+      if (backdrop) {
+        console.log('Backdrop found:', {
+          zIndex: window.getComputedStyle(backdrop).zIndex,
+          pointerEvents: window.getComputedStyle(backdrop).pointerEvents
+        });
+        backdrop.style.zIndex = '1050';
+      }
+      
+      // Re-initialize employee search to ensure event handlers are attached
+      initializeEmployeeSearch();
+      
+      console.log('Form should now be interactive - try clicking on inputs');
+    });
+
+    // Setup date change listener
+    const payoutDateInput = document.getElementById('payoutDate');
+    if (payoutDateInput) {
+      payoutDateInput.addEventListener('change', async function() {
+        await loadEmployees(this.value);
+        // Clear labor costs to force recalculation
+        const laborCostsInput = document.getElementById('laborCosts');
+        if (laborCostsInput) {
+          laborCostsInput.value = '0';
+        }
+      });
+    }
+  }
 
   function togglePayTypeInput(select) {
     const row = select.closest('.employee-payout-row');
@@ -1122,7 +1512,10 @@
     const percentageRateInput = newRow.querySelector('.percentage-rate');
     const payoutAmountSpan = newRow.querySelector('.payout-amount');
     
-    initEmployeeSearch(wrapper, searchInput, employeeIdInput, percentageRateInput, payoutAmountSpan);
+    if (wrapper && searchInput && employeeIdInput) {
+      initEmployeeSearch(wrapper, searchInput, employeeIdInput, percentageRateInput, payoutAmountSpan);
+      wrapper.dataset.initialized = 'true';
+    }
     
     // Add event listeners for hourly inputs
     newRow.querySelector('.hourly-rate')?.addEventListener('change', calculatePayout);
@@ -1320,10 +1713,62 @@
     }
   }
 
+  // Watch for modal being moved and ensure it stays at body level
+  function watchModalPosition() {
+    const modal = document.getElementById('calculatePayoutModal');
+    if (!modal) return;
+    
+    const observer = new MutationObserver(function(mutations) {
+      if (modal.parentElement !== document.body) {
+        console.log('Modal was moved! Moving it back to body...');
+        ensureModalAtBodyLevel();
+      }
+    });
+    
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+    
+    // Also check periodically
+    setInterval(() => {
+      if (modal && modal.parentElement !== document.body) {
+        console.log('Periodic check: Modal not at body level, fixing...');
+        ensureModalAtBodyLevel();
+      }
+    }, 500);
+  }
+
   // Initialize on page load
   document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, setting up modal listener...');
+    ensureModalAtBodyLevel();
+    setupModalListener();
     initializeEmployeeSearch();
+    watchModalPosition();
+    
+    // Add click test to modal
+    const modal = document.getElementById('calculatePayoutModal');
+    if (modal) {
+      modal.addEventListener('click', function(e) {
+        console.log('Modal clicked:', e.target, e.currentTarget);
+      }, true);
+    }
   });
+
+  // Also try to setup immediately if DOM is already loaded
+  if (document.readyState === 'loading') {
+    // DOM is still loading, wait for DOMContentLoaded
+  } else {
+    // DOM is already loaded
+    console.log('DOM already loaded, setting up modal listener immediately...');
+    setTimeout(() => {
+      ensureModalAtBodyLevel();
+      setupModalListener();
+      initializeEmployeeSearch();
+      watchModalPosition();
+    }, 100);
+  }
 </script>
 
 <style>
