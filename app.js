@@ -25,8 +25,9 @@ app.set('views', path.join(__dirname, 'views'))
 // Middleware
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
+// Serve static files from public directory
+// This will serve /uploads/jobs/... from public/uploads/jobs/...
 app.use(express.static(path.join(__dirname, 'public')))
-app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')))
 
 // Request timeout middleware (30 seconds)
 app.use((req, res, next) => {
@@ -211,6 +212,51 @@ app.get('/health', (req, res) => {
 // Test route to check if app is working
 app.get('/test', (req, res) => {
   res.send('App is working!')
+})
+
+// Test route to verify static file serving for uploads
+app.get('/test-upload', (req, res) => {
+  const fs = require('fs')
+  const path = require('path')
+  const uploadsDir = path.join(__dirname, 'public', 'uploads', 'jobs')
+  
+  try {
+    const dirs = fs.readdirSync(uploadsDir).filter(item => {
+      const itemPath = path.join(uploadsDir, item)
+      return fs.statSync(itemPath).isDirectory() && item !== 'temp'
+    })
+    
+    const testFiles = []
+    if (dirs.length > 0) {
+      const firstDir = dirs[0]
+      const files = fs.readdirSync(path.join(uploadsDir, firstDir))
+      const thumbFile = files.find(f => f.includes('-thumb'))
+      if (thumbFile) {
+        testFiles.push({
+          jobId: firstDir,
+          filename: thumbFile,
+          url: `/uploads/jobs/${firstDir}/${thumbFile}`,
+          exists: fs.existsSync(path.join(uploadsDir, firstDir, thumbFile))
+        })
+      }
+    }
+    
+    res.json({
+      message: 'Static file test',
+      uploadsDir: uploadsDir,
+      exists: fs.existsSync(uploadsDir),
+      testFiles: testFiles,
+      staticConfig: {
+        publicStatic: path.join(__dirname, 'public'),
+        uploadsStatic: path.join(__dirname, 'public', 'uploads')
+      }
+    })
+  } catch (error) {
+    res.json({
+      error: error.message,
+      stack: error.stack
+    })
+  }
 })
 
 // Routes

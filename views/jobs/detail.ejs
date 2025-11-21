@@ -188,16 +188,30 @@
         <div class="card-body">
           <h5 class="card-title">Project Images</h5>
           <div class="row g-3" id="imageGallery">
+            <% 
+              // Normalize paths - ensure they start with / for proper URL construction
+              // Paths are stored in DB as "uploads/jobs/..." (relative to public directory)
+              // Static server serves from public/, so /uploads/jobs/... maps to public/uploads/jobs/...
+              function normalizePath(path) {
+                if (!path) return '';
+                // Convert to string and trim
+                let p = String(path).trim();
+                // Remove leading slash if present, then add it back
+                // This ensures we always have exactly one leading slash
+                p = p.replace(/^\/+/, '');
+                return '/' + p;
+              }
+            %>
             <% images.forEach(image => { %>
             <div class="col-6 col-md-4 col-lg-3">
               <div class="card">
                 <% 
-                  const thumbPath = image.thumbnailPath.charAt(0) === '/' ? image.thumbnailPath : '/' + image.thumbnailPath;
-                  const mediumPath = image.mediumPath.charAt(0) === '/' ? image.mediumPath : '/' + image.mediumPath;
-                  const largePath = image.largePath.charAt(0) === '/' ? image.largePath : '/' + image.largePath;
+                  const thumbPath = normalizePath(image.thumbnailPath || '');
+                  const mediumPath = normalizePath(image.mediumPath || '');
+                  const largePath = normalizePath(image.largePath || '');
                 %>
                 <a href="<%= mediumPath %>" class="lightbox-link" data-medium="<%= mediumPath %>" data-large="<%= largePath %>">
-                  <img src="<%= mediumPath %>" class="card-img-top thumbnail-img" alt="<%= image.originalFilename %>" onerror="console.error('Image failed to load:', this.src); this.style.backgroundColor='#f0f0f0'; this.alt='Image not found';">
+                  <img src="<%= thumbPath %>" class="card-img-top thumbnail-img" alt="<%= image.originalFilename || 'Image' %>" loading="lazy" onerror="console.error('Image load failed:', this.src); if (this.src !== '<%= mediumPath %>') { this.src = '<%= mediumPath %>'; } else { this.style.backgroundColor='#f0f0f0'; this.alt='Image not found'; }">
                 </a>
                 <div class="card-body p-2">
                   <p class="card-text small mb-1 text-truncate" title="<%= image.originalFilename %>">
@@ -351,14 +365,12 @@
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
   }
   
-  /* Use medium images as thumbnails with CSS resizing for better quality */
+  /* Use actual thumbnail images for faster loading */
   .thumbnail-img {
     height: 200px;
     width: 100%;
     object-fit: cover;
     cursor: pointer;
-    image-rendering: -webkit-optimize-contrast; /* Better quality when scaling down */
-    image-rendering: crisp-edges;
   }
   
   /* Mobile-responsive job actions */

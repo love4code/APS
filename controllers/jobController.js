@@ -322,10 +322,43 @@ exports.detail = async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(20)
 
-    // Get all images for this job
-    const images = await JobImage.find({ job: job._id })
+    // Get all images for this job - use lean() to get plain objects for better performance
+    const allImages = await JobImage.find({ job: job._id })
       .populate('uploadedBy', 'name')
       .sort({ uploadedAt: -1 })
+      .lean()
+
+    // Verify files actually exist on disk and filter out missing ones
+    const fs = require('fs')
+    const path = require('path')
+    const publicDir = path.join(__dirname, '..', 'public')
+    
+    const images = []
+    const missingImages = []
+    
+    if (allImages && allImages.length > 0) {
+      for (const img of allImages) {
+        const thumbnailFullPath = path.join(publicDir, img.thumbnailPath)
+        const mediumFullPath = path.join(publicDir, img.mediumPath)
+        
+        // Check if at least thumbnail or medium exists
+        if (fs.existsSync(thumbnailFullPath) || fs.existsSync(mediumFullPath)) {
+          images.push(img)
+        } else {
+          missingImages.push(img)
+          console.warn(`[Job Detail] Image file missing for ${img._id}:`, {
+            thumbnailPath: img.thumbnailPath,
+            thumbnailExists: fs.existsSync(thumbnailFullPath),
+            mediumPath: img.mediumPath,
+            mediumExists: fs.existsSync(mediumFullPath)
+          })
+        }
+      }
+      
+      if (missingImages.length > 0) {
+        console.warn(`[Job Detail] ${missingImages.length} image(s) have missing files for job ${job._id}`)
+      }
+    }
 
     res.render('jobs/detail', {
       title: `Job #${job._id.toString().slice(-6)}`,

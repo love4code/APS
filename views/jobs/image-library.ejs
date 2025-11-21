@@ -48,9 +48,16 @@
             <% images.forEach(image => { %>
             <tr>
               <% 
-                const thumbPath = image.thumbnailPath.charAt(0) === '/' ? image.thumbnailPath : '/' + image.thumbnailPath;
-                const mediumPath = image.mediumPath.charAt(0) === '/' ? image.mediumPath : '/' + image.mediumPath;
-                const largePath = image.largePath.charAt(0) === '/' ? image.largePath : '/' + image.largePath;
+                // Normalize paths - ensure they start with / for proper URL construction
+                function normalizePath(path) {
+                  if (!path) return '';
+                  let p = String(path).trim();
+                  p = p.replace(/^\/+/, '');
+                  return '/' + p;
+                }
+                const thumbPath = normalizePath(image.thumbnailPath || '');
+                const mediumPath = normalizePath(image.mediumPath || '');
+                const largePath = normalizePath(image.largePath || '');
               %>
               <td>
                 <img src="<%= mediumPath %>" alt="<%= image.originalFilename %>" style="width: 80px; height: 80px; object-fit: cover; border-radius: 4px; image-rendering: -webkit-optimize-contrast;" onerror="console.error('Image failed to load:', this.src); this.style.backgroundColor='#f0f0f0'; this.alt='Image not found';">
@@ -109,9 +116,16 @@
         <div class="col-6 col-md-4 col-lg-3">
           <div class="card">
             <% 
-              const thumbPath = image.thumbnailPath.charAt(0) === '/' ? image.thumbnailPath : '/' + image.thumbnailPath;
-              const mediumPath = image.mediumPath.charAt(0) === '/' ? image.mediumPath : '/' + image.mediumPath;
-              const largePath = image.largePath.charAt(0) === '/' ? image.largePath : '/' + image.largePath;
+              // Normalize paths - ensure they start with / for proper URL construction
+              function normalizePath(path) {
+                if (!path) return '';
+                let p = String(path).trim();
+                p = p.replace(/^\/+/, '');
+                return '/' + p;
+              }
+              const thumbPath = normalizePath(image.thumbnailPath || '');
+              const mediumPath = normalizePath(image.mediumPath || '');
+              const largePath = normalizePath(image.largePath || '');
             %>
             <a href="<%= mediumPath %>" class="lightbox-link" data-medium="<%= mediumPath %>" data-large="<%= largePath %>">
               <img src="<%= mediumPath %>" class="card-img-top thumbnail-img" alt="<%= image.originalFilename %>" onerror="console.error('Image failed to load:', this.src); this.style.backgroundColor='#f0f0f0'; this.alt='Image not found';">
