@@ -11,20 +11,29 @@
 <div class="container-fluid">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="h3"><%= employee.firstName %> <%= employee.lastName %></h1>
-    <div class="d-flex gap-2">
-      <a href="/employees/<%= employee._id %>/edit" class="btn btn-outline-primary">Edit</a>
-      <a href="/time-entries/new?employeeId=<%= employee._id %>" class="btn btn-primary">
-        <i class="bi bi-clock"></i> Add Time Entry
+    <div class="d-flex gap-2 employee-action-buttons">
+      <a href="/employees/<%= employee._id %>/edit" class="btn btn-outline-primary" title="Edit">
+        <i class="bi bi-pencil"></i>
+        <span class="btn-text">Edit</span>
       </a>
-      <a href="/payments/new?employeeId=<%= employee._id %>" class="btn btn-success">
-        <i class="bi bi-cash-coin"></i> Record Payment
+      <a href="/time-entries/new?employeeId=<%= employee._id %>" class="btn btn-primary" title="Add Time Entry">
+        <i class="bi bi-clock"></i>
+        <span class="btn-text">Add Time Entry</span>
+      </a>
+      <a href="/payments/new?employeeId=<%= employee._id %>" class="btn btn-success" title="Record Payment">
+        <i class="bi bi-cash-coin"></i>
+        <span class="btn-text">Record Payment</span>
       </a>
       <% if (canCalculatePayout) { %>
-        <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#calculatePayoutModal">
-          <i class="bi bi-calculator"></i> Calculate Daily Payout
+        <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#calculatePayoutModal" title="Calculate Daily Payout">
+          <i class="bi bi-calculator"></i>
+          <span class="btn-text">Calculate Daily Payout</span>
         </button>
       <% } %>
-      <a href="/employees" class="btn btn-outline-secondary">Back to Employees</a>
+      <a href="/employees" class="btn btn-outline-secondary" title="Back to Employees">
+        <i class="bi bi-arrow-left"></i>
+        <span class="btn-text">Back to Employees</span>
+      </a>
     </div>
   </div>
 
@@ -984,7 +993,7 @@
           const percentage = hasPercentage && emp.percentageRate ? ` (${emp.percentageRate}%)` : '';
           const hourly = hasHourly && emp.hourlyRate ? ` ($${emp.hourlyRate.toFixed(2)}/hr)` : '';
           const employeeIdStr = empId || (emp._id ? String(emp._id) : '');
-          return `<div class="employee-option p-2 border-bottom" style="cursor: pointer;" data-id="${employeeIdStr}" data-name="${emp.firstName} ${emp.lastName}" data-percentage="${hasPercentage ? (emp.percentageRate || '') : ''}" data-hourly-rate="${hasHourly ? (emp.hourlyRate || '') : ''}">
+          return `<div class="employee-option p-2 border-bottom" style="cursor: pointer; min-height: 44px; display: flex; align-items: center; -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1); touch-action: manipulation;" data-id="${employeeIdStr}" data-name="${emp.firstName} ${emp.lastName}" data-percentage="${hasPercentage ? (emp.percentageRate || '') : ''}" data-hourly-rate="${hasHourly ? (emp.hourlyRate || '') : ''}">
             <div>
               <strong>${emp.firstName} ${emp.lastName}</strong>${percentage}${hourly}${workedBadge}
               ${laborCost ? `<div class="text-muted small">${laborCost}</div>` : ''}
@@ -1007,11 +1016,13 @@
       filterEmployees();
     });
     
-    // Also show dropdown when clicking on the input
-    searchInput.addEventListener('click', function(e) {
+    // Also show dropdown when clicking/touching on the input
+    const showDropdown = function(e) {
       e.stopPropagation();
       filterEmployees();
-    });
+    };
+    searchInput.addEventListener('click', showDropdown);
+    searchInput.addEventListener('touchend', showDropdown);
 
     wrapper.addEventListener('mouseenter', () => { isMouseOverWrapper = true; });
     wrapper.addEventListener('mouseleave', () => {
@@ -1033,9 +1044,10 @@
       }, 200);
     });
     
-    dropdown.addEventListener('click', function(e) {
+    const handleEmployeeSelection = function(e) {
       const option = e.target.closest('.employee-option');
       if (option) {
+        e.preventDefault();
         e.stopPropagation();
         const employeeId = option.getAttribute('data-id');
         const employeeName = option.getAttribute('data-name');
@@ -1103,14 +1115,20 @@
         dropdown.style.display = 'none';
         calculatePayout();
       }
-    });
+    };
+    
+    // Support both click and touch events for mobile
+    dropdown.addEventListener('click', handleEmployeeSelection);
+    dropdown.addEventListener('touchend', handleEmployeeSelection);
 
-    // Close dropdown when clicking outside
-    document.addEventListener('click', function(e) {
+    // Close dropdown when clicking/touching outside
+    const closeDropdown = function(e) {
       if (!wrapper.contains(e.target)) {
         dropdown.style.display = 'none';
       }
-    });
+    };
+    document.addEventListener('click', closeDropdown);
+    document.addEventListener('touchend', closeDropdown);
   }
 
   function initializeEmployeeSearch() {
@@ -1290,6 +1308,8 @@
     // Also listen for when modal is fully shown
     modal.addEventListener('shown.bs.modal', function() {
       console.log('=== MODAL FULLY SHOWN ===');
+      const isMobile = window.innerWidth <= 768;
+      console.log('Is mobile:', isMobile);
       
       // Ensure modal is at body level
       ensureModalAtBodyLevel();
@@ -1349,23 +1369,44 @@
             el.style.cursor = el.tagName === 'BUTTON' ? 'pointer' : 'text';
             el.style.position = 'relative';
             el.style.zIndex = '10';
+            el.style.touchAction = 'manipulation';
+            el.style.webkitTapHighlightColor = 'rgba(0, 0, 0, 0.1)';
             el.removeAttribute('readonly');
             el.removeAttribute('disabled');
             
-            // Add click test
-            el.addEventListener('click', function(e) {
-              console.log(`Element ${index} (${el.tagName}) clicked:`, el);
+            // Mobile-specific: ensure font size is at least 16px to prevent zoom
+            if (isMobile && (el.tagName === 'INPUT' || el.tagName === 'SELECT')) {
+              const computedFontSize = window.getComputedStyle(el).fontSize;
+              const fontSizeNum = parseFloat(computedFontSize);
+              if (fontSizeNum < 16) {
+                el.style.fontSize = '16px';
+              }
+            }
+            
+            // Add click/touch handlers
+            const handleInteraction = function(e) {
+              console.log(`Element ${index} (${el.tagName}) interacted:`, el, e.type);
               e.stopPropagation();
               if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
-                this.focus();
+                // Small delay to ensure focus works on mobile
+                setTimeout(() => {
+                  this.focus();
+                }, 10);
               }
-            }, { once: false });
+            };
+            
+            el.addEventListener('click', handleInteraction, { once: false });
+            el.addEventListener('touchend', handleInteraction, { once: false });
             
             // Force focus capability
             if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
               el.addEventListener('mousedown', function(e) {
                 e.stopPropagation();
                 console.log('Mousedown on input:', el);
+              });
+              el.addEventListener('touchstart', function(e) {
+                e.stopPropagation();
+                console.log('Touchstart on input:', el);
               });
             }
           }
@@ -1376,11 +1417,17 @@
           btn.style.pointerEvents = 'auto';
           btn.style.cursor = 'pointer';
           btn.style.zIndex = '10';
+          btn.style.touchAction = 'manipulation';
+          btn.style.minHeight = isMobile ? '44px' : 'auto';
           btn.disabled = false;
-          btn.addEventListener('click', function(e) {
-            console.log('Button clicked:', btn, e);
+          
+          const handleButtonClick = function(e) {
+            console.log('Button clicked/touched:', btn, e.type);
             e.stopPropagation();
-          });
+          };
+          
+          btn.addEventListener('click', handleButtonClick);
+          btn.addEventListener('touchend', handleButtonClick);
         });
       }
       
@@ -1392,6 +1439,25 @@
           pointerEvents: window.getComputedStyle(backdrop).pointerEvents
         });
         backdrop.style.zIndex = '1050';
+        
+        // On mobile, ensure backdrop doesn't interfere
+        if (isMobile) {
+          backdrop.style.touchAction = 'none';
+        }
+      }
+      
+      // Mobile-specific: Prevent body scroll when modal is open
+      if (isMobile) {
+        document.body.style.overflow = 'hidden';
+        document.body.style.position = 'fixed';
+        document.body.style.width = '100%';
+        
+        // Restore on close
+        modal.addEventListener('hidden.bs.modal', function() {
+          document.body.style.overflow = '';
+          document.body.style.position = '';
+          document.body.style.width = '';
+        }, { once: true });
       }
       
       // Re-initialize employee search to ensure event handlers are attached
@@ -1774,6 +1840,56 @@
 <style>
   .employee-option:hover {
     background-color: #f8f9fa;
+  }
+  
+  /* Mobile: Hide button text, show only icons */
+  @media (max-width: 768px) {
+    /* Target buttons in the header action area */
+    .employee-action-buttons .btn {
+      padding: 0.375rem !important;
+      min-width: 40px;
+      width: 40px;
+      height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    
+    /* Hide text spans on mobile */
+    .employee-action-buttons .btn .btn-text {
+      display: none;
+    }
+    
+    /* Ensure icons are centered and visible */
+    .employee-action-buttons .btn > i {
+      margin: 0 !important;
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+    
+    /* Ensure icon-only buttons have proper spacing */
+    .employee-action-buttons {
+      gap: 0.5rem !important;
+      flex-wrap: wrap;
+    }
+    
+    /* Make the header more compact on mobile */
+    .container-fluid > .d-flex.justify-content-between {
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    
+    .container-fluid > .d-flex.justify-content-between > h1 {
+      font-size: 1.25rem;
+      margin-bottom: 0.5rem;
+      width: 100%;
+    }
+    
+    .container-fluid > .d-flex.justify-content-between > .employee-action-buttons {
+      width: 100%;
+      justify-content: flex-start;
+    }
   }
 </style>
 </script>
