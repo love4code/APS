@@ -141,10 +141,75 @@
       <% if (job.notes) { %>
         <div class="card mb-4">
           <div class="card-body">
-            <h5 class="card-title">Notes</h5>
+            <h5 class="card-title">Notes <small class="text-muted">(Not shown on invoice)</small></h5>
             <p class="text-muted"><%= job.notes %></p>
           </div>
         </div>
+      <% } %>
+
+      <% if (job.internalNotes) { %>
+        <div class="card mb-4 border-warning">
+          <div class="card-body">
+            <h5 class="card-title">Internal Job Notes <small class="text-muted">(For your records only)</small></h5>
+            <p class="text-muted"><%= job.internalNotes %></p>
+          </div>
+        </div>
+      <% } %>
+
+      <!-- Image Upload Section -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5 class="card-title">Upload Images</h5>
+          <form action="/jobs/<%= job._id %>/images/upload" method="POST" enctype="multipart/form-data" id="imageUploadForm">
+            <div class="mb-3">
+              <input type="file" class="form-control" name="images" id="imageInput" accept="image/*" multiple required>
+              <small class="form-text text-muted">Supported formats: JPG, PNG, GIF. Max size per file: 10MB. You can select multiple images at once.</small>
+              <div id="selectedFiles" class="mt-2 small text-muted"></div>
+            </div>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-upload"></i> Upload Images
+            </button>
+            <a href="/jobs/<%= job._id %>/images" class="btn btn-outline-secondary">
+              <i class="bi bi-images"></i> View Image Library
+            </a>
+          </form>
+        </div>
+      </div>
+
+      <!-- Image Gallery Section -->
+      <% if (images && images.length > 0) { %>
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5 class="card-title">Project Images</h5>
+          <div class="row g-3" id="imageGallery">
+            <% images.forEach(image => { %>
+            <div class="col-6 col-md-4 col-lg-3">
+              <div class="card">
+                <a href="/<%= image.mediumPath %>" class="lightbox-link" data-medium="/<%= image.mediumPath %>" data-large="/<%= image.largePath %>">
+                  <img src="/<%= image.thumbnailPath %>" class="card-img-top" alt="<%= image.originalFilename %>" style="height: 200px; object-fit: cover; cursor: pointer;">
+                </a>
+                <div class="card-body p-2">
+                  <p class="card-text small mb-1 text-truncate" title="<%= image.originalFilename %>">
+                    <%= image.originalFilename %>
+                  </p>
+                  <p class="card-text small text-muted mb-1">
+                    <small>Uploaded by <%= image.uploadedBy ? image.uploadedBy.name : 'Unknown' %></small>
+                  </p>
+                  <p class="card-text small text-muted mb-2">
+                    <small><%= new Date(image.uploadedAt).toLocaleDateString() %></small>
+                  </p>
+                  <form action="/jobs/<%= job._id %>/images/<%= image._id %>/delete" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this image?');">
+                    <button type="submit" class="btn btn-sm btn-danger">
+                      <i class="bi bi-trash"></i> Delete
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+            <% }) %>
+          </div>
+        </div>
+      </div>
       <% } %>
     </div>
 
@@ -237,6 +302,95 @@
     </div>
   </div>
 </div>
+
+<!-- Lightbox Modal -->
+<div class="modal fade" id="lightboxModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content bg-dark">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title text-white" id="lightboxTitle">Image</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-0">
+        <img id="lightboxImage" src="" alt="" class="img-fluid w-100" style="max-height: 80vh; object-fit: contain;">
+      </div>
+      <div class="modal-footer border-secondary">
+        <a id="lightboxDownloadLink" href="" target="_blank" class="btn btn-outline-light">
+          <i class="bi bi-download"></i> View Full Size
+        </a>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .lightbox-link {
+    text-decoration: none;
+    display: block;
+  }
+  .lightbox-link:hover {
+    opacity: 0.9;
+  }
+  #imageGallery .card {
+    transition: transform 0.2s;
+  }
+  #imageGallery .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  }
+</style>
+
+<script>
+  // Show selected file names
+  document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('imageInput');
+    const selectedFilesDiv = document.getElementById('selectedFiles');
+    
+    if (fileInput && selectedFilesDiv) {
+      fileInput.addEventListener('change', function(e) {
+        const files = e.target.files;
+        if (files.length > 0) {
+          const fileNames = Array.from(files).map(f => f.name).join(', ');
+          const count = files.length;
+          selectedFilesDiv.innerHTML = `<strong>${count}</strong> file(s) selected: ${fileNames.substring(0, 100)}${fileNames.length > 100 ? '...' : ''}`;
+        } else {
+          selectedFilesDiv.innerHTML = '';
+        }
+      });
+    }
+    
+    // Lightbox functionality
+    const lightboxLinks = document.querySelectorAll('.lightbox-link');
+    const lightboxModal = new bootstrap.Modal(document.getElementById('lightboxModal'));
+    const lightboxImage = document.getElementById('lightboxImage');
+    const lightboxTitle = document.getElementById('lightboxTitle');
+    const lightboxDownloadLink = document.getElementById('lightboxDownloadLink');
+
+    lightboxLinks.forEach(link => {
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const mediumPath = this.getAttribute('data-medium');
+        const largePath = this.getAttribute('data-large');
+        const altText = this.querySelector('img').alt;
+
+        lightboxImage.src = mediumPath;
+        lightboxImage.alt = altText;
+        lightboxTitle.textContent = altText;
+        lightboxDownloadLink.href = largePath;
+
+        lightboxModal.show();
+      });
+    });
+
+    // Close lightbox on escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        lightboxModal.hide();
+      }
+    });
+  });
+</script>
 
 <%- include('../partials/footer') %>
 

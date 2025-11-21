@@ -39,6 +39,27 @@
     font-size: 0.7rem;
     margin-left: 8px;
   }
+  /* Ensure modals appear above all content, including product dropdowns */
+  /* Product dropdown has z-index 10000, so we need modal higher than that */
+  /* Bootstrap default: backdrop z-index 1040, modal z-index 1055 */
+  .modal {
+    z-index: 10050 !important;
+  }
+  .modal-backdrop {
+    z-index: 10040 !important;
+  }
+  .modal-dialog {
+    z-index: 10051 !important;
+    position: relative;
+  }
+  .modal-content {
+    z-index: 10052 !important;
+    position: relative;
+  }
+  /* Ensure product dropdown closes when modal opens */
+  body.modal-open .product-dropdown {
+    display: none !important;
+  }
 </style>
 
 <div class="container-fluid">
@@ -55,14 +76,19 @@
         <div class="row">
           <div class="col-md-6 mb-3">
             <label for="customer" class="form-label">Customer *</label>
-            <select class="form-select" id="customer" name="customer" required>
-              <option value="">Select customer...</option>
-              <% customers.forEach(c => { %>
-                <option value="<%= c._id %>" <%= (job && job.customer && (typeof job.customer === 'object' ? job.customer._id.toString() : job.customer.toString()) === c._id.toString()) || (typeof selectedCustomer !== 'undefined' && selectedCustomer && selectedCustomer._id && selectedCustomer._id.toString() === c._id.toString()) || (typeof customerId !== 'undefined' && customerId && customerId.toString() === c._id.toString()) ? 'selected' : '' %>>
-                  <%= c.name %>
-                </option>
-              <% }) %>
-            </select>
+            <div class="input-group">
+              <select class="form-select" id="customer" name="customer" required>
+                <option value="">Select customer...</option>
+                <% customers.forEach(c => { %>
+                  <option value="<%= c._id %>" <%= (job && job.customer && (typeof job.customer === 'object' ? job.customer._id.toString() : job.customer.toString()) === c._id.toString()) || (typeof selectedCustomer !== 'undefined' && selectedCustomer && selectedCustomer._id && selectedCustomer._id.toString() === c._id.toString()) || (typeof customerId !== 'undefined' && customerId && customerId.toString() === c._id.toString()) ? 'selected' : '' %>>
+                    <%= c.name %>
+                  </option>
+                <% }) %>
+              </select>
+              <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#newCustomerModal" title="Add New Customer">
+                <i class="bi bi-plus-circle"></i>
+              </button>
+            </div>
             <% if ((typeof selectedCustomer !== 'undefined' && selectedCustomer) || (typeof customerId !== 'undefined' && customerId)) { %>
             <small class="form-text text-muted">Pre-selected from customer page</small>
             <% } %>
@@ -222,8 +248,15 @@
         </div>
 
         <div class="mb-3">
-          <label for="notes" class="form-label">Notes</label>
-          <textarea class="form-control" id="notes" name="notes" rows="4"><%= job ? job.notes : '' %></textarea>
+          <label for="notes" class="form-label">Customer-Facing Notes</label>
+          <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="Notes that will appear on invoices"><%= job ? job.notes : '' %></textarea>
+          <small class="form-text text-muted">These notes will appear on invoices and the job detail page.</small>
+        </div>
+
+        <div class="mb-3">
+          <label for="internalNotes" class="form-label">Internal Job Notes</label>
+          <textarea class="form-control" id="internalNotes" name="internalNotes" rows="4" placeholder="Internal notes for your records only"><%= job ? job.internalNotes : '' %></textarea>
+          <small class="form-text text-muted">These notes are for internal use only and will NOT appear on invoices or be visible to customers.</small>
         </div>
 
         <div class="d-flex gap-2">
@@ -231,6 +264,9 @@
           <a href="<%= job ? `/jobs/${job._id}` : '/jobs' %>" class="btn btn-secondary">Cancel</a>
         </div>
       </form>
+    </div>
+  </div>
+</div>
     </div>
   </div>
 </div>
@@ -766,6 +802,228 @@
     document.getElementById('productFormError').classList.add('d-none');
   });
 
+  // Handle new customer form submission
+  let customerFormHandlerAttached = false;
+  
+  function attachCustomerFormHandler() {
+    if (customerFormHandlerAttached) {
+      console.log('Customer form handler already attached');
+      return true;
+    }
+    
+    const customerForm = document.getElementById('newCustomerForm');
+    if (!customerForm) {
+      console.warn('Customer form not found');
+      return false;
+    }
+    
+    console.log('Attaching customer form handler to form:', customerForm);
+    customerFormHandlerAttached = true;
+    
+    customerForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      console.log('Customer form submit event fired');
+      
+      const form = this;
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const spinner = document.getElementById('customerSubmitSpinner');
+      const errorDiv = document.getElementById('customerFormError');
+      const customerSelect = document.getElementById('customer');
+      
+      if (!customerSelect) {
+        errorDiv.textContent = 'Customer select element not found. Please refresh the page.';
+        errorDiv.classList.remove('d-none');
+        submitBtn.disabled = false;
+        spinner.classList.add('d-none');
+        return;
+      }
+      
+      // Hide previous errors
+      errorDiv.classList.add('d-none');
+      errorDiv.textContent = '';
+      
+      // Show loading state
+      submitBtn.disabled = true;
+      spinner.classList.remove('d-none');
+      
+      // Get form data
+      const formData = new FormData(form);
+      const data = {
+        name: formData.get('name'),
+        phone: formData.get('phone') || '',
+        email: formData.get('email') || '',
+        address: formData.get('address') || '',
+        notes: formData.get('notes') || ''
+      };
+      
+      // Validate name
+      if (!data.name || data.name.trim() === '') {
+        errorDiv.textContent = 'Customer name is required';
+        errorDiv.classList.remove('d-none');
+        submitBtn.disabled = false;
+        spinner.classList.add('d-none');
+        return;
+      }
+      
+      try {
+        console.log('Sending customer creation request:', data);
+        const response = await fetch('/customers', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+        
+        console.log('Response received, status:', response.status);
+      
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      let result;
+      
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        
+        if (response.status === 401 || response.status === 403) {
+          throw new Error('Authentication required. Please refresh the page and try again.');
+        } else if (response.status === 302 || response.status === 301) {
+          throw new Error('Session expired. Please refresh the page and try again.');
+        } else {
+          throw new Error('Server returned an unexpected response. Please try again.');
+        }
+      } else {
+        result = await response.json();
+        console.log('Response JSON:', result);
+      }
+      
+      if (!response.ok) {
+        console.error('Response not OK:', response.status, result);
+        throw new Error(result.error || 'Error creating customer');
+      }
+      
+      if (!result.customer || !result.customer._id) {
+        console.error('Invalid response - missing customer data:', result);
+        throw new Error('Invalid response from server - customer data missing');
+      }
+      
+      console.log('Customer created successfully:', result.customer);
+      
+      // Get customer ID as string to ensure proper matching
+      const customerId = String(result.customer._id);
+      
+      // Add new customer to select dropdown
+      const option = document.createElement('option');
+      option.value = customerId;
+      option.textContent = result.customer.name;
+      customerSelect.appendChild(option);
+      
+      // Set the select value explicitly
+      customerSelect.value = customerId;
+      
+      // Also set selected attribute on the option
+      option.selected = true;
+      
+      // Trigger change event to ensure any listeners are notified
+      customerSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      
+      // Also update the hidden input if it exists
+      const hiddenCustomerInput = document.querySelector('input[name="customerId"]');
+      if (hiddenCustomerInput) {
+        hiddenCustomerInput.value = customerId;
+      }
+      
+      // Close modal and reset form
+      const modal = bootstrap.Modal.getInstance(document.getElementById('newCustomerModal'));
+      modal.hide();
+      form.reset();
+      
+      // Show success message
+      const successAlert = document.createElement('div');
+      successAlert.className = 'alert alert-success alert-dismissible fade show';
+      successAlert.innerHTML = '<strong>Success!</strong> Customer "' + result.customer.name + '" created and selected.';
+      successAlert.innerHTML += '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+      document.querySelector('.container-fluid').insertBefore(successAlert, document.querySelector('.container-fluid').firstChild);
+      
+      // Auto-dismiss after 3 seconds
+      setTimeout(() => {
+        successAlert.remove();
+      }, 3000);
+      
+    } catch (error) {
+      let errorMessage = 'Error creating customer. Please try again.';
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      errorDiv.textContent = errorMessage;
+      errorDiv.classList.remove('d-none');
+      
+      // Scroll to error message
+      errorDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } finally {
+      submitBtn.disabled = false;
+      spinner.classList.add('d-none');
+    }
+    });
+    
+    return true;
+  }
+  
+  // Setup customer modal handlers - will be called after modal HTML is loaded
+  function setupCustomerModal() {
+    // Reset customer modal form when closed and attach handler when modal opens
+    const customerModal = document.getElementById('newCustomerModal');
+    if (!customerModal) {
+      console.error('Customer modal element not found!');
+      return;
+    }
+    
+    console.log('Customer modal element found, setting up event listeners');
+    
+    customerModal.addEventListener('hidden.bs.modal', function() {
+      const form = document.getElementById('newCustomerForm');
+      if (form) {
+        form.reset();
+      }
+      const errorDiv = document.getElementById('customerFormError');
+      if (errorDiv) {
+        errorDiv.classList.add('d-none');
+      }
+    });
+
+    // Close any open product dropdowns when customer modal opens and ensure handler is attached
+    customerModal.addEventListener('show.bs.modal', function() {
+      console.log('Customer modal opening, attaching handler...');
+      // Close all product dropdowns
+      document.querySelectorAll('.product-dropdown').forEach(dropdown => {
+        dropdown.style.display = 'none';
+      });
+      
+      // Small delay to ensure modal content is fully rendered
+      setTimeout(() => {
+        // Ensure form handler is attached
+        const attached = attachCustomerFormHandler();
+        if (!attached) {
+          console.error('Failed to attach customer form handler when modal opened!');
+          // Try one more time after a longer delay
+          setTimeout(() => {
+            const retry = attachCustomerFormHandler();
+            if (!retry) {
+              console.error('Failed to attach customer form handler after retry!');
+            }
+          }, 200);
+        }
+      }, 50);
+    });
+  }
+  
+  // Setup modal handlers after a short delay to ensure modal HTML is in DOM
+  setTimeout(() => {
+    setupCustomerModal();
+  }, 100);
+
   // Convert items array to JSON before submit
   document.getElementById('jobForm').addEventListener('submit', function(e) {
     const items = [];
@@ -811,6 +1069,103 @@
     hiddenInput.value = JSON.stringify(items);
     this.appendChild(hiddenInput);
   });
+</script>
+
+<!-- New Customer Modal - Must be outside container for proper z-index stacking -->
+<div class="modal fade" id="newCustomerModal" tabindex="-1" aria-labelledby="newCustomerModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="newCustomerModalLabel">New Customer</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="newCustomerForm">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="customerName" class="form-label">Name *</label>
+            <input type="text" class="form-control" id="customerName" name="name" required>
+          </div>
+          <div class="mb-3">
+            <label for="customerPhone" class="form-label">Phone</label>
+            <input type="tel" class="form-control" id="customerPhone" name="phone">
+          </div>
+          <div class="mb-3">
+            <label for="customerEmail" class="form-label">Email</label>
+            <input type="email" class="form-control" id="customerEmail" name="email">
+          </div>
+          <div class="mb-3">
+            <label for="customerAddress" class="form-label">Address</label>
+            <textarea class="form-control" id="customerAddress" name="address" rows="2"></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="customerNotes" class="form-label">Notes</label>
+            <textarea class="form-control" id="customerNotes" name="notes" rows="3"></textarea>
+          </div>
+          <div id="customerFormError" class="alert alert-danger d-none" role="alert"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <span id="customerSubmitSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+            Create & Select
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Setup customer modal handlers now that modal HTML is in DOM
+  (function() {
+    const customerModal = document.getElementById('newCustomerModal');
+    if (!customerModal) {
+      console.error('Customer modal element not found after page load!');
+      return;
+    }
+    
+    console.log('Customer modal element found, setting up event listeners');
+    
+    customerModal.addEventListener('hidden.bs.modal', function() {
+      const form = document.getElementById('newCustomerForm');
+      if (form) {
+        form.reset();
+      }
+      const errorDiv = document.getElementById('customerFormError');
+      if (errorDiv) {
+        errorDiv.classList.add('d-none');
+      }
+    });
+
+    // Close any open product dropdowns when customer modal opens and ensure handler is attached
+    customerModal.addEventListener('show.bs.modal', function() {
+      console.log('Customer modal opening, attaching handler...');
+      // Close all product dropdowns
+      document.querySelectorAll('.product-dropdown').forEach(dropdown => {
+        dropdown.style.display = 'none';
+      });
+      
+      // Small delay to ensure modal content is fully rendered
+      setTimeout(() => {
+        // Ensure form handler is attached - use the function from the main script
+        if (typeof attachCustomerFormHandler === 'function') {
+          const attached = attachCustomerFormHandler();
+          if (!attached) {
+            console.error('Failed to attach customer form handler when modal opened!');
+            // Try one more time after a longer delay
+            setTimeout(() => {
+              const retry = attachCustomerFormHandler();
+              if (!retry) {
+                console.error('Failed to attach customer form handler after retry!');
+              }
+            }, 200);
+          }
+        } else {
+          console.error('attachCustomerFormHandler function not found!');
+        }
+      }, 50);
+    });
+  })();
 </script>
 
 <%- include('../partials/footer') %>

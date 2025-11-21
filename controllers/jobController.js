@@ -4,8 +4,10 @@ const Product = require('../models/Product')
 const User = require('../models/User')
 const Store = require('../models/Store')
 const ActivityLog = require('../models/ActivityLog')
+const JobImage = require('../models/JobImage')
 const invoiceService = require('../services/invoiceService')
 const emailService = require('../services/emailService')
+const imageService = require('../services/imageService')
 
 exports.list = async (req, res) => {
   try {
@@ -137,6 +139,7 @@ exports.create = async (req, res) => {
       invoicedDate,
       status,
       notes,
+      internalNotes,
       items,
       installCost
     } = req.body
@@ -243,6 +246,7 @@ exports.create = async (req, res) => {
       invoicedDate: parsedInvoicedDate,
       status: status || 'scheduled',
       notes: notes || '',
+      internalNotes: internalNotes || '',
       installCost: installCost ? parseFloat(installCost) : 0,
       createdBy: req.user._id,
       items: validItems
@@ -306,10 +310,16 @@ exports.detail = async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(20)
 
+    // Get all images for this job
+    const images = await JobImage.find({ job: job._id })
+      .populate('uploadedBy', 'name')
+      .sort({ uploadedAt: -1 })
+
     res.render('jobs/detail', {
       title: `Job #${job._id.toString().slice(-6)}`,
       job,
       activities,
+      images,
       user: req.user
     })
   } catch (error) {
@@ -372,6 +382,7 @@ exports.update = async (req, res) => {
       invoicedDate,
       status,
       notes,
+      internalNotes,
       items,
       installCost
     } = req.body
@@ -464,6 +475,7 @@ exports.update = async (req, res) => {
     job.invoicedDate = parsedInvoicedDate
     job.status = status || 'scheduled'
     job.notes = notes || ''
+    job.internalNotes = internalNotes || ''
     job.installCost = installCost ? parseFloat(installCost) : 0
     job.items = validItems
 
@@ -1041,6 +1053,161 @@ exports.sendInvoice = async (req, res) => {
   } catch (error) {
     console.error('Send invoice error:', error)
     req.flash('error', error.message || 'Error sending invoice')
+    res.redirect(`/jobs/${req.params.id}`)
+  }
+}
+
+// Upload images for job (supports multiple files)
+exports.uploadImage = async (req, res) => {
+  try {
+    const files = req.files || []
+    
+    if (!files || files.length === 0) {
+      req.flash('error', 'No image files uploaded')
+      return res.redirect(`/jobs/${req.params.id}`)
+    }
+
+    const job = await Job.findById(req.params.id)
+    if (!job) {
+      req.flash('error', 'Job not found')
+      return res.redirect('/jobs')
+    }
+
+    const uploadedImages = []
+    const errors = []
+
+    // Process each image
+    for (const file of files) {
+      try {
+        // Process image and create multiple sizes
+        const processedImages = await imageService.processJobImage(
+          file.path,
+          req.params.id,
+          file.originalname
+        )
+
+        // Save image metadata to database
+        const jobImage = new JobImage({
+          job: job._id,
+          originalFilename: file.originalname,
+          thumbnailPath: processedImages.thumbnailPath,
+          mediumPath: processedImages.mediumPath,
+          largePath: processedImages.largePath,
+          originalSize: processedImages.originalSize,
+          thumbnailSize: processedImages.thumbnailSize,
+          mediumSize: processedImages.mediumSize,
+          largeSize: processedImages.largeSize,
+          uploadedBy: req.user._id
+        })
+
+        await jobImage.save()
+        uploadedImages.push(file.originalname)
+
+        // Log activity for each image
+        await ActivityLog.create({
+          job: job._id,
+          user: req.user._id,
+          action: 'image_uploaded',
+          details: `Uploaded image: ${file.originalname}`
+        })
+      } catch (error) {
+        console.error(`Error processing image ${file.originalname}:`, error)
+        errors.push(file.originalname)
+      }
+    }
+
+    // Set success/error messages
+    if (uploadedImages.length > 0) {
+      if (uploadedImages.length === 1) {
+        req.flash('success', `Image "${uploadedImages[0]}" uploaded successfully`)
+      } else {
+        req.flash('success', `${uploadedImages.length} images uploaded successfully`)
+      }
+    }
+
+    if (errors.length > 0) {
+      if (errors.length === 1) {
+        req.flash('error', `Failed to upload image: ${errors[0]}`)
+      } else {
+        req.flash('error', `Failed to upload ${errors.length} image(s)`)
+      }
+    }
+
+    res.redirect(`/jobs/${req.params.id}`)
+  } catch (error) {
+    console.error('Upload images error:', error)
+    req.flash('error', error.message || 'Error uploading images')
+    res.redirect(`/jobs/${req.params.id}`)
+  }
+}
+
+// Delete image
+exports.deleteImage = async (req, res) => {
+  try {
+    const jobImage = await JobImage.findById(req.params.imageId)
+      .populate('job')
+
+    if (!jobImage) {
+      req.flash('error', 'Image not found')
+      return res.redirect('/jobs')
+    }
+
+    const jobId = jobImage.job._id.toString()
+
+    // Delete files from filesystem
+    imageService.deleteJobImageFiles(jobImage)
+
+    // Delete from database
+    await JobImage.findByIdAndDelete(req.params.imageId)
+
+    // Log activity
+    await ActivityLog.create({
+      job: jobImage.job._id,
+      user: req.user._id,
+      action: 'image_deleted',
+      details: `Deleted image: ${jobImage.originalFilename}`
+    })
+
+    req.flash('success', 'Image deleted successfully')
+
+    // Check if we're coming from library page
+    if (req.query.from === 'library') {
+      return res.redirect(`/jobs/${jobId}/images`)
+    }
+
+    res.redirect(`/jobs/${jobId}`)
+  } catch (error) {
+    console.error('Delete image error:', error)
+    req.flash('error', error.message || 'Error deleting image')
+    res.redirect('/jobs')
+  }
+}
+
+// Image library view
+exports.imageLibrary = async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id)
+      .populate('customer', 'name')
+      .populate('items.product', 'name')
+
+    if (!job) {
+      req.flash('error', 'Job not found')
+      return res.redirect('/jobs')
+    }
+
+    const images = await JobImage.find({ job: job._id })
+      .populate('uploadedBy', 'name')
+      .sort({ uploadedAt: -1 })
+
+    res.render('jobs/image-library', {
+      title: `Image Library - Job #${job._id.toString().slice(-6)}`,
+      job,
+      images,
+      user: req.user
+    })
+  } catch (error) {
+    console.error('Image library error:', error)
+    req.flash('error', 'Error loading image library')
     res.redirect(`/jobs/${req.params.id}`)
   }
 }

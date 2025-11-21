@@ -308,8 +308,8 @@ exports.generateInvoicePDF = async job => {
         )
       }
 
-      // Notes
-      if (job.notes) {
+      // Customer-facing notes (from job.notes)
+      if (job.notes && job.notes.trim()) {
         currentY += 40
         doc.fontSize(10).font('Helvetica-Bold')
         doc.text('Notes:', 50, currentY)

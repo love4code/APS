@@ -4,12 +4,33 @@ const User = require('../models/User')
 exports.requireAuth = (req, res, next) => {
   try {
     if (!req.session || !req.session.userId) {
+      // Check if this is an AJAX/JSON request
+      const isAjax = req.xhr || 
+                     req.headers['x-requested-with'] === 'XMLHttpRequest' ||
+                     req.headers.accept?.indexOf('json') > -1 ||
+                     req.headers['content-type']?.indexOf('json') > -1
+      
+      if (isAjax) {
+        return res.status(401).json({ error: 'Authentication required. Please log in.' })
+      }
+      
       req.flash('error', 'Please log in to access this page')
       return res.redirect('/login')
     }
     next()
   } catch (error) {
     console.error('requireAuth error:', error)
+    
+    // Check if this is an AJAX/JSON request
+    const isAjax = req.xhr || 
+                   req.headers['x-requested-with'] === 'XMLHttpRequest' ||
+                   req.headers.accept?.indexOf('json') > -1 ||
+                   req.headers['content-type']?.indexOf('json') > -1
+    
+    if (isAjax) {
+      return res.status(500).json({ error: 'Authentication error' })
+    }
+    
     res.redirect('/login')
   }
 }

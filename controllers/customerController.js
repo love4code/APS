@@ -87,14 +87,36 @@ exports.newForm = (req, res) => {
 
 exports.create = async (req, res) => {
   try {
+    console.log('=== Customer Create Request ===')
+    console.log('Method:', req.method)
+    console.log('Body:', req.body)
+    console.log('Headers:', {
+      'x-requested-with': req.headers['x-requested-with'],
+      'accept': req.headers.accept,
+      'content-type': req.headers['content-type']
+    })
+    console.log('Session userId:', req.session?.userId)
+    
     const { name, phone, email, address, notes } = req.body
 
+    // Check if this is an AJAX/JSON request
+    const isAjax = req.xhr || 
+                   req.headers['x-requested-with'] === 'XMLHttpRequest' ||
+                   req.headers.accept?.indexOf('json') > -1 ||
+                   req.headers['content-type']?.indexOf('json') > -1
+
+    console.log('Is AJAX request:', isAjax)
+
     if (!name) {
+      console.log('Error: Customer name is missing')
+      if (isAjax) {
+        return res.status(400).json({ error: 'Customer name is required' })
+      }
       req.flash('error', 'Customer name is required')
       return res.redirect('/customers/new')
     }
 
-    await Customer.create({
+    const customer = await Customer.create({
       name,
       phone: phone || '',
       email: email || '',
@@ -102,9 +124,36 @@ exports.create = async (req, res) => {
       notes: notes || ''
     })
 
+    console.log('Customer created successfully:', customer._id, customer.name)
+
+    if (isAjax) {
+      return res.status(201).json({ 
+        success: true, 
+        customer: {
+          _id: customer._id.toString(),
+          name: customer.name,
+          phone: customer.phone || '',
+          email: customer.email || '',
+          address: customer.address || '',
+          notes: customer.notes || ''
+        }
+      })
+    }
+
     req.flash('success', 'Customer created successfully')
     res.redirect('/customers')
   } catch (error) {
+    console.error('Error creating customer:', error)
+    
+    // Check if this is an AJAX/JSON request
+    const isAjax = req.xhr || 
+                   req.headers['x-requested-with'] === 'XMLHttpRequest' ||
+                   req.headers.accept?.indexOf('json') > -1 ||
+                   req.headers['content-type']?.indexOf('json') > -1
+    
+    if (isAjax) {
+      return res.status(400).json({ error: error.message || 'Error creating customer' })
+    }
     req.flash('error', error.message || 'Error creating customer')
     res.redirect('/customers/new')
   }

@@ -1036,63 +1036,54 @@
       window.toggleSidebar = toggleSidebar;
       console.log('toggleSidebar assigned to window.toggleSidebar');
       
+      let updateToggleButtonTimeout = null;
       function updateToggleButton() {
-        const sidebar = document.getElementById('sidebar');
-        const toggleBtn = document.getElementById('sidebarToggleBtn');
-        if (!toggleBtn || !sidebar) {
-          console.log('updateToggleButton - missing elements, toggleBtn:', toggleBtn, 'sidebar:', sidebar);
-          return;
+        // Debounce to prevent excessive calls
+        if (updateToggleButtonTimeout) {
+          clearTimeout(updateToggleButtonTimeout);
         }
         
-        if (window.innerWidth > 768) {
-          // Check if sidebar is collapsed (either by class or display: none)
-          const computedStyle = window.getComputedStyle(sidebar);
-          const isCollapsed = sidebar.classList.contains('collapsed') || 
-                             sidebar.style.display === 'none' || 
-                             sidebar.style.display === 'none !important' ||
-                             computedStyle.display === 'none';
-          
-          console.log('updateToggleButton - isCollapsed:', isCollapsed, 'display:', computedStyle.display, 'sidebar.style.display:', sidebar.style.display);
-          
-          // Show toggle button when sidebar is closed (collapsed)
-          // Hide toggle button when sidebar is open (not collapsed)
-          if (isCollapsed) {
-            toggleBtn.classList.add('visible');
-            toggleBtn.style.setProperty('display', 'block', 'important');
-            console.log('Toggle button shown - sidebar is collapsed');
-          } else {
-            toggleBtn.classList.remove('visible');
-            toggleBtn.style.setProperty('display', 'none', 'important');
-            console.log('Toggle button hidden - sidebar is open');
+        updateToggleButtonTimeout = setTimeout(() => {
+          const sidebar = document.getElementById('sidebar');
+          const toggleBtn = document.getElementById('sidebarToggleBtn');
+          if (!toggleBtn || !sidebar) {
+            return;
           }
-        }
+          
+          if (window.innerWidth > 768) {
+            // Check if sidebar is collapsed (either by class or display: none)
+            const computedStyle = window.getComputedStyle(sidebar);
+            const isCollapsed = sidebar.classList.contains('collapsed') || 
+                               sidebar.style.display === 'none' || 
+                               sidebar.style.display === 'none !important' ||
+                               computedStyle.display === 'none';
+            
+            // Show toggle button when sidebar is closed (collapsed)
+            // Hide toggle button when sidebar is open (not collapsed)
+            if (isCollapsed) {
+              toggleBtn.classList.add('visible');
+              toggleBtn.style.setProperty('display', 'block', 'important');
+            } else {
+              toggleBtn.classList.remove('visible');
+              toggleBtn.style.setProperty('display', 'none', 'important');
+            }
+          }
+          updateToggleButtonTimeout = null;
+        }, 50);
       }
       function closeSidebar() {
-        console.log('=== closeSidebar called ===');
         const sidebar = document.getElementById('sidebar');
         if (!sidebar) {
-          console.error('ERROR: Sidebar not found!');
           return;
         }
-        
-        console.log('Sidebar found:', sidebar);
-        console.log('Window width:', window.innerWidth);
-        console.log('Sidebar classes before:', sidebar.className);
-        console.log('Sidebar display before:', window.getComputedStyle(sidebar).display);
         
         if (window.innerWidth <= 768) {
           sidebar.classList.remove('show');
-          console.log('Mobile sidebar closed');
         } else {
           // Desktop: collapse the sidebar to 60px strip
-          console.log('Closing desktop sidebar to 60px strip');
-          
-          // Add collapsed class
           sidebar.classList.add('collapsed');
-          console.log('Added collapsed class, sidebar classes:', sidebar.className);
           
           // Set collapsed styles with !important - collapse to 60px strip
-          console.log('Setting collapsed styles to 60px...');
           sidebar.style.setProperty('display', 'block', 'important');
           sidebar.style.setProperty('flex', '0 0 60px', 'important');
           sidebar.style.setProperty('width', '60px', 'important');
@@ -1103,47 +1094,32 @@
           sidebar.style.setProperty('opacity', '1', 'important');
           sidebar.style.setProperty('pointer-events', 'auto', 'important');
           
-          console.log('Collapsed styles set. Sidebar style.width:', sidebar.style.width);
-          
           const mainContent = document.querySelector('.main-content');
           if (mainContent) {
             mainContent.style.setProperty('width', 'calc(100% - 60px)', 'important');
             mainContent.style.setProperty('flex', '1 1 calc(100% - 60px)', 'important');
             mainContent.style.setProperty('margin-left', '0', 'important');
-            console.log('Main content adjusted for 60px sidebar');
-          } else {
-            console.warn('Main content not found!');
           }
           
           // Force a reflow
           void sidebar.offsetWidth;
           if (mainContent) void mainContent.offsetWidth;
           
-          const computedAfter = window.getComputedStyle(sidebar);
-          console.log('After collapse - computed display:', computedAfter.display);
-          console.log('After collapse - computed width:', computedAfter.width);
-          console.log('After collapse - sidebar.offsetWidth:', sidebar.offsetWidth);
-          console.log('Desktop sidebar closed to 60px, offsetWidth:', sidebar.offsetWidth);
-          
           // Update toggle button visibility after a short delay
           setTimeout(() => {
             updateToggleButton();
           }, 10);
         }
-        console.log('=== closeSidebar finished ===');
       }
       window.closeSidebar = closeSidebar;
       // toggleSubmenu is already defined at the top of the script
       
       // Initialize sidebar functionality
       function initSidebar() {
-        console.log('Initializing sidebar...');
         const sidebar = document.getElementById('sidebar');
         let toggleBtn = document.getElementById('sidebarToggleBtn');
         let toggleBtnMobile = document.getElementById('sidebarToggleBtnMobile');
         let closeBtn = document.getElementById('sidebarCloseBtn');
-        
-        console.log('Elements found - sidebar:', sidebar, 'toggleBtn:', toggleBtn, 'toggleBtnMobile:', toggleBtnMobile, 'closeBtn:', closeBtn);
         
         // Attach event listeners directly
         if (toggleBtn) {
@@ -1160,44 +1136,28 @@
           toggleBtn.onclick = function(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('Desktop toggle button clicked (onclick)', e);
             if (typeof window.toggleSidebar === 'function') {
               window.toggleSidebar();
-            } else {
-              console.error('window.toggleSidebar is not a function');
             }
             return false;
           };
           toggleBtn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('Desktop toggle button clicked (addEventListener)', e);
             if (typeof window.toggleSidebar === 'function') {
               window.toggleSidebar();
-            } else {
-              console.error('window.toggleSidebar is not a function');
             }
             return false;
           }, true); // Use capture phase
-          console.log('Desktop toggle button event listener attached to:', toggleBtn);
-          console.log('Toggle button styles:', {
-            display: window.getComputedStyle(toggleBtn).display,
-            pointerEvents: window.getComputedStyle(toggleBtn).pointerEvents,
-            zIndex: window.getComputedStyle(toggleBtn).zIndex
-          });
-        } else {
-          console.error('Desktop toggle button not found!');
         }
         
         if (toggleBtnMobile) {
           toggleBtnMobile.onclick = function(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('Mobile toggle button clicked');
             toggleSidebar();
             return false;
           };
-          console.log('Mobile toggle button event listener attached');
         }
         
         if (closeBtn) {
@@ -1209,20 +1169,15 @@
           closeBtn.onclick = function(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('Close button clicked (onclick)');
             closeSidebar();
             return false;
           };
           closeBtn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('Close button clicked (addEventListener)');
             closeSidebar();
             return false;
           }, true); // Use capture phase
-          console.log('Close button event listener attached to:', closeBtn);
-        } else {
-          console.error('Close button not found!');
         }
         
         // Make sure sidebar starts collapsed (60px strip) on desktop
@@ -1247,10 +1202,8 @@
           if (mainContent) {
             mainContent.style.setProperty('width', 'calc(100% - 60px)', 'important');
             mainContent.style.setProperty('flex', '1 1 calc(100% - 60px)', 'important');
-            mainContent.style.setProperty('margin-left', '0', 'important');
-          }
-          
-          console.log('Sidebar initialized - collapsed to 60px, sidebar classes:', sidebar.className);
+          mainContent.style.setProperty('margin-left', '0', 'important');
+        }
         } else if (window.innerWidth <= 768 && sidebar) {
           // On mobile, make sure it starts hidden
           sidebar.classList.remove('show');
@@ -1259,14 +1212,8 @@
           }
         }
         
-        // Update toggle button visibility immediately and after a delay
+        // Update toggle button visibility once
         updateToggleButton();
-        setTimeout(() => {
-          updateToggleButton();
-        }, 100);
-        setTimeout(() => {
-          updateToggleButton();
-        }, 500);
       }
       
       // Close sidebar when clicking outside on mobile
@@ -1285,13 +1232,20 @@
         }
       });
       
-      // Handle window resize
+      // Handle window resize with debounce
+      let resizeTimeout = null;
       window.addEventListener('resize', function() {
-        const sidebar = document.getElementById('sidebar');
-        if (sidebar && window.innerWidth > 768) {
-          sidebar.classList.remove('show');
+        if (resizeTimeout) {
+          clearTimeout(resizeTimeout);
         }
-        updateToggleButton();
+        resizeTimeout = setTimeout(() => {
+          const sidebar = document.getElementById('sidebar');
+          if (sidebar && window.innerWidth > 768) {
+            sidebar.classList.remove('show');
+          }
+          updateToggleButton();
+          resizeTimeout = null;
+        }, 150);
       });
       
       // Test function to verify toggle works
@@ -1310,9 +1264,6 @@
       };
       
       // Initialize when DOM is ready
-      console.log('Sidebar script loaded, readyState:', document.readyState);
-      console.log('toggleSidebar available:', typeof window.toggleSidebar);
-      
       // Try to initialize immediately
       try {
         initSidebar();
@@ -1322,9 +1273,7 @@
       
       // Also initialize when DOM is ready
       if (document.readyState === 'loading') {
-        console.log('Adding DOMContentLoaded listener');
         document.addEventListener('DOMContentLoaded', function() {
-          console.log('DOMContentLoaded fired, calling initSidebar');
           try {
             initSidebar();
           } catch (e) {
@@ -1332,30 +1281,12 @@
           }
         });
       } else {
-        console.log('DOM already ready, calling initSidebar again');
         setTimeout(() => {
           try {
             initSidebar();
-            console.log('After initSidebar - toggleSidebar available:', typeof window.toggleSidebar);
-            console.log('Toggle button element:', document.getElementById('sidebarToggleBtn'));
           } catch (e) {
             console.error('Error initializing sidebar on timeout:', e);
           }
         }, 100);
       }
-      
-      // Also try after a longer delay to ensure everything is loaded
-      setTimeout(() => {
-        const toggleBtn = document.getElementById('sidebarToggleBtn');
-        console.log('Delayed check - Toggle button:', toggleBtn);
-        console.log('Delayed check - toggleSidebar:', typeof window.toggleSidebar);
-        if (toggleBtn) {
-          console.log('Toggle button computed styles:', {
-            display: window.getComputedStyle(toggleBtn).display,
-            pointerEvents: window.getComputedStyle(toggleBtn).pointerEvents,
-            zIndex: window.getComputedStyle(toggleBtn).zIndex,
-            visibility: window.getComputedStyle(toggleBtn).visibility
-          });
-        }
-      }, 1000);
     </script>

@@ -94,6 +94,10 @@ const jobSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  internalNotes: {
+    type: String,
+    default: ''
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
