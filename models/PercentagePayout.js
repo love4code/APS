@@ -30,6 +30,11 @@ const percentagePayoutSchema = new mongoose.Schema({
       type: Number,
       min: 0
     },
+    flatRate: {
+      type: Number,
+      min: 0,
+      default: 0
+    },
     payoutAmount: {
       type: Number,
       required: true,

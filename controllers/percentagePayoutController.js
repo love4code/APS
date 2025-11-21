@@ -82,32 +82,43 @@ exports.calculateForm = async (req, res) => {
         timeEntriesByEmployee[emp._id.toString()] = empTimeEntries.map(
           entry => ({
             hoursWorked: entry.hoursWorked || 0,
-            overtimeHours: entry.overtimeHours || 0
+            overtimeHours: entry.overtimeHours || 0,
+            flatRate: entry.flatRate || 0,
+            gasMoney: entry.gasMoney || 0
           })
         )
 
         let laborCost = 0
         let totalHours = 0
+        let totalFlatRate = 0
         empTimeEntries.forEach(entry => {
-          const regularHours =
-            (entry.hoursWorked || 0) - (entry.overtimeHours || 0)
-          const overtimeHours = entry.overtimeHours || 0
-          const hourlyRate = entry.employee?.hourlyRate || emp.hourlyRate || 0
-          const overtimeMultiplier =
-            entry.employee?.defaultOvertimeMultiplier ||
-            emp.defaultOvertimeMultiplier ||
-            1.5
+          // If flat rate is set, use flat rate instead of calculating hourly pay
+          if (entry.flatRate && entry.flatRate > 0) {
+            totalFlatRate += entry.flatRate
+            laborCost += entry.flatRate
+          } else {
+            // Calculate hourly pay only if no flat rate
+            const regularHours =
+              (entry.hoursWorked || 0) - (entry.overtimeHours || 0)
+            const overtimeHours = entry.overtimeHours || 0
+            const hourlyRate = entry.employee?.hourlyRate || emp.hourlyRate || 0
+            const overtimeMultiplier =
+              entry.employee?.defaultOvertimeMultiplier ||
+              emp.defaultOvertimeMultiplier ||
+              1.5
 
-          laborCost +=
-            regularHours * hourlyRate +
-            overtimeHours * hourlyRate * overtimeMultiplier
-          totalHours += entry.hoursWorked || 0
+            laborCost +=
+              regularHours * hourlyRate +
+              overtimeHours * hourlyRate * overtimeMultiplier
+            totalHours += entry.hoursWorked || 0
+          }
         })
 
         return {
           ...emp,
           laborCost: laborCost,
           hoursWorked: totalHours,
+          flatRate: totalFlatRate,
           timeEntriesCount: empTimeEntries.length
         }
       })
@@ -225,6 +236,11 @@ exports.calculate = async (req, res) => {
         .lean()
 
       calculatedLaborCosts = timeEntries.reduce((total, entry) => {
+        // If flat rate is set, use flat rate instead of calculating hourly pay
+        if (entry.flatRate && entry.flatRate > 0) {
+          return total + entry.flatRate
+        }
+        
         if (!entry.employee || !entry.employee.hourlyRate) return total
 
         const regularHours =
@@ -249,11 +265,84 @@ exports.calculate = async (req, res) => {
       `[Payout Calculate] Final labor costs: $${calculatedLaborCosts}`
     )
 
-    // Calculate total costs (job costs + materials + labor costs)
+    // Calculate flat rate and gas money from time entries for this day
+    const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0)
+    const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999)
+
+    const timeEntriesForDay = await TimeEntry.find({
+      date: { $gte: startOfDay, $lte: endOfDay },
+      approved: true
+    }).lean()
+
+    const totalFlatRate = timeEntriesForDay.reduce(
+      (sum, entry) => sum + (entry.flatRate || 0),
+      0
+    )
+    const totalGasMoney = timeEntriesForDay.reduce(
+      (sum, entry) => sum + (entry.gasMoney || 0),
+      0
+    )
+
+    console.log(
+      `[Payout Calculate] Flat rate: $${totalFlatRate}, Gas money: $${totalGasMoney}`
+    )
+
+    // Calculate final labor costs
+    // If calculatedLaborCosts was calculated from time entries, it already includes flat rate
+    // If calculated from form hourly payouts, we need to add flat rate
+    // We can check: if calculatedLaborCosts was 0 and we calculated from time entries, it includes flat rate
+    // Otherwise, if it came from form hourly payouts, we need to add flat rate
+    // The safest approach: always recalculate from time entries to ensure accuracy
+    let finalLaborCosts = calculatedLaborCosts
+    
+    // If we calculated from form hourly payouts (not from time entries), add flat rate
+    // We know it's from form if calculatedLaborCosts > 0 and we didn't use the time entries fallback
+    // Actually, let's always ensure flat rate is included by checking time entries
+    const laborCostsFromTimeEntries = timeEntriesForDay.reduce((total, entry) => {
+      // If flat rate is set, use flat rate instead of calculating hourly pay
+      if (entry.flatRate && entry.flatRate > 0) {
+        return total + entry.flatRate
+      }
+      
+      if (!entry.employee || !entry.employee.hourlyRate) return total
+
+      const regularHours =
+        (entry.hoursWorked || 0) - (entry.overtimeHours || 0)
+      const overtimeHours = entry.overtimeHours || 0
+      const hourlyRate = entry.employee.hourlyRate
+      const overtimeMultiplier =
+        entry.employee.defaultOvertimeMultiplier || 1.5
+
+      return (
+        total +
+        regularHours * hourlyRate +
+        overtimeHours * hourlyRate * overtimeMultiplier
+      )
+    }, 0)
+    
+    // Use the time entries calculation if it's more accurate (includes flat rate)
+    // Or if calculatedLaborCosts is 0, use time entries calculation
+    if (laborCostsFromTimeEntries > 0) {
+      finalLaborCosts = laborCostsFromTimeEntries
+      console.log(
+        `[Payout Calculate] Using labor costs from time entries (includes flat rate): $${finalLaborCosts}`
+      )
+    } else if (calculatedLaborCosts > 0) {
+      // If we have calculatedLaborCosts from form but no time entries calculation,
+      // add flat rate to it
+      finalLaborCosts = calculatedLaborCosts + totalFlatRate
+      console.log(
+        `[Payout Calculate] Adding flat rate to form labor costs: $${calculatedLaborCosts} + $${totalFlatRate} = $${finalLaborCosts}`
+      )
+    }
+    
+    // Calculate total costs (job costs + materials + labor costs + gas money)
+    // Note: labor costs already includes flat rate
     const totalCosts =
       (parseFloat(jobCosts) || 0) +
       (parseFloat(materials) || 0) +
-      calculatedLaborCosts
+      finalLaborCosts +
+      totalGasMoney
     const totalProfit = parseFloat(totalRevenue) - totalCosts
 
     // Calculate individual employee payouts
@@ -271,6 +360,16 @@ exports.calculate = async (req, res) => {
       let percentageRate = null
       let hourlyRate = null
       let hours = null
+      let flatRate = 0
+
+      // Check for flat rate from time entries for this employee on this day
+      const employeeTimeEntries = timeEntriesForDay.filter(
+        entry => entry.employee && entry.employee.toString() === employee._id.toString()
+      )
+      flatRate = employeeTimeEntries.reduce(
+        (sum, entry) => sum + (entry.flatRate || 0),
+        0
+      )
 
       if (payType === 'percentage') {
         // Get percentage rate (from form or employee's default)
@@ -281,10 +380,18 @@ exports.calculate = async (req, res) => {
         payoutAmount = (totalProfit * percentageRate) / 100
         totalPercentagePayout += payoutAmount
       } else if (payType === 'hourly') {
-        // Calculate hourly payout: hourlyRate * hours
-        hourlyRate = parseFloat(payout.hourlyRate) || employee.hourlyRate || 0
-        hours = parseFloat(payout.hours) || 0
-        payoutAmount = hourlyRate * hours
+        // If flat rate exists, use it; otherwise calculate from hourly rate * hours
+        if (flatRate > 0) {
+          payoutAmount = flatRate
+          // Don't set hourlyRate and hours when flat rate is used
+          hourlyRate = null
+          hours = null
+        } else {
+          // Calculate hourly payout: hourlyRate * hours
+          hourlyRate = parseFloat(payout.hourlyRate) || employee.hourlyRate || 0
+          hours = parseFloat(payout.hours) || 0
+          payoutAmount = hourlyRate * hours
+        }
         // Hourly payouts don't count toward percentage payout total
       }
 
@@ -294,6 +401,7 @@ exports.calculate = async (req, res) => {
         percentageRate: percentageRate || null,
         hourlyRate: hourlyRate || null,
         hours: hours || null,
+        flatRate: flatRate > 0 ? flatRate : null,
         payoutAmount
       })
     }
@@ -303,12 +411,13 @@ exports.calculate = async (req, res) => {
     const calculatedPayout = (totalProfit * profitPercentage) / 100
 
     // Create payout record
+    // finalLaborCosts already includes flat rate (calculated above)
     const payoutRecord = new PercentagePayout({
       date: parsedDate,
       employeePayouts: employeePayoutData,
       jobCosts: parseFloat(jobCosts) || 0,
       materials: parseFloat(materials) || 0,
-      laborCosts: calculatedLaborCosts,
+      laborCosts: finalLaborCosts,
       totalRevenue: parseFloat(totalRevenue),
       totalCosts,
       totalProfit,
@@ -549,19 +658,9 @@ exports.list = async (req, res) => {
           }
         }
 
-        const regularHours =
-          (entry.hoursWorked || 0) - (entry.overtimeHours || 0)
-        const overtimeHours = entry.overtimeHours || 0
-        const hourlyRate = entry.employee.hourlyRate || 0
-        const overtimeMultiplier =
-          entry.employee.defaultOvertimeMultiplier || 1.5
-
-        const regularPay = regularHours * hourlyRate
-        const overtimePay = overtimeHours * hourlyRate * overtimeMultiplier
-        const totalPay = regularPay + overtimePay
-
-        if (totalPay > 0) {
-          hourlyPayoutsByDate[dateKey].laborCosts += totalPay
+        // If flat rate is set, use flat rate only
+        if (entry.flatRate && entry.flatRate > 0) {
+          hourlyPayoutsByDate[dateKey].laborCosts += entry.flatRate
           hourlyPayoutsByDate[dateKey].employeePayouts.push({
             employee: {
               _id: entry.employee._id,
@@ -569,10 +668,39 @@ exports.list = async (req, res) => {
               lastName: entry.employee.lastName
             },
             payType: 'hourly',
-            hourlyRate: hourlyRate,
-            hours: entry.hoursWorked || 0,
-            payoutAmount: totalPay
+            hourlyRate: 0,
+            hours: 0,
+            flatRate: entry.flatRate,
+            payoutAmount: entry.flatRate
           })
+        } else {
+          // Calculate hourly pay
+          const regularHours =
+            (entry.hoursWorked || 0) - (entry.overtimeHours || 0)
+          const overtimeHours = entry.overtimeHours || 0
+          const hourlyRate = entry.employee.hourlyRate || 0
+          const overtimeMultiplier =
+            entry.employee.defaultOvertimeMultiplier || 1.5
+
+          const regularPay = regularHours * hourlyRate
+          const overtimePay = overtimeHours * hourlyRate * overtimeMultiplier
+          const totalPay = regularPay + overtimePay
+
+          if (totalPay > 0) {
+            hourlyPayoutsByDate[dateKey].laborCosts += totalPay
+            hourlyPayoutsByDate[dateKey].employeePayouts.push({
+              employee: {
+                _id: entry.employee._id,
+                firstName: entry.employee.firstName,
+                lastName: entry.employee.lastName
+              },
+              payType: 'hourly',
+              hourlyRate: hourlyRate,
+              hours: entry.hoursWorked || 0,
+              flatRate: 0,
+              payoutAmount: totalPay
+            })
+          }
         }
       })
 
@@ -1081,18 +1209,8 @@ exports.weekly = async (req, res) => {
             }
           }
 
-          const regularHours =
-            (entry.hoursWorked || 0) - (entry.overtimeHours || 0)
-          const overtimeHours = entry.overtimeHours || 0
-          const hourlyRate = entry.employee.hourlyRate || 0
-          const overtimeMultiplier =
-            entry.employee.defaultOvertimeMultiplier || 1.5
-
-          const regularPay = regularHours * hourlyRate
-          const overtimePay = overtimeHours * hourlyRate * overtimeMultiplier
-          const totalPay = regularPay + overtimePay
-
-          if (totalPay > 0) {
+          // If flat rate is set, use flat rate only
+          if (entry.flatRate && entry.flatRate > 0) {
             hourlyPayoutsByDate[dateKey].employeePayouts.push({
               employee: {
                 _id: entry.employee._id,
@@ -1101,10 +1219,39 @@ exports.weekly = async (req, res) => {
                 payType: 'hourly'
               },
               payType: 'hourly',
-              hourlyRate: hourlyRate,
-              hours: entry.hoursWorked || 0,
-              payoutAmount: totalPay
+              hourlyRate: 0,
+              hours: 0,
+              flatRate: entry.flatRate,
+              payoutAmount: entry.flatRate
             })
+          } else {
+            // Calculate hourly pay
+            const regularHours =
+              (entry.hoursWorked || 0) - (entry.overtimeHours || 0)
+            const overtimeHours = entry.overtimeHours || 0
+            const hourlyRate = entry.employee.hourlyRate || 0
+            const overtimeMultiplier =
+              entry.employee.defaultOvertimeMultiplier || 1.5
+
+            const regularPay = regularHours * hourlyRate
+            const overtimePay = overtimeHours * hourlyRate * overtimeMultiplier
+            const totalPay = regularPay + overtimePay
+
+            if (totalPay > 0) {
+              hourlyPayoutsByDate[dateKey].employeePayouts.push({
+                employee: {
+                  _id: entry.employee._id,
+                  firstName: entry.employee.firstName,
+                  lastName: entry.employee.lastName,
+                  payType: 'hourly'
+                },
+                payType: 'hourly',
+                hourlyRate: hourlyRate,
+                hours: entry.hoursWorked || 0,
+                flatRate: 0,
+                payoutAmount: totalPay
+              })
+            }
           }
         })
       }

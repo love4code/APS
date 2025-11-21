@@ -151,7 +151,11 @@
                               if (p.payType === 'percentage') {
                                 rateStr = (p.percentageRate || 0).toFixed(2) + '%';
                               } else if (p.payType === 'hourly') {
-                                rateStr = '$' + (p.hourlyRate || 0).toFixed(2) + '/hr × ' + (p.hours || 0).toFixed(2) + ' hrs';
+                                if (p.flatRate && p.flatRate > 0) {
+                                  rateStr = 'Flat Rate: $' + (p.flatRate || 0).toFixed(2);
+                                } else {
+                                  rateStr = '$' + (p.hourlyRate || 0).toFixed(2) + '/hr × ' + (p.hours || 0).toFixed(2) + ' hrs';
+                                }
                               }
                             %>
                               <tr>

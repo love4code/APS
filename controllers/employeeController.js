@@ -642,27 +642,44 @@ exports.detail = async (req, res) => {
 
       // Calculate payout for each time entry
       allApprovedTimeEntries.forEach(entry => {
-        const regularHours =
-          (entry.hoursWorked || 0) - (entry.overtimeHours || 0)
-        const overtimeHours = entry.overtimeHours || 0
-        const hourlyRate = employee.hourlyRate || 0
-        const overtimeMultiplier = employee.defaultOvertimeMultiplier || 1.5
-
-        const regularPay = regularHours * hourlyRate
-        const overtimePay = overtimeHours * hourlyRate * overtimeMultiplier
-        const totalPay = regularPay + overtimePay
-
-        if (totalPay > 0) {
-          hourlyPayoutTotal += totalPay
+        // If flat rate is set, use flat rate only
+        if (entry.flatRate && entry.flatRate > 0) {
+          hourlyPayoutTotal += entry.flatRate
           hourlyPayoutBreakdown.push({
             date: entry.date,
-            regularHours: regularHours,
-            overtimeHours: overtimeHours,
-            regularPay: regularPay,
-            overtimePay: overtimePay,
-            totalPay: totalPay,
+            regularHours: 0,
+            overtimeHours: 0,
+            regularPay: 0,
+            overtimePay: 0,
+            flatRate: entry.flatRate,
+            totalPay: entry.flatRate,
             entryId: entry._id
           })
+        } else {
+          // Calculate hourly pay
+          const regularHours =
+            (entry.hoursWorked || 0) - (entry.overtimeHours || 0)
+          const overtimeHours = entry.overtimeHours || 0
+          const hourlyRate = employee.hourlyRate || 0
+          const overtimeMultiplier = employee.defaultOvertimeMultiplier || 1.5
+
+          const regularPay = regularHours * hourlyRate
+          const overtimePay = overtimeHours * hourlyRate * overtimeMultiplier
+          const totalPay = regularPay + overtimePay
+
+          if (totalPay > 0) {
+            hourlyPayoutTotal += totalPay
+            hourlyPayoutBreakdown.push({
+              date: entry.date,
+              regularHours: regularHours,
+              overtimeHours: overtimeHours,
+              regularPay: regularPay,
+              overtimePay: overtimePay,
+              flatRate: 0,
+              totalPay: totalPay,
+              entryId: entry._id
+            })
+          }
         }
       })
 
@@ -772,6 +789,7 @@ exports.detail = async (req, res) => {
                 percentageRate: empPayout.percentageRate,
                 hourlyRate: empPayout.hourlyRate,
                 hours: empPayout.hours,
+                flatRate: empPayout.flatRate || 0,
                 payoutId: payout._id
               })
             }
@@ -883,19 +901,28 @@ exports.detail = async (req, res) => {
         .lean()
 
       // Calculate payout amount for each time entry
-      // For hourly employees: calculate based on hourly rate
+      // For hourly employees: calculate based on hourly rate or flat rate
       // For percentage employees: also calculate (they may have both pay types)
       const hourlyRate = employee.hourlyRate || 0
       const overtimeMultiplier = employee.defaultOvertimeMultiplier || 1.5
 
       weeklyTimeEntries.forEach(entry => {
-        if (entry.approved && hourlyRate > 0) {
-          const regularHours = (entry.hoursWorked || 0) - (entry.overtimeHours || 0)
-          const overtimeHours = entry.overtimeHours || 0
-          const regularPay = regularHours * hourlyRate
-          const overtimePay = overtimeHours * hourlyRate * overtimeMultiplier
-          entry.calculatedPay = regularPay + overtimePay
-          weeklyTimeEntriesTotal += entry.calculatedPay
+        if (entry.approved) {
+          // If flat rate is set, use flat rate instead of calculating hourly pay
+          if (entry.flatRate && entry.flatRate > 0) {
+            entry.calculatedPay = entry.flatRate
+            weeklyTimeEntriesTotal += entry.flatRate
+          } else if (hourlyRate > 0) {
+            // Calculate hourly pay only if no flat rate
+            const regularHours = (entry.hoursWorked || 0) - (entry.overtimeHours || 0)
+            const overtimeHours = entry.overtimeHours || 0
+            const regularPay = regularHours * hourlyRate
+            const overtimePay = overtimeHours * hourlyRate * overtimeMultiplier
+            entry.calculatedPay = regularPay + overtimePay
+            weeklyTimeEntriesTotal += entry.calculatedPay
+          } else {
+            entry.calculatedPay = 0
+          }
         } else {
           entry.calculatedPay = 0
         }

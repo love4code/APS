@@ -73,12 +73,22 @@
                     const payTypeBadge = empPayout.payType === 'percentage' ? 'info' : (empPayout.payType === 'hourly' ? 'primary' : 'secondary');
                     const payTypeLabel = empPayout.payType === 'percentage' ? 'Percentage' : (empPayout.payType === 'hourly' ? 'Hourly' : 'N/A');
                     let rateStr = 'N/A';
+                    let hoursStr = 'N/A';
+                    let hasFlatRate = false;
                     if (empPayout.payType === 'percentage') {
                       rateStr = (empPayout.percentageRate || 0).toFixed(2) + '%';
+                      hoursStr = 'N/A';
                     } else if (empPayout.payType === 'hourly') {
-                      rateStr = '$' + (empPayout.hourlyRate || 0).toFixed(2) + '/hr';
+                      // If flat rate exists, show flat rate instead of hourly rate
+                      if (empPayout.flatRate && empPayout.flatRate > 0) {
+                        hasFlatRate = true;
+                        rateStr = (empPayout.flatRate || 0).toFixed(2);
+                        hoursStr = 'N/A';
+                      } else {
+                        rateStr = '$' + (empPayout.hourlyRate || 0).toFixed(2) + '/hr';
+                        hoursStr = empPayout.hours ? (empPayout.hours || 0).toFixed(2) + ' hrs' : 'N/A';
+                      }
                     }
-                    const hoursStr = empPayout.hours ? (empPayout.hours || 0).toFixed(2) + ' hrs' : 'N/A';
                   %>
                     <tr>
                       <td>
@@ -93,7 +103,13 @@
                       <td>
                         <span class="badge bg-<%= payTypeBadge %>"><%= payTypeLabel %></span>
                       </td>
-                      <td><%= rateStr %></td>
+                      <td>
+                        <% if (hasFlatRate) { %>
+                          <span class="text-info fw-bold">Flat Rate: $<%= rateStr %></span>
+                        <% } else { %>
+                          <%= rateStr %>
+                        <% } %>
+                      </td>
                       <td><%= hoursStr %></td>
                       <td class="text-success fw-bold">$<%= (empPayout.payoutAmount || 0).toFixed(2) %></td>
                     </tr>

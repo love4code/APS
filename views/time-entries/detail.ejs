@@ -47,6 +47,12 @@
             </div>
             <div class="col-md-6">
               <p><strong>Overtime Hours:</strong> <%= (timeEntry.overtimeHours || 0).toFixed(2) %></p>
+              <% if (timeEntry.flatRate && timeEntry.flatRate > 0) { %>
+                <p><strong>Flat Rate:</strong> $<%= (timeEntry.flatRate || 0).toFixed(2) %></p>
+              <% } %>
+              <% if (timeEntry.gasMoney && timeEntry.gasMoney > 0) { %>
+                <p><strong>Gas Money:</strong> $<%= (timeEntry.gasMoney || 0).toFixed(2) %></p>
+              <% } %>
               <p><strong>Type:</strong> 
                 <span class="badge bg-<%= timeEntry.type === 'pto' || timeEntry.type === 'sick' ? 'info' : timeEntry.type === 'holiday' ? 'warning' : 'primary' %>">
                   <%= timeEntry.type %>
@@ -92,6 +98,9 @@
                   <% } %>
                   <% if (payCalculation.overtimePay > 0) { %>
                     <p><strong>Overtime Pay:</strong> $<%= payCalculation.overtimePay.toFixed(2) %></p>
+                  <% } %>
+                  <% if (payCalculation.flatRate > 0) { %>
+                    <p><strong>Flat Rate:</strong> $<%= payCalculation.flatRate.toFixed(2) %></p>
                   <% } %>
                   <p class="h5 mt-3">
                     <strong>Total Amount Owed:</strong> 

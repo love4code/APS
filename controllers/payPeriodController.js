@@ -263,13 +263,20 @@ exports.process = async (req, res) => {
       let totalRegularHours = 0
       let totalOvertimeHours = 0
       let totalPTOHours = 0
+      let totalFlatRate = 0
 
       entries.forEach(entry => {
-        if (entry.type === 'regular') {
-          totalRegularHours += entry.hoursWorked || 0
-          totalOvertimeHours += entry.overtimeHours || 0
-        } else if (entry.type === 'pto' || entry.type === 'sick') {
-          totalPTOHours += entry.hoursWorked || 0
+        // If flat rate is set, don't calculate regular/overtime pay for this entry
+        if (entry.flatRate && entry.flatRate > 0) {
+          totalFlatRate += entry.flatRate
+        } else {
+          // Only count hours if no flat rate is set
+          if (entry.type === 'regular') {
+            totalRegularHours += entry.hoursWorked || 0
+            totalOvertimeHours += entry.overtimeHours || 0
+          } else if (entry.type === 'pto' || entry.type === 'sick') {
+            totalPTOHours += entry.hoursWorked || 0
+          }
         }
       })
 
@@ -349,6 +356,9 @@ exports.process = async (req, res) => {
 
       // Add daily payouts to gross pay
       totalGrossPay += totalDailyPayoutAmount
+
+      // Add flat rate payments to gross pay
+      totalGrossPay += totalFlatRate
 
       // Check if payroll record already exists
       let payrollRecord = await PayrollRecord.findOne({

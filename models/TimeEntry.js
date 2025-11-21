@@ -31,6 +31,16 @@ const timeEntrySchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
+  flatRate: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  gasMoney: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
   type: {
     type: String,
     enum: ['regular', 'overtime', 'pto', 'sick', 'holiday'],

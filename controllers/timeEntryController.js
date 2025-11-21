@@ -123,6 +123,8 @@ exports.create = async (req, res) => {
       hoursWorked,
       breakMinutes,
       overtimeHours,
+      flatRate,
+      gasMoney,
       type,
       jobs, // Array of {jobId, jobName}
       projectOrJobId, // Legacy field
@@ -222,6 +224,8 @@ exports.create = async (req, res) => {
       hoursWorked: calculatedHours,
       breakMinutes: parseFloat(breakMinutes) || 0,
       overtimeHours: calculatedOvertime,
+      flatRate: parseFloat(flatRate) || 0,
+      gasMoney: parseFloat(gasMoney) || 0,
       type: type || 'regular',
       jobs: jobsArray,
       projectOrJobId:
@@ -272,6 +276,7 @@ exports.detail = async (req, res) => {
       overtimeHours: timeEntry.overtimeHours || 0,
       regularPay: 0,
       overtimePay: 0,
+      flatRate: timeEntry.flatRate || 0,
       totalPay: 0,
       payType: 'N/A',
       rate: 0
@@ -290,37 +295,47 @@ exports.detail = async (req, res) => {
       payCalculation.regularHours = regularHours
       payCalculation.overtimeHours = overtimeHours
 
-      // Calculate based on pay type
-      if (payTypes.includes('hourly') && employee.hourlyRate) {
-        payCalculation.payType = 'Hourly'
-        payCalculation.rate = employee.hourlyRate
-        payCalculation.regularPay = regularHours * employee.hourlyRate
-        payCalculation.overtimePay =
-          overtimeHours * employee.hourlyRate * overtimeMultiplier
-        payCalculation.totalPay =
-          payCalculation.regularPay + payCalculation.overtimePay
-        amountOwed = payCalculation.totalPay
-      } else if (payTypes.includes('salary') && employee.annualSalary) {
-        // Calculate daily rate (assuming 260 working days per year: 52 weeks × 5 days)
-        const dailyRate = employee.annualSalary / 260
-        payCalculation.payType = 'Salary'
-        payCalculation.rate = dailyRate
-        // For salary, typically pay full day regardless of hours, but we can calculate proportionally
-        // For now, we'll show daily rate if they worked any hours
-        if (timeEntry.hoursWorked > 0) {
-          // Option 1: Full day rate if hours worked
-          payCalculation.totalPay = dailyRate
-          // Option 2: Proportional (uncomment if preferred)
-          // payCalculation.totalPay = (timeEntry.hoursWorked / 8) * dailyRate
-        }
-        amountOwed = payCalculation.totalPay
-      } else if (payTypes.includes('percentage')) {
-        // Percentage pay is typically calculated differently (based on profit, not hours)
-        // For time entries, we might not calculate this, or show a note
-        payCalculation.payType = 'Percentage'
-        payCalculation.rate = employee.percentageRate || 0
+      // If flat rate is set, don't calculate regular/overtime pay
+      if (timeEntry.flatRate && timeEntry.flatRate > 0) {
+        payCalculation.payType = 'Flat Rate'
+        payCalculation.rate = 0
+        payCalculation.regularPay = 0
+        payCalculation.overtimePay = 0
         payCalculation.totalPay = 0
-        amountOwed = 0
+        amountOwed = timeEntry.flatRate
+      } else {
+        // Calculate based on pay type
+        if (payTypes.includes('hourly') && employee.hourlyRate) {
+          payCalculation.payType = 'Hourly'
+          payCalculation.rate = employee.hourlyRate
+          payCalculation.regularPay = regularHours * employee.hourlyRate
+          payCalculation.overtimePay =
+            overtimeHours * employee.hourlyRate * overtimeMultiplier
+          payCalculation.totalPay =
+            payCalculation.regularPay + payCalculation.overtimePay
+          amountOwed = payCalculation.totalPay
+        } else if (payTypes.includes('salary') && employee.annualSalary) {
+          // Calculate daily rate (assuming 260 working days per year: 52 weeks × 5 days)
+          const dailyRate = employee.annualSalary / 260
+          payCalculation.payType = 'Salary'
+          payCalculation.rate = dailyRate
+          // For salary, typically pay full day regardless of hours, but we can calculate proportionally
+          // For now, we'll show daily rate if they worked any hours
+          if (timeEntry.hoursWorked > 0) {
+            // Option 1: Full day rate if hours worked
+            payCalculation.totalPay = dailyRate
+            // Option 2: Proportional (uncomment if preferred)
+            // payCalculation.totalPay = (timeEntry.hoursWorked / 8) * dailyRate
+          }
+          amountOwed = payCalculation.totalPay
+        } else if (payTypes.includes('percentage')) {
+          // Percentage pay is typically calculated differently (based on profit, not hours)
+          // For time entries, we might not calculate this, or show a note
+          payCalculation.payType = 'Percentage'
+          payCalculation.rate = employee.percentageRate || 0
+          payCalculation.totalPay = 0
+          amountOwed = 0
+        }
       }
     }
 
@@ -402,6 +417,8 @@ exports.update = async (req, res) => {
       hoursWorked,
       breakMinutes,
       overtimeHours,
+      flatRate,
+      gasMoney,
       type,
       jobs, // Array of {jobId, jobName}
       projectOrJobId, // Legacy field
@@ -483,6 +500,8 @@ exports.update = async (req, res) => {
     timeEntry.hoursWorked = calculatedHours
     timeEntry.breakMinutes = parseFloat(breakMinutes) || 0
     timeEntry.overtimeHours = calculatedOvertime
+    timeEntry.flatRate = parseFloat(flatRate) || 0
+    timeEntry.gasMoney = parseFloat(gasMoney) || 0
     timeEntry.type = type || 'regular'
     timeEntry.jobs = jobsArray
     timeEntry.projectOrJobId =

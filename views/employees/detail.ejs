@@ -138,7 +138,7 @@
                 <strong>Total Payout from Approved Time Entries: </strong>
                 <span class="text-success fs-4 fw-bold">$<%= (hourlyPayoutTotal || 0).toFixed(2) %></span>
               </p>
-              <small class="text-muted">Calculated from all approved time entries (regular hours + overtime)</small>
+              <small class="text-muted">Calculated from all approved time entries (regular hours + overtime + flat rate)</small>
             </div>
             <% if (hourlyPayoutBreakdown && hourlyPayoutBreakdown.length > 0) { %>
               <div class="table-responsive">
@@ -150,6 +150,7 @@
                       <th>Overtime Hours</th>
                       <th>Regular Pay</th>
                       <th>Overtime Pay</th>
+                      <th>Flat Rate</th>
                       <th>Total Pay</th>
                     </tr>
                   </thead>
@@ -167,6 +168,11 @@
                         <td><%= (breakdown.overtimeHours || 0).toFixed(2) %></td>
                         <td>$<%= (breakdown.regularPay || 0).toFixed(2) %></td>
                         <td>$<%= (breakdown.overtimePay || 0).toFixed(2) %></td>
+                        <td><% if (breakdown.flatRate && breakdown.flatRate > 0) { %>
+                          <span class="text-info fw-bold">$<%= (breakdown.flatRate || 0).toFixed(2) %></span>
+                        <% } else { %>
+                          $0.00
+                        <% } %></td>
                         <td class="text-success fw-bold">$<%= (breakdown.totalPay || 0).toFixed(2) %></td>
                       </tr>
                     <% }) %>
@@ -353,7 +359,11 @@
                             <% if (empPayout.payType === 'percentage') { %>
                               <%= (empPayout.percentageRate || 0).toFixed(2) + '%' %>
                             <% } else if (empPayout.payType === 'hourly') { %>
-                              $<%= (empPayout.hourlyRate || 0).toFixed(2) %>/hr × <%= (empPayout.hours || 0).toFixed(2) %> hrs
+                              <% if (empPayout.flatRate && empPayout.flatRate > 0) { %>
+                                <span class="text-info fw-bold">Flat Rate: $<%= (empPayout.flatRate || 0).toFixed(2) %></span>
+                              <% } else { %>
+                                $<%= (empPayout.hourlyRate || 0).toFixed(2) %>/hr × <%= (empPayout.hours || 0).toFixed(2) %> hrs
+                              <% } %>
                             <% } else { %>
                               N/A
                             <% } %>
@@ -474,7 +484,12 @@
                           if (p.payType === 'percentage') {
                             rateStr = (p.percentageRate || 0).toFixed(2) + '%';
                           } else if (p.payType === 'hourly') {
-                            rateStr = '$' + (p.hourlyRate || 0).toFixed(2) + '/hr × ' + (p.hours || 0).toFixed(2) + ' hrs';
+                            // If flat rate exists, show flat rate instead of hourly rate
+                            if (p.flatRate && p.flatRate > 0) {
+                              rateStr = 'Flat Rate: $' + (p.flatRate || 0).toFixed(2);
+                            } else {
+                              rateStr = '$' + (p.hourlyRate || 0).toFixed(2) + '/hr × ' + (p.hours || 0).toFixed(2) + ' hrs';
+                            }
                           }
                         %>
                           <tr>
@@ -546,12 +561,16 @@
                               </td>
                               <td>
                                 <small>
-                                  <%= (entry.hoursWorked || 0).toFixed(2) %> hrs
-                                  <% if (entry.overtimeHours && entry.overtimeHours > 0) { %>
-                                    (<%= (entry.overtimeHours || 0).toFixed(2) %> OT)
-                                  <% } %>
-                                  <% if (entry.type && entry.type !== 'regular') { %>
-                                    - <%= entry.type %>
+                                  <% if (entry.flatRate && entry.flatRate > 0) { %>
+                                    <span class="text-info fw-bold">Flat Rate: $<%= (entry.flatRate || 0).toFixed(2) %></span>
+                                  <% } else { %>
+                                    <%= (entry.hoursWorked || 0).toFixed(2) %> hrs
+                                    <% if (entry.overtimeHours && entry.overtimeHours > 0) { %>
+                                      (<%= (entry.overtimeHours || 0).toFixed(2) %> OT)
+                                    <% } %>
+                                    <% if (entry.type && entry.type !== 'regular') { %>
+                                      - <%= entry.type %>
+                                    <% } %>
                                   <% } %>
                                 </small>
                               </td>
@@ -759,7 +778,7 @@
         <form id="payoutForm">
           <div class="mb-3">
             <label for="payoutDate" class="form-label">Date *</label>
-            <input type="date" class="form-control" id="payoutDate" name="date" required value="<%= new Date().toISOString().split('T')[0] %>">
+            <input type="date" class="form-control" id="payoutDate" name="date" required value="<%= new Date().toISOString().split('T')[0] %>" onchange="handleDateChange()">
           </div>
 
           <div class="mb-3">
@@ -813,7 +832,7 @@
                   </div>
                   <div class="col-md-2">
                     <label class="form-label small">Pay Type</label>
-                    <select class="form-select pay-type-select" name="employeePayouts[0][payType]" onchange="togglePayTypeInput(this)" required>
+                    <select class="form-select pay-type-select" name="employeePayouts[0][payType]" onchange="togglePayTypeInput(this); calculatePayout();" required>
                       <option value="percentage">Percentage</option>
                       <option value="hourly">Hourly</option>
                     </select>
@@ -835,24 +854,6 @@
                     <div class="input-group">
                       <input type="number" class="form-control percentage-rate" name="employeePayouts[0][percentageRate]" step="0.01" min="0" max="100" placeholder="Enter percentage" onchange="calculatePayout()">
                       <span class="input-group-text">%</span>
-                    </div>
-                  </div>
-                  <div class="col-md-6 hourly-input-group" style="display: none;">
-                    <div class="row g-2">
-                      <div class="col-6">
-                        <label class="form-label small">Hourly Rate</label>
-                        <div class="input-group">
-                          <span class="input-group-text">$</span>
-                          <input type="number" class="form-control hourly-rate" name="employeePayouts[0][hourlyRate]" step="0.01" min="0" placeholder="Rate" onchange="calculatePayout()">
-                        </div>
-                      </div>
-                      <div class="col-6">
-                        <label class="form-label small">Hours</label>
-                        <div class="input-group">
-                          <input type="number" class="form-control hours" name="employeePayouts[0][hours]" step="0.25" min="0" placeholder="Hours" onchange="calculatePayout()">
-                          <span class="input-group-text">hrs</span>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -986,14 +987,24 @@
             return eId === empId;
           });
           const workedBadge = workedToday ? `<span class="badge bg-success ms-2">Worked Today</span>` : '';
-          const laborCost = workedToday ? ` (Labor: $${(workedToday.laborCost || 0).toFixed(2)})` : '';
+          let laborCostText = '';
+          if (workedToday) {
+            const flatRate = workedToday.flatRate || 0;
+            if (flatRate > 0) {
+              laborCostText = ` (Flat Rate: $${flatRate.toFixed(2)})`;
+            } else {
+              laborCostText = ` (Labor: $${(workedToday.laborCost || 0).toFixed(2)})`;
+            }
+          }
+          const laborCost = laborCostText;
           const payTypes = Array.isArray(emp.payType) ? emp.payType : [emp.payType];
           const hasPercentage = payTypes.includes('percentage');
           const hasHourly = payTypes.includes('hourly');
           const percentage = hasPercentage && emp.percentageRate ? ` (${emp.percentageRate}%)` : '';
           const hourly = hasHourly && emp.hourlyRate ? ` ($${emp.hourlyRate.toFixed(2)}/hr)` : '';
           const employeeIdStr = empId || (emp._id ? String(emp._id) : '');
-          return `<div class="employee-option p-2 border-bottom" style="cursor: pointer; min-height: 44px; display: flex; align-items: center; -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1); touch-action: manipulation;" data-id="${employeeIdStr}" data-name="${emp.firstName} ${emp.lastName}" data-percentage="${hasPercentage ? (emp.percentageRate || '') : ''}" data-hourly-rate="${hasHourly ? (emp.hourlyRate || '') : ''}">
+          const flatRate = workedToday ? (workedToday.flatRate || 0) : 0;
+          return `<div class="employee-option p-2 border-bottom" style="cursor: pointer; min-height: 44px; display: flex; align-items: center; -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1); touch-action: manipulation;" data-id="${employeeIdStr}" data-name="${emp.firstName} ${emp.lastName}" data-percentage="${hasPercentage ? (emp.percentageRate || '') : ''}" data-hourly-rate="${hasHourly ? (emp.hourlyRate || '') : ''}" data-flat-rate="${flatRate}">
             <div>
               <strong>${emp.firstName} ${emp.lastName}</strong>${percentage}${hourly}${workedBadge}
               ${laborCost ? `<div class="text-muted small">${laborCost}</div>` : ''}
@@ -1053,6 +1064,7 @@
         const employeeName = option.getAttribute('data-name');
         const percentageRate = option.getAttribute('data-percentage');
         const hourlyRate = option.getAttribute('data-hourly-rate');
+        const flatRate = parseFloat(option.getAttribute('data-flat-rate')) || 0;
         
         const row = wrapper.closest('.employee-payout-row');
         const payTypeSelect = row.querySelector('.pay-type-select');
@@ -1060,20 +1072,24 @@
         searchInput.value = employeeName;
         employeeIdInput.value = employeeId;
         
-        // Get hours worked from time entries if available
+        // Get hours worked and flat rate from time entries if available
         const date = document.getElementById('payoutDate').value;
         let hoursWorked = 0;
+        let entryFlatRate = 0;
         if (date && timeEntriesByEmployee[employeeId]) {
           const empTimeEntries = timeEntriesByEmployee[employeeId];
           hoursWorked = empTimeEntries.reduce((sum, entry) => sum + (entry.hoursWorked || 0), 0);
+          entryFlatRate = empTimeEntries.reduce((sum, entry) => sum + (entry.flatRate || 0), 0);
         }
+        
+        // Use flat rate from employee data if available, otherwise from time entries
+        const finalFlatRate = flatRate > 0 ? flatRate : entryFlatRate;
         
         // Get references to input fields
         const percentageRateInput = row.querySelector('.percentage-rate');
-        const hourlyRateInput = row.querySelector('.hourly-rate');
-        const hoursInput = row.querySelector('.hours');
         
         // Auto-select pay type and fill in rate based on employee's pay types
+        // Hourly data is calculated from time entries, no manual input needed
         if (percentageRate && hourlyRate) {
           // Employee has both, default to percentage but allow switching
           if (!payTypeSelect.value || payTypeSelect.value === 'percentage') {
@@ -1081,11 +1097,7 @@
             if (percentageRateInput) percentageRateInput.value = percentageRate;
           } else {
             payTypeSelect.value = 'hourly';
-            if (hourlyRateInput) hourlyRateInput.value = hourlyRate;
-            // Always populate hours if available from time entries
-            if (hoursInput && hoursWorked > 0) {
-              hoursInput.value = hoursWorked.toFixed(2);
-            }
+            // Hourly data will be calculated from time entries
           }
           togglePayTypeInput(payTypeSelect);
         } else if (percentageRate) {
@@ -1094,26 +1106,20 @@
           togglePayTypeInput(payTypeSelect);
         } else if (hourlyRate) {
           payTypeSelect.value = 'hourly';
-          if (hourlyRateInput) hourlyRateInput.value = hourlyRate;
-          // Always populate hours if available from time entries
-          if (hoursInput && hoursWorked > 0) {
-            hoursInput.value = hoursWorked.toFixed(2);
-          }
+          // Hourly data will be calculated from time entries
           togglePayTypeInput(payTypeSelect);
-        } else if (hoursWorked > 0) {
-          // If no pay type info but hours are available, set to hourly and populate
+        } else if (hoursWorked > 0 || finalFlatRate > 0) {
+          // If hours or flat rate available, set to hourly (data from time entries)
           payTypeSelect.value = 'hourly';
-          if (hourlyRateInput && hourlyRate) {
-            hourlyRateInput.value = hourlyRate;
-          }
-          if (hoursInput) {
-            hoursInput.value = hoursWorked.toFixed(2);
-          }
           togglePayTypeInput(payTypeSelect);
         }
         
         dropdown.style.display = 'none';
-        calculatePayout();
+        
+        // Trigger calculation after a short delay to ensure DOM is updated
+        setTimeout(() => {
+          calculatePayout();
+        }, 50);
       }
     };
     
@@ -1238,6 +1244,9 @@
       const date = document.getElementById('payoutDate').value;
       await loadEmployees(date);
       
+      // Recalculate after loading employees
+      setTimeout(() => calculatePayout(), 200);
+      
       // Pre-select the current employee if we're on an employee detail page
       const currentEmployeeId = '<%= employee._id %>';
       const currentEmployeeName = '<%= employee.firstName %> <%= employee.lastName %>';
@@ -1259,8 +1268,6 @@
               // Auto-select pay type and fill in rate if available
               const payTypeSelect = firstRow.querySelector('.pay-type-select');
               const percentageRateInput = firstRow.querySelector('.percentage-rate');
-              const hourlyRateInput = firstRow.querySelector('.hourly-rate');
-              const hoursInput = firstRow.querySelector('.hours');
               
               const payTypes = Array.isArray(currentEmployee.payType) ? currentEmployee.payType : [currentEmployee.payType];
               const hasPercentage = payTypes.includes('percentage');
@@ -1279,26 +1286,28 @@
                 }
               } else if (hasHourly) {
                 payTypeSelect.value = 'hourly';
-                if (hourlyRateInput && currentEmployee.hourlyRate) {
-                  hourlyRateInput.value = currentEmployee.hourlyRate;
-                }
-                // Auto-populate hours if available from time entries
-                const date = document.getElementById('payoutDate').value;
-                if (date && timeEntriesByEmployee[currentEmployeeId]) {
-                  const hoursWorked = timeEntriesByEmployee[currentEmployeeId];
-                  if (hoursInput && hoursWorked > 0) {
-                    hoursInput.value = hoursWorked.toFixed(2);
-                  }
-                }
+                // Hourly data will be calculated from time entries
+                // Hourly data will be calculated from time entries automatically
               }
               
               // Trigger toggle to show/hide appropriate inputs
               if (payTypeSelect) {
                 togglePayTypeInput(payTypeSelect);
+                // Add event listener for pay type change
+                payTypeSelect.addEventListener('change', function() {
+                  togglePayTypeInput(this);
+                  calculatePayout();
+                });
+              }
+              
+              // Add event listener for percentage rate change
+              if (percentageRateInput) {
+                percentageRateInput.addEventListener('change', calculatePayout);
+                percentageRateInput.addEventListener('input', calculatePayout);
               }
               
               // Recalculate payout
-              calculatePayout();
+              setTimeout(() => calculatePayout(), 100);
             }
           }
         }
@@ -1484,26 +1493,24 @@
     const row = select.closest('.employee-payout-row');
     const payType = select.value;
     const percentageGroup = row.querySelector('.percentage-input-group');
-    const hourlyGroup = row.querySelector('.hourly-input-group');
     const percentageInput = row.querySelector('.percentage-rate');
-    const hourlyRateInput = row.querySelector('.hourly-rate');
-    const hoursInput = row.querySelector('.hours');
     
     if (payType === 'percentage') {
-      percentageGroup.style.display = 'block';
-      hourlyGroup.style.display = 'none';
-      percentageInput.required = true;
-      hourlyRateInput.required = false;
-      hoursInput.required = false;
+      if (percentageGroup) percentageGroup.style.display = 'block';
+      if (percentageInput) percentageInput.required = true;
     } else {
-      percentageGroup.style.display = 'none';
-      hourlyGroup.style.display = 'block';
-      percentageInput.required = false;
-      hourlyRateInput.required = true;
-      hoursInput.required = true;
+      if (percentageGroup) percentageGroup.style.display = 'none';
+      if (percentageInput) percentageInput.required = false;
     }
-    
-    calculatePayout();
+  }
+  
+  async function handleDateChange() {
+    const date = document.getElementById('payoutDate').value;
+    if (date) {
+      await loadEmployees(date);
+      // Recalculate all payouts after loading employees
+      calculatePayout();
+    }
   }
 
   function addEmployeeRow() {
@@ -1548,24 +1555,6 @@
             <span class="input-group-text">%</span>
           </div>
         </div>
-        <div class="col-md-6 hourly-input-group" style="display: none;">
-          <div class="row g-2">
-            <div class="col-6">
-              <label class="form-label small">Hourly Rate</label>
-              <div class="input-group">
-                <span class="input-group-text">$</span>
-                <input type="number" class="form-control hourly-rate" name="employeePayouts[${employeeIndex}][hourlyRate]" step="0.01" min="0" placeholder="Rate" onchange="calculatePayout()">
-              </div>
-            </div>
-            <div class="col-6">
-              <label class="form-label small">Hours</label>
-              <div class="input-group">
-                <input type="number" class="form-control hours" name="employeePayouts[${employeeIndex}][hours]" step="0.25" min="0" placeholder="Hours" onchange="calculatePayout()">
-                <span class="input-group-text">hrs</span>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     `;
     
@@ -1583,12 +1572,28 @@
       wrapper.dataset.initialized = 'true';
     }
     
-    // Add event listeners for hourly inputs
-    newRow.querySelector('.hourly-rate')?.addEventListener('change', calculatePayout);
-    newRow.querySelector('.hours')?.addEventListener('change', calculatePayout);
+    // Hourly rate and hours are calculated from time entries, no manual input needed
+    
+    // Add event listener for pay type change
+    const payTypeSelect = newRow.querySelector('.pay-type-select');
+    if (payTypeSelect) {
+      payTypeSelect.addEventListener('change', function() {
+        togglePayTypeInput(this);
+        calculatePayout();
+      });
+    }
+    
+    // Add event listener for percentage rate change
+    if (percentageRateInput) {
+      percentageRateInput.addEventListener('change', calculatePayout);
+      percentageRateInput.addEventListener('input', calculatePayout);
+    }
     
     setTimeout(() => searchInput.focus(), 100);
     employeeIndex++;
+    
+    // Recalculate after adding new row
+    setTimeout(() => calculatePayout(), 100);
   }
 
   function removeEmployeeRow(button) {
@@ -1611,7 +1616,13 @@
       const data = await response.json();
       
       if (data.success && data.employeesWhoWorked) {
-        const totalLaborCost = data.employeesWhoWorked.reduce((sum, emp) => sum + (emp.laborCost || 0), 0);
+        // Include both labor costs and flat rates
+        const totalLaborCost = data.employeesWhoWorked.reduce((sum, emp) => {
+          const laborCost = emp.laborCost || 0;
+          const flatRate = emp.flatRate || 0;
+          // laborCost already includes flat rate if it was set, but we add it explicitly to be sure
+          return sum + laborCost;
+        }, 0);
         document.getElementById('laborCosts').value = totalLaborCost.toFixed(2);
         calculatePayout();
       }
@@ -1625,16 +1636,76 @@
     const totalRevenue = parseFloat(document.getElementById('totalRevenue').value) || 0;
     const jobCosts = parseFloat(document.getElementById('jobCosts').value) || 0;
     const materials = parseFloat(document.getElementById('materials').value) || 0;
+    const date = document.getElementById('payoutDate').value;
     
-    // Calculate labor costs from hourly payouts
+    // Calculate labor costs from hourly payouts and flat rates
     let laborCosts = 0;
     document.querySelectorAll('.employee-payout-row').forEach(row => {
       const payTypeSelect = row.querySelector('.pay-type-select');
       const payType = payTypeSelect ? payTypeSelect.value : 'percentage';
+      const employeeIdInput = row.querySelector('.employee-id-input');
+      const employeeId = employeeIdInput ? employeeIdInput.value : null;
+      
       if (payType === 'hourly') {
-        const hourlyRate = parseFloat(row.querySelector('.hourly-rate').value) || 0;
-        const hours = parseFloat(row.querySelector('.hours').value) || 0;
-        laborCosts += hourlyRate * hours;
+        // Get hourly data from time entries
+        if (employeeId && date) {
+          let hourlyPayout = 0;
+          // Check time entries
+          if (timeEntriesByEmployee[employeeId]) {
+            const empTimeEntries = timeEntriesByEmployee[employeeId];
+            empTimeEntries.forEach(entry => {
+              // If flat rate exists, use it; otherwise calculate from hours
+              if (entry.flatRate && entry.flatRate > 0) {
+                hourlyPayout += entry.flatRate;
+              } else {
+                // Calculate from hours (need employee data for rate)
+                const workedEmployee = employeesWhoWorked.find(e => {
+                  const eId = e._id ? (typeof e._id === 'object' ? e._id.toString() : String(e._id)) : null;
+                  return eId === employeeId;
+                });
+                if (workedEmployee && workedEmployee.hourlyRate) {
+                  const regularHours = (entry.hoursWorked || 0) - (entry.overtimeHours || 0);
+                  const overtimeHours = entry.overtimeHours || 0;
+                  const overtimeMultiplier = workedEmployee.defaultOvertimeMultiplier || 1.5;
+                  hourlyPayout += (regularHours * workedEmployee.hourlyRate) + 
+                                  (overtimeHours * workedEmployee.hourlyRate * overtimeMultiplier);
+                }
+              }
+            });
+          }
+          // Also check employeesWhoWorked for labor cost
+          const workedEmployee = employeesWhoWorked.find(e => {
+            const eId = e._id ? (typeof e._id === 'object' ? e._id.toString() : String(e._id)) : null;
+            return eId === employeeId;
+          });
+          if (workedEmployee && workedEmployee.laborCost) {
+            hourlyPayout = workedEmployee.laborCost;
+          }
+          laborCosts += hourlyPayout;
+        }
+      } else if (payType === 'percentage' && employeeId && date) {
+        // For percentage employees, check if they have flat rate for this day
+        // Flat rate should be included in labor costs
+        if (timeEntriesByEmployee[employeeId]) {
+          const empTimeEntries = timeEntriesByEmployee[employeeId];
+          const flatRate = empTimeEntries.reduce((sum, entry) => sum + (entry.flatRate || 0), 0);
+          if (flatRate > 0) {
+            laborCosts += flatRate;
+          }
+        }
+        // Also check employeesWhoWorked for flat rate
+        const workedEmployee = employeesWhoWorked.find(e => {
+          const eId = e._id ? (typeof e._id === 'object' ? e._id.toString() : String(e._id)) : null;
+          return eId === employeeId;
+        });
+        if (workedEmployee && workedEmployee.flatRate > 0) {
+          // Flat rate already included in laborCost, but we add it here to be explicit
+          // Actually, let's check if we already added it from time entries
+          if (!timeEntriesByEmployee[employeeId] || 
+              timeEntriesByEmployee[employeeId].reduce((sum, entry) => sum + (entry.flatRate || 0), 0) === 0) {
+            laborCosts += workedEmployee.flatRate;
+          }
+        }
       }
     });
     
@@ -1651,15 +1722,72 @@
     rows.forEach(row => {
       const payTypeSelect = row.querySelector('.pay-type-select');
       const payType = payTypeSelect ? payTypeSelect.value : 'percentage';
+      const employeeIdInput = row.querySelector('.employee-id-input');
+      const employeeId = employeeIdInput ? employeeIdInput.value : null;
       let payoutAmount = 0;
+      let flatRate = 0;
       
-      if (payType === 'percentage') {
+      // Check for flat rate first
+      if (employeeId && date) {
+        // Check time entries
+        if (timeEntriesByEmployee[employeeId]) {
+          const empTimeEntries = timeEntriesByEmployee[employeeId];
+          flatRate = empTimeEntries.reduce((sum, entry) => sum + (entry.flatRate || 0), 0);
+        }
+        // Also check employeesWhoWorked
+        if (flatRate === 0) {
+          const workedEmployee = employeesWhoWorked.find(e => {
+            const eId = e._id ? (typeof e._id === 'object' ? e._id.toString() : String(e._id)) : null;
+            return eId === employeeId;
+          });
+          if (workedEmployee && workedEmployee.flatRate > 0) {
+            flatRate = workedEmployee.flatRate;
+          }
+        }
+      }
+      
+      // If flat rate exists, use it (for display purposes)
+      // Note: Flat rate is already included in labor costs, so it reduces profit
+      // For percentage employees, they still get percentage of profit, but we show flat rate if it exists
+      if (flatRate > 0) {
+        payoutAmount = flatRate;
+      } else if (payType === 'percentage') {
         const percentageRate = parseFloat(row.querySelector('.percentage-rate').value) || 0;
         payoutAmount = (totalProfit * percentageRate) / 100;
       } else if (payType === 'hourly') {
-        const hourlyRate = parseFloat(row.querySelector('.hourly-rate').value) || 0;
-        const hours = parseFloat(row.querySelector('.hours').value) || 0;
-        payoutAmount = hourlyRate * hours;
+        // Get hourly payout from time entries (already calculated)
+        if (employeeId && date) {
+          // Check time entries
+          if (timeEntriesByEmployee[employeeId]) {
+            const empTimeEntries = timeEntriesByEmployee[employeeId];
+            empTimeEntries.forEach(entry => {
+              if (entry.flatRate && entry.flatRate > 0) {
+                payoutAmount += entry.flatRate;
+              } else {
+                // Calculate from hours
+                const workedEmployee = employeesWhoWorked.find(e => {
+                  const eId = e._id ? (typeof e._id === 'object' ? e._id.toString() : String(e._id)) : null;
+                  return eId === employeeId;
+                });
+                if (workedEmployee && workedEmployee.hourlyRate) {
+                  const regularHours = (entry.hoursWorked || 0) - (entry.overtimeHours || 0);
+                  const overtimeHours = entry.overtimeHours || 0;
+                  const overtimeMultiplier = workedEmployee.defaultOvertimeMultiplier || 1.5;
+                  payoutAmount += (regularHours * workedEmployee.hourlyRate) + 
+                                  (overtimeHours * workedEmployee.hourlyRate * overtimeMultiplier);
+                }
+              }
+            });
+          }
+          // Also check employeesWhoWorked for labor cost (which includes flat rate)
+          const workedEmployee = employeesWhoWorked.find(e => {
+            const eId = e._id ? (typeof e._id === 'object' ? e._id.toString() : String(e._id)) : null;
+            return eId === employeeId;
+          });
+          if (workedEmployee && workedEmployee.laborCost && payoutAmount === 0) {
+            payoutAmount = workedEmployee.laborCost;
+          }
+        }
       }
       
       totalEmployeePayout += payoutAmount;
@@ -1716,18 +1844,42 @@
             formData.employeePayouts.push(payoutData);
           }
         } else if (payType === 'hourly') {
-          const hourlyRateInput = row.querySelector('.hourly-rate');
-          const hoursInput = row.querySelector('.hours');
-          const hourlyRate = hourlyRateInput ? hourlyRateInput.value : '';
-          const hours = hoursInput ? hoursInput.value : '';
-          // Check if values are provided (not empty strings), 0 is a valid value
-          if (hourlyRate !== '' && hours !== '' && !isNaN(parseFloat(hourlyRate)) && !isNaN(parseFloat(hours))) {
-            payoutData.hourlyRate = parseFloat(hourlyRate);
-            payoutData.hours = parseFloat(hours);
+          // Get hourly data from time entries
+          const date = document.getElementById('payoutDate').value;
+          let hourlyRate = 0;
+          let hours = 0;
+          
+          if (date && employeeId) {
+            // Check employeesWhoWorked for hourly rate and hours
+            const workedEmployee = employeesWhoWorked.find(e => {
+              const eId = e._id ? (typeof e._id === 'object' ? e._id.toString() : String(e._id)) : null;
+              return eId === employeeId;
+            });
+            
+            if (workedEmployee) {
+              hourlyRate = workedEmployee.hourlyRate || 0;
+              hours = workedEmployee.hoursWorked || 0;
+            }
+            
+            // Also check time entries if available
+            if (timeEntriesByEmployee[employeeId]) {
+              const empTimeEntries = timeEntriesByEmployee[employeeId];
+              hours = empTimeEntries.reduce((sum, entry) => sum + (entry.hoursWorked || 0), 0);
+              if (!hourlyRate && workedEmployee) {
+                hourlyRate = workedEmployee.hourlyRate || 0;
+              }
+            }
+          }
+          
+          if (hourlyRate > 0 && hours > 0) {
+            payoutData.hourlyRate = hourlyRate;
+            payoutData.hours = hours;
             formData.employeePayouts.push(payoutData);
             console.log('[Payout Form] Added hourly payout:', payoutData);
           } else {
-            console.log('[Payout Form] Skipping hourly payout - missing rate or hours:', { hourlyRate, hours });
+            // Still add it even if we can't calculate - the backend will handle it
+            formData.employeePayouts.push(payoutData);
+            console.log('[Payout Form] Added hourly payout (will be calculated from time entries):', payoutData);
           }
         }
       }
@@ -1812,6 +1964,42 @@
     setupModalListener();
     initializeEmployeeSearch();
     watchModalPosition();
+    
+    // Add event listeners to initial form fields
+    const totalRevenue = document.getElementById('totalRevenue');
+    const jobCosts = document.getElementById('jobCosts');
+    const materials = document.getElementById('materials');
+    
+    if (totalRevenue) {
+      totalRevenue.addEventListener('input', calculatePayout);
+      totalRevenue.addEventListener('change', calculatePayout);
+    }
+    if (jobCosts) {
+      jobCosts.addEventListener('input', calculatePayout);
+      jobCosts.addEventListener('change', calculatePayout);
+    }
+    if (materials) {
+      materials.addEventListener('input', calculatePayout);
+      materials.addEventListener('change', calculatePayout);
+    }
+    
+    // Add event listeners to initial employee row
+    const firstRow = document.querySelector('.employee-payout-row');
+    if (firstRow) {
+      const payTypeSelect = firstRow.querySelector('.pay-type-select');
+      const percentageRateInput = firstRow.querySelector('.percentage-rate');
+      
+      if (payTypeSelect) {
+        payTypeSelect.addEventListener('change', function() {
+          togglePayTypeInput(this);
+          calculatePayout();
+        });
+      }
+      if (percentageRateInput) {
+        percentageRateInput.addEventListener('input', calculatePayout);
+        percentageRateInput.addEventListener('change', calculatePayout);
+      }
+    }
     
     // Add click test to modal
     const modal = document.getElementById('calculatePayoutModal');
