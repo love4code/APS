@@ -60,6 +60,142 @@
   body.modal-open .product-dropdown {
     display: none !important;
   }
+  /* Calendar modal specific - ensure content is above backdrop */
+  #calendarModal {
+    z-index: 10060 !important;
+  }
+  body.modal-open #calendarModal ~ .modal-backdrop,
+  body.modal-open .modal-backdrop:last-of-type {
+    z-index: 10050 !important;
+    pointer-events: none !important;
+  }
+  #calendarModal .modal-dialog {
+    z-index: 10070 !important;
+    position: relative !important;
+    pointer-events: none !important;
+  }
+  #calendarModal .modal-content {
+    z-index: 10071 !important;
+    position: relative !important;
+    pointer-events: auto !important;
+  }
+  #calendarModal .modal-header,
+  #calendarModal .modal-body,
+  #calendarModal .modal-footer {
+    pointer-events: auto !important;
+    position: relative !important;
+  }
+  #calendarModal .calendar-wrapper,
+  #calendarModal .calendar-table,
+  #calendarModal .calendar-day,
+  #calendarModal button,
+  #calendarModal .btn,
+  #calendarModal .btn-close {
+    pointer-events: auto !important;
+    position: relative !important;
+    z-index: 10072 !important;
+  }
+  /* Calendar modal styling */
+  .calendar-day {
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+    touch-action: manipulation;
+  }
+  
+  .calendar-day:hover {
+    background-color: #e9ecef !important;
+  }
+  
+  .calendar-day:active {
+    background-color: #dee2e6 !important;
+  }
+  
+  #calendarPrevMonth,
+  #calendarNextMonth {
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+    touch-action: manipulation;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  
+  #calendarFooterCloseBtn {
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+    touch-action: manipulation;
+    cursor: pointer;
+  }
+  
+  /* Mobile-specific fixes */
+  @media (max-width: 1024px) {
+    #calendarModal {
+      z-index: 10060 !important;
+    }
+    
+    #calendarModal .modal-backdrop {
+      z-index: 10050 !important;
+    }
+    
+    #calendarModal .modal-dialog {
+      z-index: 10061 !important;
+      pointer-events: none !important;
+      margin: 0.5rem !important;
+    }
+    
+    #calendarModal .modal-content {
+      z-index: 10062 !important;
+      pointer-events: auto !important;
+      position: relative !important;
+    }
+    
+    #calendarModal .modal-header,
+    #calendarModal .modal-body,
+    #calendarModal .modal-footer {
+      pointer-events: auto !important;
+      position: relative !important;
+    }
+    
+    #calendarFooterCloseBtn {
+      min-width: 100px !important;
+      min-height: 48px !important;
+      padding: 0.875rem 1.75rem !important;
+      font-size: 1rem !important;
+      pointer-events: auto !important;
+      z-index: 10063 !important;
+      position: relative !important;
+    }
+    
+    .calendar-day {
+      min-height: 50px;
+      padding: 8px 4px !important;
+      pointer-events: auto !important;
+      position: relative !important;
+    }
+    
+    #calendarPrevMonth,
+    #calendarNextMonth {
+      min-width: 60px !important;
+      min-height: 44px !important;
+      padding: 0.5rem 1rem !important;
+      pointer-events: auto !important;
+      position: relative !important;
+    }
+    
+    /* Ensure all interactive elements are clickable */
+    #calendarModal * {
+      pointer-events: auto !important;
+    }
+    
+    /* But allow backdrop to be clickable for closing */
+    #calendarModal.modal {
+      pointer-events: auto !important;
+    }
+  }
+  /* Ensure product dropdown closes when modal opens */
+  body.modal-open .product-dropdown {
+    display: none !important;
+  }
 </style>
 
 <div class="container-fluid">
@@ -148,12 +284,10 @@
 
           <div class="col-md-6 mb-3">
             <label for="installDate" class="form-label">Install Date</label>
-            <div class="input-group">
-              <input type="date" class="form-control" id="installDate" name="installDate" value="<%= job && job.installDate ? new Date(job.installDate).toISOString().split('T')[0] : '' %>">
-              <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#calendarModal" title="View Calendar">
-                <i class="bi bi-calendar3"></i>
-              </button>
-            </div>
+            <input type="date" class="form-control" id="installDate" name="installDate" value="<%= job && job.installDate ? new Date(job.installDate).toISOString().split('T')[0] : '' %>">
+            <small class="form-text text-muted">
+              <a href="#" id="openCalendarLink" style="text-decoration: none;">View calendar with scheduled appointments</a>
+            </small>
           </div>
         </div>
 
@@ -1173,13 +1307,12 @@
   })();
 </script>
 
-<!-- Calendar Modal -->
-<div class="modal fade" id="calendarModal" tabindex="-1" aria-labelledby="calendarModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered">
-    <div class="modal-content">
+<!-- Calendar Modal - Must be outside container for proper z-index stacking -->
+<div class="modal fade" id="calendarModal" tabindex="-1" aria-labelledby="calendarModalLabel" aria-hidden="true" data-bs-backdrop="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered" style="z-index: 10070 !important; position: relative !important;">
+    <div class="modal-content" style="z-index: 10071 !important; position: relative !important;">
       <div class="modal-header">
         <h5 class="modal-title" id="calendarModalLabel">Job Calendar</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
         <div class="calendar-container">
@@ -1219,7 +1352,7 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-secondary" id="calendarFooterCloseBtn" style="min-width: 80px; min-height: 44px; padding: 0.75rem 1.5rem;">Close</button>
       </div>
     </div>
   </div>
@@ -1268,6 +1401,78 @@
   .calendar-day-number {
     font-size: 0.9rem;
     font-weight: 500;
+  }
+  
+  /* Mobile-specific modal fixes */
+  @media (max-width: 768px) {
+    #calendarModal {
+      z-index: 10060 !important;
+    }
+    
+    #calendarModal .modal-backdrop {
+      z-index: 10050 !important;
+      background-color: rgba(0, 0, 0, 0.5) !important;
+    }
+    
+    #calendarModal .modal-dialog {
+      margin: 0.5rem;
+      max-height: calc(100vh - 1rem);
+      z-index: 10061 !important;
+    }
+    
+    #calendarModal .modal-content {
+      max-height: calc(100vh - 1rem);
+      overflow-y: auto;
+      z-index: 10062 !important;
+      position: relative !important;
+    }
+    
+    #calendarModal .btn-close {
+      font-size: 1.5rem;
+      padding: 0.75rem;
+      min-width: 48px !important;
+      min-height: 48px !important;
+      z-index: 99999 !important;
+      position: relative !important;
+      background-color: rgba(255, 255, 255, 0.95) !important;
+      border-radius: 50% !important;
+      border: 2px solid #000 !important;
+      opacity: 1 !important;
+    }
+    
+    #calendarModal .btn-close:hover,
+    #calendarModal .btn-close:focus {
+      opacity: 1 !important;
+      background-color: rgba(255, 255, 255, 1) !important;
+    }
+    
+    #calendarModalCloseBtn {
+      z-index: 99999 !important;
+      position: relative !important;
+    }
+    
+    #calendarModal .modal-footer .btn {
+      min-width: 100px !important;
+      min-height: 48px !important;
+      padding: 0.75rem 1.5rem;
+      z-index: 99999 !important;
+      position: relative !important;
+      font-size: 1rem !important;
+    }
+    
+    #calendarModalCloseFooterBtn {
+      z-index: 99999 !important;
+      position: relative !important;
+    }
+    
+    .calendar-table td {
+      height: 50px;
+      font-size: 0.85rem;
+    }
+    
+    .calendar-day-number {
+      font-size: 0.8rem;
+    }
   }
   
   .calendar-event-dot {
@@ -1401,18 +1606,57 @@
       // Update events list
       updateEventsList();
       
-      // Add click handlers to calendar days
+      // Add click handlers to calendar days - with proper mobile support
       document.querySelectorAll('.calendar-day').forEach(cell => {
-        cell.addEventListener('click', function() {
+        let touchStartTime = 0;
+        let touchStartPos = null;
+        
+        // Touch start - record when and where
+        cell.addEventListener('touchstart', function(e) {
+          touchStartTime = Date.now();
+          const touch = e.touches[0];
+          touchStartPos = { x: touch.clientX, y: touch.clientY };
+        }, { passive: true });
+        
+        // Touch end - handle selection
+        cell.addEventListener('touchend', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          // Check if it was a quick tap (not a scroll)
+          const touchEndTime = Date.now();
+          const timeDiff = touchEndTime - touchStartTime;
+          
+          if (touchStartPos) {
+            const touch = e.changedTouches[0];
+            const xDiff = Math.abs(touch.clientX - touchStartPos.x);
+            const yDiff = Math.abs(touch.clientY - touchStartPos.y);
+            
+            // If it was a quick tap with minimal movement, treat as click
+            if (timeDiff < 300 && xDiff < 10 && yDiff < 10) {
+              const selectedDate = this.getAttribute('data-date');
+              if (selectedDate) {
+                const installDateInput = document.getElementById('installDate');
+                if (installDateInput) {
+                  installDateInput.value = selectedDate;
+                }
+                document.querySelectorAll('.calendar-day').forEach(c => c.classList.remove('table-primary'));
+                this.classList.add('table-primary');
+              }
+            }
+          }
+        });
+        
+        // Click handler for desktop
+        cell.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
           const selectedDate = this.getAttribute('data-date');
           if (selectedDate) {
-            // Update install date input if clicked
             const installDateInput = document.getElementById('installDate');
             if (installDateInput) {
               installDateInput.value = selectedDate;
             }
-            
-            // Highlight selected day
             document.querySelectorAll('.calendar-day').forEach(c => c.classList.remove('table-primary'));
             this.classList.add('table-primary');
           }
@@ -1480,15 +1724,113 @@
         });
     }
     
-    // Month navigation
-    document.getElementById('calendarPrevMonth')?.addEventListener('click', function() {
-      currentDate.setMonth(currentDate.getMonth() - 1);
-      updateCalendar();
-    });
+    // Month navigation - with mobile support
+    function setupMonthNav(btn, direction) {
+      if (!btn) return;
+      
+      function navigateMonth(e) {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        if (direction === 'prev') {
+          currentDate.setMonth(currentDate.getMonth() - 1);
+        } else {
+          currentDate.setMonth(currentDate.getMonth() + 1);
+        }
+        updateCalendar();
+      }
+      
+      // Click handler
+      btn.addEventListener('click', navigateMonth);
+      
+      // Touch handlers
+      btn.addEventListener('touchstart', function(e) {
+        e.stopPropagation();
+      }, { passive: true });
+      
+      btn.addEventListener('touchend', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        navigateMonth(e);
+      });
+    }
     
-    document.getElementById('calendarNextMonth')?.addEventListener('click', function() {
-      currentDate.setMonth(currentDate.getMonth() + 1);
-      updateCalendar();
+    setupMonthNav(document.getElementById('calendarPrevMonth'), 'prev');
+    setupMonthNav(document.getElementById('calendarNextMonth'), 'next');
+    
+    // Simple close function that works on all devices
+    function closeCalendarModal() {
+      const calendarModal = document.getElementById('calendarModal');
+      if (!calendarModal) return;
+      
+      // Get Bootstrap modal instance
+      const modalInstance = bootstrap.Modal.getInstance(calendarModal);
+      if (modalInstance) {
+        modalInstance.hide();
+      } else {
+        // Manual close if Bootstrap instance doesn't exist
+        calendarModal.classList.remove('show');
+        calendarModal.style.display = 'none';
+        calendarModal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+        
+        // Remove all backdrops
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        backdrops.forEach(backdrop => backdrop.remove());
+      }
+      
+      // Clean up highlights
+      document.querySelectorAll('.calendar-day').forEach(c => c.classList.remove('table-primary'));
+    }
+    
+    // Open calendar link handler
+    document.addEventListener('DOMContentLoaded', function() {
+      const openCalendarLink = document.getElementById('openCalendarLink');
+      if (openCalendarLink) {
+        openCalendarLink.addEventListener('click', function(e) {
+          e.preventDefault();
+          const calendarModal = document.getElementById('calendarModal');
+          if (calendarModal) {
+            const modal = new bootstrap.Modal(calendarModal);
+            modal.show();
+          }
+        });
+      }
+      
+      // Close button handler - only footer button now
+      const footerCloseBtn = document.getElementById('calendarFooterCloseBtn');
+      
+      function attachCloseHandlers(btn) {
+        if (!btn) return;
+        
+        // Click handler
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          closeCalendarModal();
+        });
+        
+        // Touch handlers for mobile
+        btn.addEventListener('touchstart', function(e) {
+          e.stopPropagation();
+        }, { passive: true });
+        
+        btn.addEventListener('touchend', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          closeCalendarModal();
+        });
+        
+        // Mouse down as backup
+        btn.addEventListener('mousedown', function(e) {
+          e.stopPropagation();
+        });
+      }
+      
+      attachCloseHandlers(footerCloseBtn);
     });
     
     // Load events when modal is shown
@@ -1497,6 +1839,58 @@
       calendarModal.addEventListener('show.bs.modal', function() {
         currentDate = new Date(); // Reset to current month
         loadEvents();
+        
+        // Fix overlay issue on mobile - ensure backdrop doesn't block
+        setTimeout(() => {
+          // Make backdrop non-interactive
+          const backdrops = document.querySelectorAll('.modal-backdrop');
+          backdrops.forEach(backdrop => {
+            backdrop.style.pointerEvents = 'none';
+            backdrop.style.zIndex = '10050';
+          });
+          
+          // Ensure modal content is interactive and on top
+          const modalDialog = calendarModal.querySelector('.modal-dialog');
+          const modalContent = calendarModal.querySelector('.modal-content');
+          
+          if (modalDialog) {
+            modalDialog.style.zIndex = '10070';
+            modalDialog.style.position = 'relative';
+            modalDialog.style.pointerEvents = 'none';
+          }
+          
+          if (modalContent) {
+            modalContent.style.zIndex = '10071';
+            modalContent.style.position = 'relative';
+            modalContent.style.pointerEvents = 'auto';
+            
+            // Force all interactive elements to be clickable
+            const allElements = modalContent.querySelectorAll('*');
+            allElements.forEach(el => {
+              if (el.tagName === 'BUTTON' || el.classList.contains('btn') || 
+                  el.classList.contains('calendar-day') || el.tagName === 'A' ||
+                  el.tagName === 'INPUT' || el.tagName === 'SELECT') {
+                el.style.pointerEvents = 'auto';
+                el.style.position = 'relative';
+                el.style.zIndex = '10072';
+              }
+            });
+          }
+          
+          // Ensure calendar modal itself is on top
+          calendarModal.style.zIndex = '10060';
+        }, 150);
+      });
+      
+      calendarModal.addEventListener('hidden.bs.modal', function() {
+        // Clean up highlights
+        document.querySelectorAll('.calendar-day').forEach(c => c.classList.remove('table-primary'));
+        
+        // Reset backdrop
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        backdrops.forEach(backdrop => {
+          backdrop.style.pointerEvents = '';
+        });
       });
     }
   })();

@@ -208,18 +208,30 @@ exports.create = async (req, res) => {
     let parsedDeliveryDate = null
     let parsedInvoicedDate = null
 
-    if (installDate) {
+    if (
+      installDate &&
+      typeof installDate === 'string' &&
+      installDate.trim() !== ''
+    ) {
       // Parse as UTC date at midnight to avoid timezone conversion
       const [year, month, day] = installDate.split('-').map(Number)
       parsedInstallDate = new Date(Date.UTC(year, month - 1, day))
     }
 
-    if (orderDate) {
+    if (
+      orderDate &&
+      typeof orderDate === 'string' &&
+      orderDate.trim() !== ''
+    ) {
       const [year, month, day] = orderDate.split('-').map(Number)
       parsedOrderDate = new Date(Date.UTC(year, month - 1, day))
     }
 
-    if (deliveryDate) {
+    if (
+      deliveryDate &&
+      typeof deliveryDate === 'string' &&
+      deliveryDate.trim() !== ''
+    ) {
       const [year, month, day] = deliveryDate.split('-').map(Number)
       parsedDeliveryDate = new Date(Date.UTC(year, month - 1, day))
     }
@@ -439,18 +451,30 @@ exports.update = async (req, res) => {
     let parsedDeliveryDate = null
     let parsedInvoicedDate = null
 
-    if (installDate) {
+    if (
+      installDate &&
+      typeof installDate === 'string' &&
+      installDate.trim() !== ''
+    ) {
       // Parse as UTC date at midnight to avoid timezone conversion
       const [year, month, day] = installDate.split('-').map(Number)
       parsedInstallDate = new Date(Date.UTC(year, month - 1, day))
     }
 
-    if (orderDate) {
+    if (
+      orderDate &&
+      typeof orderDate === 'string' &&
+      orderDate.trim() !== ''
+    ) {
       const [year, month, day] = orderDate.split('-').map(Number)
       parsedOrderDate = new Date(Date.UTC(year, month - 1, day))
     }
 
-    if (deliveryDate) {
+    if (
+      deliveryDate &&
+      typeof deliveryDate === 'string' &&
+      deliveryDate.trim() !== ''
+    ) {
       const [year, month, day] = deliveryDate.split('-').map(Number)
       parsedDeliveryDate = new Date(Date.UTC(year, month - 1, day))
     }
