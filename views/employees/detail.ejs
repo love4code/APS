@@ -878,7 +878,7 @@
                 </div>
                 <div class="col-md-6">
                   <p class="mb-1"><strong>Total Employee Payout:</strong> <span id="summaryEmployeePayout">$0.00</span></p>
-                  <p class="mb-1"><strong>20% of Profit:</strong> <span id="summaryCalculatedPayout" class="text-success fw-bold">$0.00</span></p>
+                  <p class="mb-1"><strong><span id="summaryPercentageLabel">0%</span> of Profit:</strong> <span id="summaryCalculatedPayout" class="text-success fw-bold">$0.00</span></p>
                 </div>
               </div>
             </div>
@@ -1718,6 +1718,7 @@
     // Calculate employee payouts
     const rows = document.querySelectorAll('.employee-payout-row');
     let totalEmployeePayout = 0;
+    let totalPercentageRate = 0; // Track total percentage for percentage employees
 
     rows.forEach(row => {
       const payTypeSelect = row.querySelector('.pay-type-select');
@@ -1753,6 +1754,7 @@
         payoutAmount = flatRate;
       } else if (payType === 'percentage') {
         const percentageRate = parseFloat(row.querySelector('.percentage-rate').value) || 0;
+        totalPercentageRate += percentageRate; // Add to total percentage
         payoutAmount = (totalProfit * percentageRate) / 100;
       } else if (payType === 'hourly') {
         // Get hourly payout from time entries (already calculated)
@@ -1794,9 +1796,6 @@
       row.querySelector('.payout-amount').textContent = '$' + payoutAmount.toFixed(2);
     });
 
-    // Calculate 20% of profit
-    const calculatedPayout = (totalProfit * 20) / 100;
-
     // Update summary
     document.getElementById('summaryRevenue').textContent = '$' + totalRevenue.toFixed(2);
     document.getElementById('summaryJobCosts').textContent = '$' + jobCosts.toFixed(2);
@@ -1805,7 +1804,15 @@
     document.getElementById('summaryCosts').textContent = '$' + totalCosts.toFixed(2);
     document.getElementById('summaryProfit').textContent = '$' + totalProfit.toFixed(2);
     document.getElementById('summaryEmployeePayout').textContent = '$' + totalEmployeePayout.toFixed(2);
-    document.getElementById('summaryCalculatedPayout').textContent = '$' + calculatedPayout.toFixed(2);
+    
+    // Update the percentage label dynamically to show the actual total percentage
+    const percentageLabel = totalPercentageRate > 0 ? `${totalPercentageRate.toFixed(2)}%` : '0%';
+    document.getElementById('summaryPercentageLabel').textContent = percentageLabel;
+    
+    // Show the calculated percentage payout (this represents the percentage-based calculation)
+    // This should match the percentage portion of totalEmployeePayout
+    const percentageBasedPayout = totalPercentageRate > 0 ? (totalProfit * totalPercentageRate) / 100 : 0;
+    document.getElementById('summaryCalculatedPayout').textContent = '$' + percentageBasedPayout.toFixed(2);
   }
 
   async function savePayout() {
