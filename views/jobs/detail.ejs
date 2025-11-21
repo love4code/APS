@@ -1,28 +1,34 @@
 <%- include('../partials/header', { title: title }) %>
 
 <div class="container-fluid">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="h3"><%= title %></h1>
-    <div class="d-flex gap-2">
-      <a href="/invoices/new?jobId=<%= job._id %>" class="btn btn-primary">
-        <i class="bi bi-receipt"></i> Create Invoice
-      </a>
-      <a href="/jobs/<%= job._id %>/invoice" class="btn btn-outline-success" target="_blank">
-        <i class="bi bi-file-pdf"></i> Download PDF
-      </a>
-      <% if (job.customer && job.customer.email) { %>
-      <form action="/jobs/<%= job._id %>/invoice/send" method="POST" class="d-inline">
-        <button type="submit" class="btn btn-success" onclick="return confirm('Send invoice to <%= job.customer.email %>?');">
-          <i class="bi bi-envelope"></i> Email PDF
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+    <h1 class="h3 mb-0"><%= title %></h1>
+    <div class="job-actions-container">
+      <div class="d-flex gap-2 job-actions-scroll">
+        <a href="/invoices/new?jobId=<%= job._id %>" class="btn btn-primary btn-mobile">
+          <i class="bi bi-receipt"></i> <span class="btn-text">Create Invoice</span>
+        </a>
+        <a href="/jobs/<%= job._id %>/invoice" class="btn btn-outline-success btn-mobile" target="_blank">
+          <i class="bi bi-file-pdf"></i> <span class="btn-text">Download PDF</span>
+        </a>
+        <% if (job.customer && job.customer.email) { %>
+        <form action="/jobs/<%= job._id %>/invoice/send" method="POST" class="d-inline">
+          <button type="submit" class="btn btn-success btn-mobile" onclick="return confirm('Send invoice to <%= job.customer.email %>?');">
+            <i class="bi bi-envelope"></i> <span class="btn-text">Email PDF</span>
+          </button>
+        </form>
+        <% } else { %>
+        <button type="button" class="btn btn-success btn-mobile" disabled title="Customer email not available">
+          <i class="bi bi-envelope"></i> <span class="btn-text">Email PDF</span>
         </button>
-      </form>
-      <% } else { %>
-      <button type="button" class="btn btn-success" disabled title="Customer email not available">
-        <i class="bi bi-envelope"></i> Email PDF
-      </button>
-      <% } %>
-      <a href="/jobs/<%= job._id %>/edit" class="btn btn-outline-primary">Edit</a>
-      <a href="/jobs" class="btn btn-outline-secondary">Back to Jobs</a>
+        <% } %>
+        <a href="/jobs/<%= job._id %>/edit" class="btn btn-outline-primary btn-mobile">
+          <i class="bi bi-pencil"></i> <span class="btn-text">Edit</span>
+        </a>
+        <a href="/jobs" class="btn btn-outline-secondary btn-mobile">
+          <i class="bi bi-arrow-left"></i> <span class="btn-text">Back to Jobs</span>
+        </a>
+      </div>
     </div>
   </div>
 
@@ -353,6 +359,95 @@
     cursor: pointer;
     image-rendering: -webkit-optimize-contrast; /* Better quality when scaling down */
     image-rendering: crisp-edges;
+  }
+  
+  /* Mobile-responsive job actions */
+  .job-actions-container {
+    width: 100%;
+  }
+  
+  .job-actions-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+    padding-bottom: 8px;
+    margin-bottom: -8px;
+  }
+  
+  .job-actions-scroll::-webkit-scrollbar {
+    height: 6px;
+  }
+  
+  .job-actions-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .job-actions-scroll::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+  }
+  
+  .job-actions-scroll::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.3);
+  }
+  
+  /* Mobile-specific button styling */
+  @media (max-width: 767.98px) {
+    .job-actions-container {
+      width: 100%;
+    }
+    
+    .job-actions-scroll {
+      flex-wrap: nowrap;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    .btn-mobile {
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    
+    /* Hide text on very small screens, show only icons */
+    @media (max-width: 575.98px) {
+      .btn-text {
+        display: none;
+      }
+      
+      .btn-mobile {
+        padding: 0.375rem 0.75rem;
+        min-width: auto;
+      }
+    }
+    
+    /* Show text on slightly larger mobile screens */
+    @media (min-width: 576px) and (max-width: 767.98px) {
+      .btn-text {
+        display: inline;
+      }
+    }
+  }
+  
+  /* Desktop: keep normal button size */
+  @media (min-width: 768px) {
+    .btn-mobile {
+      /* Normal button size on desktop */
+    }
+    
+    .job-actions-scroll {
+      overflow-x: visible;
+      flex-wrap: wrap;
+    }
+  }
+  
+  /* Mobile: make buttons smaller */
+  @media (max-width: 767.98px) {
+    .btn-mobile {
+      font-size: 0.875rem;
+      padding: 0.375rem 0.75rem;
+    }
   }
   
   /* Ensure lightbox modal appears above all content */
