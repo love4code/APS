@@ -212,105 +212,238 @@
   #lightboxModal.modal.show {
     z-index: 10060 !important;
   }
+  
+  /* Mobile-specific lightbox fixes */
+  @media (max-width: 767.98px) {
+    #lightboxModal {
+      z-index: 10070 !important;
+    }
+    #lightboxModal .modal-dialog {
+      z-index: 10071 !important;
+      position: relative !important;
+      margin: 0.5rem !important;
+      max-width: calc(100% - 1rem) !important;
+    }
+    #lightboxModal .modal-content {
+      z-index: 10072 !important;
+      position: relative !important;
+      pointer-events: auto !important;
+    }
+    body.modal-open .modal-backdrop {
+      z-index: 10050 !important;
+      pointer-events: auto !important;
+    }
+    /* Prevent body scroll when modal is open on mobile */
+    body.modal-open {
+      overflow: hidden !important;
+      position: fixed !important;
+      width: 100% !important;
+    }
+  }
 </style>
 
 <script>
-  // Lightbox functionality - initialize after DOM is ready
-  document.addEventListener('DOMContentLoaded', function() {
-    function initLightbox() {
-      const lightboxModalEl = document.getElementById('lightboxModal');
-      if (!lightboxModalEl) {
-        console.warn('Lightbox modal element not found');
-        return;
-      }
+  // Lightbox functionality - initialize after DOM and Bootstrap are ready
+  let lightboxInitialized = false;
+  let lightboxModal = null;
+  
+  function initLightbox() {
+    // Prevent multiple initializations
+    if (lightboxInitialized) {
+      return;
+    }
 
-      // Initialize Bootstrap modal with backdrop click enabled
-      let lightboxModal;
+    // Wait for Bootstrap to be available
+    if (typeof bootstrap === 'undefined' || !bootstrap.Modal) {
+      setTimeout(initLightbox, 100);
+      return;
+    }
+
+    const lightboxModalEl = document.getElementById('lightboxModal');
+    if (!lightboxModalEl) {
+      console.warn('Lightbox modal element not found');
+      return;
+    }
+
+    // Initialize Bootstrap modal with backdrop click enabled
+    try {
+      lightboxModal = bootstrap.Modal.getOrCreateInstance(lightboxModalEl, {
+        backdrop: true,
+        keyboard: true,
+        focus: true
+      });
+    } catch (e) {
+      console.error('Error initializing Bootstrap modal:', e);
       try {
-        lightboxModal = bootstrap.Modal.getOrCreateInstance(lightboxModalEl, {
-          backdrop: true,
-          keyboard: true,
-          focus: true
-        });
-      } catch (e) {
         lightboxModal = new bootstrap.Modal(lightboxModalEl, {
           backdrop: true,
           keyboard: true,
           focus: true
         });
-      }
-
-      const lightboxImage = document.getElementById('lightboxImage');
-      const lightboxTitle = document.getElementById('lightboxTitle');
-      const lightboxDownloadLink = document.getElementById('lightboxDownloadLink');
-
-      if (!lightboxImage || !lightboxTitle || !lightboxDownloadLink) {
-        console.warn('Lightbox elements not found');
+      } catch (e2) {
+        console.error('Failed to create Bootstrap modal:', e2);
         return;
       }
+    }
 
-      // Handle clicks on lightbox links (use event delegation for dynamically loaded images)
-      document.addEventListener('click', function(e) {
-        const lightboxLink = e.target.closest('.lightbox-link');
-        if (lightboxLink) {
-          e.preventDefault();
-          e.stopPropagation();
+    const lightboxImage = document.getElementById('lightboxImage');
+    const lightboxTitle = document.getElementById('lightboxTitle');
+    const lightboxDownloadLink = document.getElementById('lightboxDownloadLink');
+
+    if (!lightboxImage || !lightboxTitle || !lightboxDownloadLink) {
+      console.warn('Lightbox elements not found');
+      return;
+    }
+
+    // Function to open lightbox
+    function openLightbox(lightboxLink) {
+      if (!lightboxModal) return;
+      
+      const mediumPath = lightboxLink.getAttribute('data-medium');
+      const largePath = lightboxLink.getAttribute('data-large');
+      const img = lightboxLink.querySelector('img');
+      const altText = img ? img.alt : 'Image';
+
+      if (mediumPath && largePath) {
+        lightboxImage.src = mediumPath;
+        lightboxImage.alt = altText;
+        lightboxTitle.textContent = altText;
+        lightboxDownloadLink.href = largePath;
+
+        // Show modal
+        try {
+          lightboxModal.show();
           
-          const mediumPath = lightboxLink.getAttribute('data-medium');
-          const largePath = lightboxLink.getAttribute('data-large');
-          const img = lightboxLink.querySelector('img');
-          const altText = img ? img.alt : 'Image';
-
-          if (mediumPath && largePath) {
-            lightboxImage.src = mediumPath;
-            lightboxImage.alt = altText;
-            lightboxTitle.textContent = altText;
-            lightboxDownloadLink.href = largePath;
-
-            // Show modal
-            lightboxModal.show();
-          }
+          // Mobile-specific fixes after modal is shown
+          setTimeout(() => {
+            // Ensure modal is on top on mobile
+            if (window.innerWidth <= 767.98) {
+              const backdrops = document.querySelectorAll('.modal-backdrop');
+              backdrops.forEach(backdrop => {
+                backdrop.style.zIndex = '10050';
+                backdrop.style.pointerEvents = 'auto';
+              });
+              
+              const modalDialog = lightboxModalEl.querySelector('.modal-dialog');
+              const modalContent = lightboxModalEl.querySelector('.modal-content');
+              
+              if (modalDialog) {
+                modalDialog.style.zIndex = '10071';
+                modalDialog.style.position = 'relative';
+              }
+              
+              if (modalContent) {
+                modalContent.style.zIndex = '10072';
+                modalContent.style.position = 'relative';
+                modalContent.style.pointerEvents = 'auto';
+              }
+              
+              lightboxModalEl.style.zIndex = '10070';
+            }
+          }, 150);
+        } catch (err) {
+          console.error('Error showing lightbox modal:', err);
         }
-      });
-
-      // Ensure escape key works
-      const escapeHandler = function(e) {
-        if (e.key === 'Escape' && lightboxModalEl.classList.contains('show')) {
-          lightboxModal.hide();
-        }
-      };
-      document.addEventListener('keydown', escapeHandler);
-
-      // Prevent modal content clicks from closing the modal
-      const modalContent = lightboxModalEl.querySelector('.modal-content');
-      if (modalContent) {
-        modalContent.addEventListener('click', function(e) {
-          e.stopPropagation();
-        });
       }
+    }
 
-      // Explicitly handle backdrop clicks
-      lightboxModalEl.addEventListener('click', function(e) {
-        // Only close if clicking directly on the modal element (backdrop area)
-        if (e.target === lightboxModalEl) {
-          e.preventDefault();
-          e.stopPropagation();
-          lightboxModal.hide();
-        }
-      });
+    // Handle clicks on lightbox links (use event delegation - only attach once)
+    // Support both click and touch events for mobile
+    document.addEventListener('click', function lightboxClickHandler(e) {
+      const lightboxLink = e.target.closest('.lightbox-link');
+      if (lightboxLink && lightboxModal) {
+        e.preventDefault();
+        e.stopPropagation();
+        openLightbox(lightboxLink);
+      }
+    });
+    
+    // Handle touch events for mobile
+    document.addEventListener('touchend', function lightboxTouchHandler(e) {
+      const lightboxLink = e.target.closest('.lightbox-link');
+      if (lightboxLink && lightboxModal) {
+        e.preventDefault();
+        e.stopPropagation();
+        openLightbox(lightboxLink);
+      }
+    }, { passive: false });
 
-      // Also handle backdrop element clicks (Bootstrap creates this)
-      document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('modal-backdrop') && 
-            lightboxModalEl.classList.contains('show')) {
+    // Function to close lightbox
+    function closeLightbox() {
+      if (lightboxModal) {
+        try {
           lightboxModal.hide();
+        } catch (err) {
+          console.error('Error hiding lightbox modal:', err);
         }
+      }
+    }
+
+    // Ensure escape key works
+    document.addEventListener('keydown', function escapeHandler(e) {
+      if (e.key === 'Escape' && lightboxModalEl.classList.contains('show') && lightboxModal) {
+        closeLightbox();
+      }
+    });
+
+    // Prevent modal content clicks from closing the modal
+    const modalContent = lightboxModalEl.querySelector('.modal-content');
+    if (modalContent) {
+      modalContent.addEventListener('click', function(e) {
+        e.stopPropagation();
       });
     }
 
-    // Initialize lightbox when DOM is ready
-    initLightbox();
-  });
+    // Explicitly handle backdrop clicks (both click and touch for mobile)
+    lightboxModalEl.addEventListener('click', function(e) {
+      // Only close if clicking directly on the modal element (backdrop area)
+      if (e.target === lightboxModalEl && lightboxModal) {
+        e.preventDefault();
+        e.stopPropagation();
+        closeLightbox();
+      }
+    });
+    
+    // Handle touch events on backdrop for mobile
+    lightboxModalEl.addEventListener('touchend', function(e) {
+      if (e.target === lightboxModalEl && lightboxModal) {
+        e.preventDefault();
+        e.stopPropagation();
+        closeLightbox();
+      }
+    }, { passive: false });
+
+    // Also handle backdrop element clicks (Bootstrap creates this)
+    document.addEventListener('click', function(e) {
+      if (e.target.classList.contains('modal-backdrop') && 
+          lightboxModalEl.classList.contains('show') && lightboxModal) {
+        closeLightbox();
+      }
+    });
+    
+    // Handle touch events on Bootstrap backdrop for mobile
+    document.addEventListener('touchend', function(e) {
+      if (e.target.classList.contains('modal-backdrop') && 
+          lightboxModalEl.classList.contains('show') && lightboxModal) {
+        e.preventDefault();
+        closeLightbox();
+      }
+    }, { passive: false });
+
+    lightboxInitialized = true;
+  }
+
+  // Initialize lightbox when DOM is ready, but wait for Bootstrap
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(initLightbox, 100);
+    });
+  } else {
+    setTimeout(initLightbox, 100);
+  }
+
+  // Also try after a short delay to ensure Bootstrap is loaded
+  setTimeout(initLightbox, 500);
 </script>
 
 <%- include('../partials/footer') %>
