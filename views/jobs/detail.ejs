@@ -211,7 +211,13 @@
                   const largePath = normalizePath(image.largePath || '');
                 %>
                 <a href="javascript:void(0);" class="lightbox-link" data-medium="<%= mediumPath %>" data-large="<%= largePath %>" onclick="return false;" ontouchstart="return false;">
-                  <img src="<%= thumbPath %>" class="card-img-top thumbnail-img" alt="<%= image.originalFilename || 'Image' %>" loading="lazy" onerror="console.error('Image load failed:', this.src); if (this.src !== '<%= mediumPath %>') { this.src = '<%= mediumPath %>'; } else { this.style.backgroundColor='#f0f0f0'; this.alt='Image not found'; }">
+                  <% 
+                    // Add cache-busting query param for mobile browsers
+                    const imageTimestamp = new Date(image.uploadedAt).getTime();
+                    const thumbPathWithCache = thumbPath + (thumbPath.includes('?') ? '&' : '?') + 'v=' + imageTimestamp;
+                    const mediumPathWithCache = mediumPath + (mediumPath.includes('?') ? '&' : '?') + 'v=' + imageTimestamp;
+                  %>
+                  <img src="<%= thumbPathWithCache %>" class="card-img-top thumbnail-img" alt="<%= image.originalFilename || 'Image' %>" loading="lazy" onerror="console.error('Image load failed:', this.src); const fallbackSrc = '<%= mediumPathWithCache %>'; if (this.src !== fallbackSrc) { this.src = fallbackSrc; } else { this.style.backgroundColor='#f0f0f0'; this.alt='Image not found'; }">
                 </a>
                 <div class="card-body p-2">
                   <p class="card-text small mb-1 text-truncate" title="<%= image.originalFilename %>">
@@ -687,8 +693,10 @@
       if (allComplete) {
         const successCount = selectedFiles.filter(f => f.status === 'success').length;
         if (successCount > 0) {
+          // Force reload with cache-busting for mobile browsers
           setTimeout(() => {
-            window.location.reload();
+            // Add timestamp to force fresh reload (important for mobile)
+            window.location.href = window.location.pathname + '?_t=' + Date.now();
           }, 1500);
         }
       }
@@ -768,8 +776,11 @@
           resolve();
         });
 
-        // Send request
+        // Send request with proper headers to ensure AJAX detection works on mobile
         xhr.open('POST', `/jobs/<%= job._id %>/images/upload`);
+        // Set header to ensure server recognizes this as AJAX request (important for mobile)
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        // Don't set Content-Type - browser will set it with boundary for FormData
         xhr.send(formData);
       });
     }

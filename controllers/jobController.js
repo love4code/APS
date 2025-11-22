@@ -1,3 +1,4 @@
+const mongoose = require('mongoose')
 const Job = require('../models/Job')
 const Customer = require('../models/Customer')
 const Product = require('../models/Product')
@@ -322,8 +323,13 @@ exports.detail = async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(20)
 
-    // Get all images for this job - use lean() to get plain objects for better performance
-    const allImages = await JobImage.find({ job: job._id })
+    // Get all images for this job
+    // Use job._id directly (MongoDB will handle ObjectId conversion)
+    const jobIdString = job._id.toString()
+    const jobIdObjectId = job._id
+    
+    // Query for images - MongoDB automatically handles ObjectId references
+    const allImages = await JobImage.find({ job: jobIdObjectId })
       .populate('uploadedBy', 'name')
       .sort({ uploadedAt: -1 })
       .lean()
@@ -338,26 +344,60 @@ exports.detail = async (req, res) => {
     
     if (allImages && allImages.length > 0) {
       for (const img of allImages) {
-        const thumbnailFullPath = path.join(publicDir, img.thumbnailPath)
-        const mediumFullPath = path.join(publicDir, img.mediumPath)
+        // Normalize paths - ensure they're relative paths from public directory
+        let thumbnailPath = img.thumbnailPath || ''
+        let mediumPath = img.mediumPath || ''
+        
+        // Remove leading slash if present (paths should be relative to public dir)
+        thumbnailPath = thumbnailPath.replace(/^\/+/, '')
+        mediumPath = mediumPath.replace(/^\/+/, '')
+        
+        const thumbnailFullPath = path.join(publicDir, thumbnailPath)
+        const mediumFullPath = path.join(publicDir, mediumPath)
         
         // Check if at least thumbnail or medium exists
-        if (fs.existsSync(thumbnailFullPath) || fs.existsSync(mediumFullPath)) {
+        const thumbnailExists = fs.existsSync(thumbnailFullPath)
+        const mediumExists = fs.existsSync(mediumFullPath)
+        
+        if (thumbnailExists || mediumExists) {
+          // Ensure paths are stored correctly for rendering
+          img.thumbnailPath = thumbnailPath
+          img.mediumPath = mediumPath
+          img.largePath = (img.largePath || '').replace(/^\/+/, '')
           images.push(img)
         } else {
           missingImages.push(img)
           console.warn(`[Job Detail] Image file missing for ${img._id}:`, {
+            imageId: img._id,
             thumbnailPath: img.thumbnailPath,
-            thumbnailExists: fs.existsSync(thumbnailFullPath),
+            thumbnailFullPath: thumbnailFullPath,
+            thumbnailExists: thumbnailExists,
             mediumPath: img.mediumPath,
-            mediumExists: fs.existsSync(mediumFullPath)
+            mediumFullPath: mediumFullPath,
+            mediumExists: mediumExists,
+            publicDir: publicDir
           })
         }
       }
       
       if (missingImages.length > 0) {
-        console.warn(`[Job Detail] ${missingImages.length} image(s) have missing files for job ${job._id}`)
+        console.warn(`[Job Detail] ${missingImages.length} image(s) have missing files for job ${jobIdString}`)
+        // Log full details for debugging
+        missingImages.forEach(img => {
+          console.warn(`[Job Detail] Missing image details:`, {
+            _id: img._id,
+            job: img.job,
+            thumbnailPath: img.thumbnailPath,
+            mediumPath: img.mediumPath,
+            largePath: img.largePath
+          })
+        })
       }
+    }
+    
+    // Debug: Log image count
+    if (allImages && allImages.length > 0) {
+      console.log(`[Job Detail] Found ${allImages.length} image record(s) in database for job ${jobIdString}, ${images.length} have valid files`)
     }
 
     res.render('jobs/detail', {
@@ -1175,8 +1215,13 @@ exports.uploadImage = async (req, res) => {
         }
 
         // Save image metadata to database
+        // Ensure job ID is an ObjectId (not string)
+        const jobIdObjectId = mongoose.Types.ObjectId.isValid(req.params.id) 
+          ? new mongoose.Types.ObjectId(req.params.id)
+          : job._id
+        
         const jobImage = new JobImage({
-          job: job._id,
+          job: jobIdObjectId, // Use ObjectId to ensure proper reference
           originalFilename: file.originalname,
           thumbnailPath: processedImages.thumbnailPath,
           mediumPath: processedImages.mediumPath,
@@ -1189,6 +1234,16 @@ exports.uploadImage = async (req, res) => {
         })
 
         await jobImage.save()
+        
+        // Verify the image was saved correctly
+        const savedImage = await JobImage.findById(jobImage._id)
+        if (!savedImage) {
+          console.error(`[Upload Image] Failed to save image ${file.originalname} to database`)
+          errors.push(file.originalname)
+          continue
+        }
+        
+        console.log(`[Upload Image] Successfully saved image ${file.originalname} with ID ${savedImage._id} for job ${jobIdObjectId}`)
         uploadedImages.push(file.originalname)
 
         // Log activity for each image
@@ -1221,10 +1276,11 @@ exports.uploadImage = async (req, res) => {
       }
     }
 
-    // Check if this is an AJAX request
+    // Check if this is an AJAX request (more reliable detection for mobile)
     const isAjax = req.xhr ||
-                   req.headers['x-requested-with'] === 'XMLHttpRequest' ||
-                   req.headers.accept?.indexOf('json') > -1;
+                   req.headers['x-requested-with']?.toLowerCase() === 'xmlhttprequest' ||
+                   req.headers.accept?.toLowerCase().indexOf('json') > -1 ||
+                   (req.headers['content-type']?.toLowerCase().includes('multipart/form-data') && req.files && req.files.length > 0);
 
     if (isAjax) {
       if (uploadedImages.length > 0) {

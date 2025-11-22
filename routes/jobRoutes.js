@@ -61,10 +61,11 @@ router.post('/:id/invoice/send', requireAuth, jobController.sendInvoice)
 // Image routes (must be before /:id routes)
 router.post('/:id/images/upload', requireAuth, (req, res, next) => {
   upload.array('images', 20)(req, res, (err) => {
-    // Check if this is an AJAX request
+    // Check if this is an AJAX request (more reliable detection for mobile)
     const isAjax = req.xhr ||
-                   req.headers['x-requested-with'] === 'XMLHttpRequest' ||
-                   req.headers.accept?.indexOf('json') > -1;
+                   req.headers['x-requested-with']?.toLowerCase() === 'xmlhttprequest' ||
+                   req.headers.accept?.toLowerCase().indexOf('json') > -1 ||
+                   req.headers['content-type']?.toLowerCase().includes('multipart/form-data');
 
     if (err) {
       if (err instanceof multer.MulterError) {
