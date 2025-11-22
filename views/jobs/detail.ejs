@@ -298,22 +298,31 @@
       <% if (activities && activities.length > 0) { %>
         <div class="card">
           <div class="card-body">
-            <h5 class="card-title">Activity History</h5>
-            <div class="list-group list-group-flush">
-              <% activities.forEach(activity => { %>
-                <div class="list-group-item">
-                  <div class="d-flex justify-content-between">
-                    <div>
-                      <strong><%= activity.user ? activity.user.name : 'Unknown' %></strong>
-                      <div class="small text-muted"><%= activity.action %></div>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h5 class="card-title mb-0">Activity History</h5>
+              <% if (activities.length > 3) { %>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleActivityHistory">
+                  <i class="bi bi-chevron-down"></i> View All (<%= activities.length %>)
+                </button>
+              <% } %>
+            </div>
+            <div class="activity-history-container" id="activityHistoryContainer">
+              <div class="list-group list-group-flush">
+                <% activities.forEach((activity, index) => { %>
+                  <div class="list-group-item activity-item <%= index >= 3 ? 'activity-hidden' : '' %>" data-index="<%= index %>">
+                    <div class="d-flex justify-content-between">
+                      <div>
+                        <strong><%= activity.user ? activity.user.name : 'Unknown' %></strong>
+                        <div class="small text-muted"><%= activity.action %></div>
+                      </div>
+                      <small class="text-muted"><%= new Date(activity.createdAt).toLocaleString() %></small>
                     </div>
-                    <small class="text-muted"><%= new Date(activity.createdAt).toLocaleString() %></small>
+                    <% if (activity.details) { %>
+                      <div class="small text-muted mt-1"><%= activity.details %></div>
+                    <% } %>
                   </div>
-                  <% if (activity.details) { %>
-                    <div class="small text-muted mt-1"><%= activity.details %></div>
-                  <% } %>
-                </div>
-              <% }) %>
+                <% }) %>
+              </div>
             </div>
           </div>
         </div>
@@ -579,6 +588,81 @@
   @keyframes spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
+  }
+  
+  /* Activity History Scrollable Container */
+  .activity-history-container {
+    max-height: 300px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+    position: relative;
+  }
+  
+  /* Ensure container is always scrollable when content exceeds max-height */
+  .activity-history-container .list-group {
+    min-height: 0;
+  }
+  
+  .activity-history-container::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .activity-history-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+  
+  .activity-history-container::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+  }
+  
+  .activity-history-container::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.5);
+  }
+  
+  .activity-history-container .list-group-item {
+    border-left: none;
+    border-right: none;
+    padding: 0.75rem 0;
+    flex-shrink: 0;
+  }
+  
+  .activity-history-container .list-group-item:first-child {
+    border-top: none;
+  }
+  
+  .activity-history-container .list-group-item:last-child {
+    border-bottom: none;
+  }
+  
+  /* Mobile: smaller max-height for better mobile experience */
+  @media (max-width: 767.98px) {
+    .activity-history-container {
+      max-height: 250px;
+    }
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .activity-item {
+    transition: opacity 0.3s ease-in, display 0.3s ease-in;
+  }
+  
+  .activity-item.activity-hidden {
+    display: none !important;
   }
 </style>
 
@@ -1749,6 +1833,70 @@
           }
         });
       }
+  });
+
+  // Activity History Toggle
+  document.addEventListener('DOMContentLoaded', function() {
+    const toggleBtn = document.getElementById('toggleActivityHistory');
+    const activityContainer = document.getElementById('activityHistoryContainer');
+    
+    if (toggleBtn && activityContainer) {
+      let isExpanded = false;
+      const allItems = Array.from(activityContainer.querySelectorAll('.activity-item'));
+      
+      console.log('Activity history items found:', allItems.length);
+      
+      // Ensure container is scrollable
+      if (allItems.length > 0) {
+        activityContainer.style.overflowY = 'auto';
+      }
+      
+      toggleBtn.addEventListener('click', function() {
+        isExpanded = !isExpanded;
+        
+        console.log('Toggle clicked, isExpanded:', isExpanded, 'Total items:', allItems.length);
+        
+        if (isExpanded) {
+          // Show all items by removing the hidden class
+          allItems.forEach((item, index) => {
+            const itemIndex = parseInt(item.getAttribute('data-index')) || index;
+            
+            if (itemIndex >= 3) {
+              // Remove the hidden class to show the item
+              item.classList.remove('activity-hidden');
+              
+              // Fade in animation
+              item.style.opacity = '0';
+              requestAnimationFrame(() => {
+                item.style.transition = 'opacity 0.3s ease-in';
+                item.style.opacity = '1';
+              });
+            }
+          });
+          toggleBtn.innerHTML = '<i class="bi bi-chevron-up"></i> Show Less';
+          toggleBtn.classList.remove('btn-outline-secondary');
+          toggleBtn.classList.add('btn-outline-primary');
+        } else {
+          // Hide items beyond the first 3 by adding the hidden class
+          allItems.forEach((item, index) => {
+            const itemIndex = parseInt(item.getAttribute('data-index')) || index;
+            if (itemIndex >= 3) {
+              item.style.transition = 'opacity 0.2s ease-out';
+              item.style.opacity = '0';
+              setTimeout(() => {
+                item.classList.add('activity-hidden');
+              }, 200);
+            }
+          });
+          toggleBtn.innerHTML = '<i class="bi bi-chevron-down"></i> View All (' + allItems.length + ')';
+          toggleBtn.classList.remove('btn-outline-primary');
+          toggleBtn.classList.add('btn-outline-secondary');
+          
+          // Scroll to top when collapsed
+          activityContainer.scrollTop = 0;
+        }
+      });
+    }
   });
 
   // Job deletion with AJAX
