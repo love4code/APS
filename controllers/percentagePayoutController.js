@@ -240,7 +240,7 @@ exports.calculate = async (req, res) => {
         if (entry.flatRate && entry.flatRate > 0) {
           return total + entry.flatRate
         }
-        
+
         if (!entry.employee || !entry.employee.hourlyRate) return total
 
         const regularHours =
@@ -294,32 +294,35 @@ exports.calculate = async (req, res) => {
     // Otherwise, if it came from form hourly payouts, we need to add flat rate
     // The safest approach: always recalculate from time entries to ensure accuracy
     let finalLaborCosts = calculatedLaborCosts
-    
+
     // If we calculated from form hourly payouts (not from time entries), add flat rate
     // We know it's from form if calculatedLaborCosts > 0 and we didn't use the time entries fallback
     // Actually, let's always ensure flat rate is included by checking time entries
-    const laborCostsFromTimeEntries = timeEntriesForDay.reduce((total, entry) => {
-      // If flat rate is set, use flat rate instead of calculating hourly pay
-      if (entry.flatRate && entry.flatRate > 0) {
-        return total + entry.flatRate
-      }
-      
-      if (!entry.employee || !entry.employee.hourlyRate) return total
+    const laborCostsFromTimeEntries = timeEntriesForDay.reduce(
+      (total, entry) => {
+        // If flat rate is set, use flat rate instead of calculating hourly pay
+        if (entry.flatRate && entry.flatRate > 0) {
+          return total + entry.flatRate
+        }
 
-      const regularHours =
-        (entry.hoursWorked || 0) - (entry.overtimeHours || 0)
-      const overtimeHours = entry.overtimeHours || 0
-      const hourlyRate = entry.employee.hourlyRate
-      const overtimeMultiplier =
-        entry.employee.defaultOvertimeMultiplier || 1.5
+        if (!entry.employee || !entry.employee.hourlyRate) return total
 
-      return (
-        total +
-        regularHours * hourlyRate +
-        overtimeHours * hourlyRate * overtimeMultiplier
-      )
-    }, 0)
-    
+        const regularHours =
+          (entry.hoursWorked || 0) - (entry.overtimeHours || 0)
+        const overtimeHours = entry.overtimeHours || 0
+        const hourlyRate = entry.employee.hourlyRate
+        const overtimeMultiplier =
+          entry.employee.defaultOvertimeMultiplier || 1.5
+
+        return (
+          total +
+          regularHours * hourlyRate +
+          overtimeHours * hourlyRate * overtimeMultiplier
+        )
+      },
+      0
+    )
+
     // Use the time entries calculation if it's more accurate (includes flat rate)
     // Or if calculatedLaborCosts is 0, use time entries calculation
     if (laborCostsFromTimeEntries > 0) {
@@ -335,7 +338,7 @@ exports.calculate = async (req, res) => {
         `[Payout Calculate] Adding flat rate to form labor costs: $${calculatedLaborCosts} + $${totalFlatRate} = $${finalLaborCosts}`
       )
     }
-    
+
     // Calculate total costs (job costs + materials + labor costs + gas money)
     // Note: labor costs already includes flat rate
     const totalCosts =
@@ -364,7 +367,9 @@ exports.calculate = async (req, res) => {
 
       // Check for flat rate from time entries for this employee on this day
       const employeeTimeEntries = timeEntriesForDay.filter(
-        entry => entry.employee && entry.employee.toString() === employee._id.toString()
+        entry =>
+          entry.employee &&
+          entry.employee.toString() === employee._id.toString()
       )
       flatRate = employeeTimeEntries.reduce(
         (sum, entry) => sum + (entry.flatRate || 0),

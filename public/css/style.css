@@ -380,17 +380,17 @@ main {
     padding-left: 0 !important;
     padding-right: 0 !important;
   }
-  
+
   .modal-backdrop {
     z-index: 1050 !important;
   }
-  
+
   .modal-dialog {
     z-index: 1056 !important;
     margin: 0.5rem !important;
     max-width: calc(100% - 1rem) !important;
   }
-  
+
   .modal-content {
     z-index: 1057 !important;
     pointer-events: auto !important;
@@ -398,14 +398,14 @@ main {
     max-height: calc(100vh - 1rem) !important;
     overflow-y: auto !important;
   }
-  
+
   .modal-body {
     pointer-events: auto !important;
     -webkit-overflow-scrolling: touch;
     max-height: calc(100vh - 200px) !important;
     overflow-y: auto !important;
   }
-  
+
   /* Ensure all inputs are touch-friendly on mobile */
   .modal input,
   .modal select,
@@ -417,20 +417,20 @@ main {
     touch-action: manipulation;
     -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
   }
-  
+
   .modal button {
     min-height: 44px !important; /* Better touch target */
     touch-action: manipulation;
     -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
   }
-  
+
   /* Employee dropdown on mobile */
   .modal .employee-dropdown {
     z-index: 1060 !important;
     max-height: 200px !important;
     -webkit-overflow-scrolling: touch;
   }
-  
+
   .modal .employee-option {
     min-height: 44px !important; /* Better touch target */
     padding: 0.75rem !important;

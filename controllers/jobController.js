@@ -219,11 +219,7 @@ exports.create = async (req, res) => {
       parsedInstallDate = new Date(Date.UTC(year, month - 1, day))
     }
 
-    if (
-      orderDate &&
-      typeof orderDate === 'string' &&
-      orderDate.trim() !== ''
-    ) {
+    if (orderDate && typeof orderDate === 'string' && orderDate.trim() !== '') {
       const [year, month, day] = orderDate.split('-').map(Number)
       parsedOrderDate = new Date(Date.UTC(year, month - 1, day))
     }
@@ -327,77 +323,50 @@ exports.detail = async (req, res) => {
     // Use job._id directly (MongoDB will handle ObjectId conversion)
     const jobIdString = job._id.toString()
     const jobIdObjectId = job._id
-    
+
     // Query for images - MongoDB automatically handles ObjectId references
+    // Check which images have database-stored image data
     const allImages = await JobImage.find({ job: jobIdObjectId })
       .populate('uploadedBy', 'name')
       .sort({ uploadedAt: -1 })
-      .lean()
 
-    // Verify files actually exist on disk and filter out missing ones
-    const fs = require('fs')
-    const path = require('path')
-    const publicDir = path.join(__dirname, '..', 'public')
-    
+    // Filter out images that don't have database-stored image data
+    // These are old images uploaded before we switched to database storage
     const images = []
-    const missingImages = []
-    
-    if (allImages && allImages.length > 0) {
-      for (const img of allImages) {
-        // Normalize paths - ensure they're relative paths from public directory
-        let thumbnailPath = img.thumbnailPath || ''
-        let mediumPath = img.mediumPath || ''
-        
-        // Remove leading slash if present (paths should be relative to public dir)
-        thumbnailPath = thumbnailPath.replace(/^\/+/, '')
-        mediumPath = mediumPath.replace(/^\/+/, '')
-        
-        const thumbnailFullPath = path.join(publicDir, thumbnailPath)
-        const mediumFullPath = path.join(publicDir, mediumPath)
-        
-        // Check if at least thumbnail or medium exists
-        const thumbnailExists = fs.existsSync(thumbnailFullPath)
-        const mediumExists = fs.existsSync(mediumFullPath)
-        
-        if (thumbnailExists || mediumExists) {
-          // Ensure paths are stored correctly for rendering
-          img.thumbnailPath = thumbnailPath
-          img.mediumPath = mediumPath
-          img.largePath = (img.largePath || '').replace(/^\/+/, '')
-          images.push(img)
-        } else {
-          missingImages.push(img)
-          console.warn(`[Job Detail] Image file missing for ${img._id}:`, {
-            imageId: img._id,
-            thumbnailPath: img.thumbnailPath,
-            thumbnailFullPath: thumbnailFullPath,
-            thumbnailExists: thumbnailExists,
-            mediumPath: img.mediumPath,
-            mediumFullPath: mediumFullPath,
-            mediumExists: mediumExists,
-            publicDir: publicDir
-          })
-        }
-      }
-      
-      if (missingImages.length > 0) {
-        console.warn(`[Job Detail] ${missingImages.length} image(s) have missing files for job ${jobIdString}`)
-        // Log full details for debugging
-        missingImages.forEach(img => {
-          console.warn(`[Job Detail] Missing image details:`, {
-            _id: img._id,
-            job: img.job,
-            thumbnailPath: img.thumbnailPath,
-            mediumPath: img.mediumPath,
-            largePath: img.largePath
-          })
-        })
+    const imagesWithoutData = []
+
+    for (const img of allImages) {
+      // Check if image has database-stored data (new format)
+      const hasImageData = img.thumbnailData || img.mediumData || img.largeData
+
+      if (hasImageData) {
+        // Exclude image data from the object for performance (we don't need it in the view)
+        const imageObj = img.toObject()
+        delete imageObj.thumbnailData
+        delete imageObj.mediumData
+        delete imageObj.largeData
+        images.push(imageObj)
+      } else {
+        // Old image without database-stored data - skip it
+        imagesWithoutData.push(img._id)
+        console.warn(
+          `[Job Detail] Skipping image ${img._id} - no database-stored image data (old format)`
+        )
       }
     }
-    
+
     // Debug: Log image count
-    if (allImages && allImages.length > 0) {
-      console.log(`[Job Detail] Found ${allImages.length} image record(s) in database for job ${jobIdString}, ${images.length} have valid files`)
+    if (allImages.length > 0) {
+      console.log(
+        `[Job Detail] Found ${allImages.length} image record(s) in database for job ${jobIdString}, ${images.length} have database-stored data, ${imagesWithoutData.length} are old format (skipped)`
+      )
+    }
+
+    // If there are old images, optionally delete them or show a message
+    if (imagesWithoutData.length > 0) {
+      console.warn(
+        `[Job Detail] ${imagesWithoutData.length} old image(s) found without database-stored data. These images cannot be displayed.`
+      )
     }
 
     res.render('jobs/detail', {
@@ -405,6 +374,7 @@ exports.detail = async (req, res) => {
       job,
       activities,
       images,
+      missingImagesCount: 0,
       user: req.user
     })
   } catch (error) {
@@ -534,11 +504,7 @@ exports.update = async (req, res) => {
       parsedInstallDate = new Date(Date.UTC(year, month - 1, day))
     }
 
-    if (
-      orderDate &&
-      typeof orderDate === 'string' &&
-      orderDate.trim() !== ''
-    ) {
+    if (orderDate && typeof orderDate === 'string' && orderDate.trim() !== '') {
       const [year, month, day] = orderDate.split('-').map(Number)
       parsedOrderDate = new Date(Date.UTC(year, month - 1, day))
     }
@@ -630,6 +596,13 @@ exports.delete = async (req, res) => {
     const job = await Job.findById(req.params.id)
 
     if (!job) {
+      // Check if this is an AJAX request
+      const isAjax =
+        req.xhr ||
+        req.headers['x-requested-with']?.toLowerCase() === 'xmlhttprequest'
+      if (isAjax) {
+        return res.status(404).json({ success: false, error: 'Job not found' })
+      }
       req.flash('error', 'Job not found')
       return res.redirect('/jobs')
     }
@@ -637,11 +610,26 @@ exports.delete = async (req, res) => {
     // Store customer ID for redirect
     const customerId = job.customer
 
+    // Delete associated images
+    await JobImage.deleteMany({ job: job._id })
+
     // Delete associated activity logs
     await ActivityLog.deleteMany({ job: job._id })
 
     // Delete the job
     await Job.findByIdAndDelete(req.params.id)
+
+    // Check if this is an AJAX request
+    const isAjax =
+      req.xhr ||
+      req.headers['x-requested-with']?.toLowerCase() === 'xmlhttprequest'
+
+    if (isAjax) {
+      return res.status(200).json({
+        success: true,
+        message: 'Job deleted successfully'
+      })
+    }
 
     req.flash('success', 'Job deleted successfully')
 
@@ -653,6 +641,19 @@ exports.delete = async (req, res) => {
     }
   } catch (error) {
     console.error('Delete job error:', error)
+
+    // Check if this is an AJAX request
+    const isAjax =
+      req.xhr ||
+      req.headers['x-requested-with']?.toLowerCase() === 'xmlhttprequest'
+
+    if (isAjax) {
+      return res.status(500).json({
+        success: false,
+        error: error.message || 'Error deleting job'
+      })
+    }
+
     req.flash('error', 'Error deleting job')
     if (req.query.customerId) {
       res.redirect(`/customers/${req.query.customerId}`)
@@ -1158,7 +1159,7 @@ exports.sendInvoice = async (req, res) => {
 exports.uploadImage = async (req, res) => {
   try {
     const files = req.files || []
-    
+
     if (!files || files.length === 0) {
       req.flash('error', 'No image files uploaded')
       return res.redirect(`/jobs/${req.params.id}`)
@@ -1184,48 +1185,67 @@ exports.uploadImage = async (req, res) => {
           continue
         }
 
-        // Process image and create multiple sizes
-        const processedImages = await imageService.processJobImage(
-          file.path,
-          req.params.id,
-          file.originalname
-        )
+        // Process image and create multiple sizes (returns buffers for database storage)
+        let processedImages
+        try {
+          processedImages = await imageService.processJobImage(
+            file.path,
+            req.params.id,
+            file.originalname
+          )
+          console.log(`[Upload Image] Processed image ${file.originalname}:`, {
+            hasThumbnail: !!processedImages.thumbnailData,
+            hasMedium: !!processedImages.mediumData,
+            hasLarge: !!processedImages.largeData,
+            thumbnailSize: processedImages.thumbnailSize,
+            mediumSize: processedImages.mediumSize,
+            largeSize: processedImages.largeSize
+          })
+        } catch (processError) {
+          console.error(
+            `[Upload Image] Error processing image ${file.originalname}:`,
+            processError
+          )
+          console.error(`[Upload Image] Error stack:`, processError.stack)
+          errors.push(
+            `${file.originalname}: ${
+              processError.message || 'Processing failed'
+            }`
+          )
+          continue
+        }
 
         // Verify processed images were created
-        if (!processedImages.thumbnailPath || !processedImages.mediumPath || !processedImages.largePath) {
-          console.error(`Failed to process image: ${file.originalname}`, processedImages)
-          errors.push(file.originalname)
+        if (
+          !processedImages.thumbnailData ||
+          !processedImages.mediumData ||
+          !processedImages.largeData
+        ) {
+          console.error(
+            `[Upload Image] Failed to process image: ${file.originalname}`,
+            {
+              thumbnailData: !!processedImages.thumbnailData,
+              mediumData: !!processedImages.mediumData,
+              largeData: !!processedImages.largeData,
+              processedImages: Object.keys(processedImages)
+            }
+          )
+          errors.push(`${file.originalname}: Missing image data`)
           continue
         }
 
-        // Verify files actually exist on disk before saving to database
-        const path = require('path')
-        const publicDir = path.join(__dirname, '..', 'public')
-        const thumbnailFullPath = path.join(publicDir, processedImages.thumbnailPath)
-        const mediumFullPath = path.join(publicDir, processedImages.mediumPath)
-        const largeFullPath = path.join(publicDir, processedImages.largePath)
-
-        if (!fs.existsSync(thumbnailFullPath) || !fs.existsSync(mediumFullPath) || !fs.existsSync(largeFullPath)) {
-          console.error(`Processed image files do not exist for: ${file.originalname}`)
-          console.error(`Thumbnail: ${thumbnailFullPath} - exists: ${fs.existsSync(thumbnailFullPath)}`)
-          console.error(`Medium: ${mediumFullPath} - exists: ${fs.existsSync(mediumFullPath)}`)
-          console.error(`Large: ${largeFullPath} - exists: ${fs.existsSync(largeFullPath)}`)
-          errors.push(file.originalname)
-          continue
-        }
-
-        // Save image metadata to database
+        // Save image data to database (images stored as Buffer in database)
         // Ensure job ID is an ObjectId (not string)
-        const jobIdObjectId = mongoose.Types.ObjectId.isValid(req.params.id) 
+        const jobIdObjectId = mongoose.Types.ObjectId.isValid(req.params.id)
           ? new mongoose.Types.ObjectId(req.params.id)
           : job._id
-        
+
         const jobImage = new JobImage({
           job: jobIdObjectId, // Use ObjectId to ensure proper reference
           originalFilename: file.originalname,
-          thumbnailPath: processedImages.thumbnailPath,
-          mediumPath: processedImages.mediumPath,
-          largePath: processedImages.largePath,
+          thumbnailData: processedImages.thumbnailData,
+          mediumData: processedImages.mediumData,
+          largeData: processedImages.largeData,
           originalSize: processedImages.originalSize,
           thumbnailSize: processedImages.thumbnailSize,
           mediumSize: processedImages.mediumSize,
@@ -1234,16 +1254,20 @@ exports.uploadImage = async (req, res) => {
         })
 
         await jobImage.save()
-        
+
         // Verify the image was saved correctly
         const savedImage = await JobImage.findById(jobImage._id)
         if (!savedImage) {
-          console.error(`[Upload Image] Failed to save image ${file.originalname} to database`)
+          console.error(
+            `[Upload Image] Failed to save image ${file.originalname} to database`
+          )
           errors.push(file.originalname)
           continue
         }
-        
-        console.log(`[Upload Image] Successfully saved image ${file.originalname} with ID ${savedImage._id} for job ${jobIdObjectId}`)
+
+        console.log(
+          `[Upload Image] Successfully saved image ${file.originalname} with ID ${savedImage._id} for job ${jobIdObjectId}`
+        )
         uploadedImages.push(file.originalname)
 
         // Log activity for each image
@@ -1262,9 +1286,15 @@ exports.uploadImage = async (req, res) => {
     // Set success/error messages
     if (uploadedImages.length > 0) {
       if (uploadedImages.length === 1) {
-        req.flash('success', `Image "${uploadedImages[0]}" uploaded successfully`)
+        req.flash(
+          'success',
+          `Image "${uploadedImages[0]}" uploaded successfully`
+        )
       } else {
-        req.flash('success', `${uploadedImages.length} images uploaded successfully`)
+        req.flash(
+          'success',
+          `${uploadedImages.length} images uploaded successfully`
+        )
       }
     }
 
@@ -1277,27 +1307,34 @@ exports.uploadImage = async (req, res) => {
     }
 
     // Check if this is an AJAX request (more reliable detection for mobile)
-    const isAjax = req.xhr ||
-                   req.headers['x-requested-with']?.toLowerCase() === 'xmlhttprequest' ||
-                   req.headers.accept?.toLowerCase().indexOf('json') > -1 ||
-                   (req.headers['content-type']?.toLowerCase().includes('multipart/form-data') && req.files && req.files.length > 0);
+    const isAjax =
+      req.xhr ||
+      req.headers['x-requested-with']?.toLowerCase() === 'xmlhttprequest' ||
+      req.headers.accept?.toLowerCase().indexOf('json') > -1 ||
+      (req.headers['content-type']
+        ?.toLowerCase()
+        .includes('multipart/form-data') &&
+        req.files &&
+        req.files.length > 0)
 
     if (isAjax) {
       if (uploadedImages.length > 0) {
         return res.status(200).json({
           success: true,
-          message: uploadedImages.length === 1 
-            ? `Image "${uploadedImages[0]}" uploaded successfully`
-            : `${uploadedImages.length} images uploaded successfully`,
+          message:
+            uploadedImages.length === 1
+              ? `Image "${uploadedImages[0]}" uploaded successfully`
+              : `${uploadedImages.length} images uploaded successfully`,
           uploadedCount: uploadedImages.length,
           errorCount: errors.length
         })
       } else {
         return res.status(400).json({
           success: false,
-          error: errors.length > 0 
-            ? `Failed to upload ${errors.length} image(s)`
-            : 'No images were uploaded'
+          error:
+            errors.length > 0
+              ? `Failed to upload ${errors.length} image(s)`
+              : 'No images were uploaded'
         })
       }
     }
@@ -1305,10 +1342,11 @@ exports.uploadImage = async (req, res) => {
     res.redirect(`/jobs/${req.params.id}`)
   } catch (error) {
     console.error('Upload images error:', error)
-    
-    const isAjax = req.xhr ||
-                   req.headers['x-requested-with'] === 'XMLHttpRequest' ||
-                   req.headers.accept?.indexOf('json') > -1;
+
+    const isAjax =
+      req.xhr ||
+      req.headers['x-requested-with'] === 'XMLHttpRequest' ||
+      req.headers.accept?.indexOf('json') > -1
 
     if (isAjax) {
       return res.status(500).json({
@@ -1322,21 +1360,100 @@ exports.uploadImage = async (req, res) => {
   }
 }
 
+// Serve image from database
+exports.serveImage = async (req, res) => {
+  try {
+    const { imageId, size } = req.params
+    const validSizes = ['thumbnail', 'medium', 'large']
+
+    if (!validSizes.includes(size)) {
+      console.error(`[Serve Image] Invalid size: ${size}`)
+      return res.status(400).send('Invalid image size')
+    }
+
+    const jobImage = await JobImage.findById(imageId)
+    if (!jobImage) {
+      console.error(`[Serve Image] Image not found: ${imageId}`)
+      return res.status(404).send('Image not found')
+    }
+
+    // Get the appropriate image buffer
+    let imageData
+    switch (size) {
+      case 'thumbnail':
+        imageData = jobImage.thumbnailData
+        break
+      case 'medium':
+        imageData = jobImage.mediumData
+        break
+      case 'large':
+        imageData = jobImage.largeData
+        break
+    }
+
+    if (!imageData) {
+      console.error(
+        `[Serve Image] Image data not found for ${imageId}, size: ${size}`
+      )
+      console.error(`[Serve Image] Image document fields:`, {
+        hasThumbnailData: !!jobImage.thumbnailData,
+        hasMediumData: !!jobImage.mediumData,
+        hasLargeData: !!jobImage.largeData,
+        thumbnailPath: jobImage.thumbnailPath,
+        mediumPath: jobImage.mediumPath,
+        largePath: jobImage.largePath
+      })
+      return res
+        .status(404)
+        .send(
+          'Image data not found - this image may have been uploaded before database storage was implemented'
+        )
+    }
+
+    if (!Buffer.isBuffer(imageData)) {
+      console.error(
+        `[Serve Image] Image data is not a Buffer for ${imageId}, size: ${size}, type: ${typeof imageData}`
+      )
+      return res.status(500).send('Invalid image data format')
+    }
+
+    // Set appropriate headers
+    res.set('Content-Type', 'image/jpeg')
+    res.set('Cache-Control', 'public, max-age=31536000') // Cache for 1 year
+    res.set('Content-Length', imageData.length)
+
+    // Send the image buffer
+    res.send(imageData)
+  } catch (error) {
+    console.error('[Serve Image] Error:', error)
+    console.error('[Serve Image] Stack:', error.stack)
+    res.status(500).send('Error serving image')
+  }
+}
+
 // Delete image
 exports.deleteImage = async (req, res) => {
   try {
-    const jobImage = await JobImage.findById(req.params.imageId)
-      .populate('job')
+    const jobImage = await JobImage.findById(req.params.imageId).populate('job')
 
     if (!jobImage) {
+      // Check if this is an AJAX request
+      const isAjax =
+        req.xhr ||
+        req.headers['x-requested-with']?.toLowerCase() === 'xmlhttprequest'
+      if (isAjax) {
+        return res
+          .status(404)
+          .json({ success: false, error: 'Image not found' })
+      }
       req.flash('error', 'Image not found')
       return res.redirect('/jobs')
     }
 
     const jobId = jobImage.job._id.toString()
 
-    // Delete files from filesystem
-    imageService.deleteJobImageFiles(jobImage)
+    // Images are stored in database, no files to delete
+    // imageService.deleteJobImageFiles(jobImage) - no longer needed
 
     // Delete from database
     await JobImage.findByIdAndDelete(req.params.imageId)
@@ -1349,6 +1466,18 @@ exports.deleteImage = async (req, res) => {
       details: `Deleted image: ${jobImage.originalFilename}`
     })
 
+    // Check if this is an AJAX request
+    const isAjax =
+      req.xhr ||
+      req.headers['x-requested-with']?.toLowerCase() === 'xmlhttprequest'
+
+    if (isAjax) {
+      return res.status(200).json({
+        success: true,
+        message: 'Image deleted successfully'
+      })
+    }
+
     req.flash('success', 'Image deleted successfully')
 
     // Check if we're coming from library page
@@ -1359,6 +1488,19 @@ exports.deleteImage = async (req, res) => {
     res.redirect(`/jobs/${jobId}`)
   } catch (error) {
     console.error('Delete image error:', error)
+
+    // Check if this is an AJAX request
+    const isAjax =
+      req.xhr ||
+      req.headers['x-requested-with']?.toLowerCase() === 'xmlhttprequest'
+
+    if (isAjax) {
+      return res.status(500).json({
+        success: false,
+        error: error.message || 'Error deleting image'
+      })
+    }
+
     req.flash('error', error.message || 'Error deleting image')
     res.redirect('/jobs')
   }
@@ -1376,9 +1518,11 @@ exports.imageLibrary = async (req, res) => {
       return res.redirect('/jobs')
     }
 
+    // Query images but exclude image data for performance
     const images = await JobImage.find({ job: job._id })
       .populate('uploadedBy', 'name')
       .sort({ uploadedAt: -1 })
+      .select('-thumbnailData -mediumData -largeData') // Exclude image data from query
 
     res.render('jobs/image-library', {
       title: `Image Library - Job #${job._id.toString().slice(-6)}`,

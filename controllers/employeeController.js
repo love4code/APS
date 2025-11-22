@@ -732,7 +732,9 @@ exports.detail = async (req, res) => {
       .lean()
 
     // Check employee pay type to determine if daily payouts should be shown
-    const payTypes = Array.isArray(employee.payType) ? employee.payType : [employee.payType]
+    const payTypes = Array.isArray(employee.payType)
+      ? employee.payType
+      : [employee.payType]
     const hasPercentage = payTypes.includes('percentage')
     const hasHourly = payTypes.includes('hourly')
     const isHourlyOnly = hasHourly && !hasPercentage
@@ -798,9 +800,7 @@ exports.detail = async (req, res) => {
       })
 
       // Sort weekly payouts by date (payout date, not submission date)
-      weeklyPayoutDetails.sort(
-        (a, b) => new Date(a.date) - new Date(b.date)
-      )
+      weeklyPayoutDetails.sort((a, b) => new Date(a.date) - new Date(b.date))
     }
 
     // Get payroll records for the week
@@ -842,11 +842,11 @@ exports.detail = async (req, res) => {
         ) {
           const payPeriodStart = new Date(record.payPeriod.startDate)
           const payPeriodEnd = new Date(record.payPeriod.endDate)
-          
+
           // Normalize dates for comparison
           payPeriodStart.setUTCHours(0, 0, 0, 0)
           payPeriodEnd.setUTCHours(23, 59, 59, 999)
-          
+
           // Check if pay period overlaps with selected week
           // Overlap occurs if: payPeriodStart <= weekEnd AND payPeriodEnd >= weekStart
           if (payPeriodStart <= weekEnd && payPeriodEnd >= weekStart) {
@@ -859,12 +859,16 @@ exports.detail = async (req, res) => {
 
       // Sort payroll records by pay period start date (or createdAt if no pay period)
       weeklyPayroll.sort((a, b) => {
-        const dateA = a.payPeriod?.startDate 
-          ? new Date(a.payPeriod.startDate) 
-          : (a.createdAt ? new Date(a.createdAt) : new Date(0))
-        const dateB = b.payPeriod?.startDate 
-          ? new Date(b.payPeriod.startDate) 
-          : (b.createdAt ? new Date(b.createdAt) : new Date(0))
+        const dateA = a.payPeriod?.startDate
+          ? new Date(a.payPeriod.startDate)
+          : a.createdAt
+          ? new Date(a.createdAt)
+          : new Date(0)
+        const dateB = b.payPeriod?.startDate
+          ? new Date(b.payPeriod.startDate)
+          : b.createdAt
+          ? new Date(b.createdAt)
+          : new Date(0)
         return dateA - dateB
       })
 
@@ -914,7 +918,8 @@ exports.detail = async (req, res) => {
             weeklyTimeEntriesTotal += entry.flatRate
           } else if (hourlyRate > 0) {
             // Calculate hourly pay only if no flat rate
-            const regularHours = (entry.hoursWorked || 0) - (entry.overtimeHours || 0)
+            const regularHours =
+              (entry.hoursWorked || 0) - (entry.overtimeHours || 0)
             const overtimeHours = entry.overtimeHours || 0
             const regularPay = regularHours * hourlyRate
             const overtimePay = overtimeHours * hourlyRate * overtimeMultiplier
@@ -942,13 +947,13 @@ exports.detail = async (req, res) => {
     // Get payments for this employee with date filtering
     const paymentDateFrom = req.query.paymentDateFrom || ''
     const paymentDateTo = req.query.paymentDateTo || ''
-    
+
     const paymentQuery = {
       recipient: employee._id,
       recipientType: 'employee',
       recipientModel: 'Employee'
     }
-    
+
     if (paymentDateFrom || paymentDateTo) {
       paymentQuery.datePaid = {}
       if (paymentDateFrom) {
@@ -962,14 +967,17 @@ exports.detail = async (req, res) => {
         paymentQuery.datePaid.$lte = toDate
       }
     }
-    
+
     const employeePayments = await Payment.find(paymentQuery)
       .populate('job', 'customer totalPrice')
       .populate('job.customer', 'name')
       .populate('createdBy', 'name')
       .sort({ datePaid: -1 })
-    
-    const totalPaymentsAmount = employeePayments.reduce((sum, p) => sum + (p.amount || 0), 0)
+
+    const totalPaymentsAmount = employeePayments.reduce(
+      (sum, p) => sum + (p.amount || 0),
+      0
+    )
 
     res.render('employees/detail', {
       title: `${employee.firstName} ${employee.lastName}`,

@@ -112,8 +112,10 @@ router.post('/:id/images/upload', requireAuth, (req, res, next) => {
     next()
   })
 }, jobController.uploadImage)
-router.get('/:id/images', requireAuth, jobController.imageLibrary)
+// Image serving route - MUST be before /:id/images to avoid route conflicts
+router.get('/:id/images/:imageId/:size', requireAuth, jobController.serveImage)
 router.post('/:id/images/:imageId/delete', requireAuth, jobController.deleteImage)
+router.get('/:id/images', requireAuth, jobController.imageLibrary)
 
 // Job detail and edit routes
 router.get('/:id', requireAuth, jobController.detail)

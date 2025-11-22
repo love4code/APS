@@ -48,19 +48,13 @@
             <% images.forEach(image => { %>
             <tr>
               <% 
-                // Normalize paths - ensure they start with / for proper URL construction
-                function normalizePath(path) {
-                  if (!path) return '';
-                  let p = String(path).trim();
-                  p = p.replace(/^\/+/, '');
-                  return '/' + p;
-                }
-                const thumbPath = normalizePath(image.thumbnailPath || '');
-                const mediumPath = normalizePath(image.mediumPath || '');
-                const largePath = normalizePath(image.largePath || '');
+                // Images are served from database via API route
+                const thumbUrl = `/jobs/${job._id}/images/${image._id}/thumbnail`;
+                const mediumUrl = `/jobs/${job._id}/images/${image._id}/medium`;
+                const largeUrl = `/jobs/${job._id}/images/${image._id}/large`;
               %>
               <td>
-                <img src="<%= mediumPath %>" alt="<%= image.originalFilename %>" style="width: 80px; height: 80px; object-fit: cover; border-radius: 4px; image-rendering: -webkit-optimize-contrast;" onerror="console.error('Image failed to load:', this.src); this.style.backgroundColor='#f0f0f0'; this.alt='Image not found';">
+                <img src="<%= mediumUrl %>" alt="<%= image.originalFilename %>" style="width: 80px; height: 80px; object-fit: cover; border-radius: 4px; image-rendering: -webkit-optimize-contrast;" onerror="console.error('Image failed to load:', this.src); this.style.backgroundColor='#f0f0f0'; this.alt='Image not found';">
               </td>
               <td>
                 <strong><%= image.originalFilename %></strong>
@@ -82,13 +76,13 @@
               </td>
               <td>
                 <div class="btn-group-vertical btn-group-sm" role="group">
-                  <a href="<%= thumbPath %>" target="_blank" class="btn btn-outline-secondary btn-sm">
+                  <a href="<%= thumbUrl %>" target="_blank" class="btn btn-outline-secondary btn-sm">
                     <i class="bi bi-image"></i> Thumbnail (200x200)
                   </a>
-                  <a href="<%= mediumPath %>" target="_blank" class="btn btn-outline-primary btn-sm">
+                  <a href="<%= mediumUrl %>" target="_blank" class="btn btn-outline-primary btn-sm">
                     <i class="bi bi-image"></i> Medium (800x800)
                   </a>
-                  <a href="<%= largePath %>" target="_blank" class="btn btn-outline-info btn-sm">
+                  <a href="<%= largeUrl %>" target="_blank" class="btn btn-outline-info btn-sm">
                     <i class="bi bi-image"></i> Large (1920x1920)
                   </a>
                 </div>
@@ -117,18 +111,13 @@
           <div class="card">
             <% 
               // Normalize paths - ensure they start with / for proper URL construction
-              function normalizePath(path) {
-                if (!path) return '';
-                let p = String(path).trim();
-                p = p.replace(/^\/+/, '');
-                return '/' + p;
-              }
-              const thumbPath = normalizePath(image.thumbnailPath || '');
-              const mediumPath = normalizePath(image.mediumPath || '');
-              const largePath = normalizePath(image.largePath || '');
+              // Images are served from database via API route
+              const thumbUrl = `/jobs/${job._id}/images/${image._id}/thumbnail`;
+              const mediumUrl = `/jobs/${job._id}/images/${image._id}/medium`;
+              const largeUrl = `/jobs/${job._id}/images/${image._id}/large`;
             %>
-            <a href="<%= mediumPath %>" class="lightbox-link" data-medium="<%= mediumPath %>" data-large="<%= largePath %>">
-              <img src="<%= mediumPath %>" class="card-img-top thumbnail-img" alt="<%= image.originalFilename %>" onerror="console.error('Image failed to load:', this.src); this.style.backgroundColor='#f0f0f0'; this.alt='Image not found';">
+            <a href="<%= mediumUrl %>" class="lightbox-link" data-medium="<%= mediumUrl %>" data-large="<%= largeUrl %>">
+              <img src="<%= mediumUrl %>" class="card-img-top thumbnail-img" alt="<%= image.originalFilename %>" onerror="console.error('Image failed to load:', this.src); this.style.backgroundColor='#f0f0f0'; this.alt='Image not found';">
             </a>
             <div class="card-body p-2">
               <p class="card-text small mb-0 text-truncate" title="<%= image.originalFilename %>">

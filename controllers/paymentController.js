@@ -155,7 +155,7 @@ exports.newForm = async (req, res) => {
       const weekStartDate = new Date(today)
       weekStartDate.setUTCDate(today.getUTCDate() + diff)
       weekStartDate.setUTCHours(0, 0, 0, 0)
-      
+
       const weekEndDate = new Date(weekStartDate)
       weekEndDate.setUTCDate(weekStartDate.getUTCDate() + 6)
       weekEndDate.setUTCHours(23, 59, 59, 999)
@@ -172,7 +172,7 @@ exports.newForm = async (req, res) => {
 
       // Filter payouts to only include this employee's payouts
       const employeeIdStr = employeeId.toString()
-      
+
       weeklyPayouts.forEach(payout => {
         if (payout.employeePayouts && payout.employeePayouts.length > 0) {
           payout.employeePayouts.forEach(empPayout => {
@@ -326,7 +326,7 @@ exports.create = async (req, res) => {
       amount: parseFloat(amount),
       datePaid: datePaid || new Date(),
       paymentMethod: paymentMethod || 'cash',
-      checkNumber: paymentMethod === 'check' ? (checkNumber || '') : '',
+      checkNumber: paymentMethod === 'check' ? checkNumber || '' : '',
       notes: notes || '',
       createdBy: req.user._id
     })
@@ -462,7 +462,7 @@ exports.update = async (req, res) => {
     payment.amount = parseFloat(amount)
     payment.datePaid = datePaid || new Date()
     payment.paymentMethod = paymentMethod || 'cash'
-    payment.checkNumber = paymentMethod === 'check' ? (checkNumber || '') : ''
+    payment.checkNumber = paymentMethod === 'check' ? checkNumber || '' : ''
     payment.notes = notes || ''
 
     await payment.save()

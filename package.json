@@ -12,6 +12,8 @@
     "dev": "nodemon server.js",
     "create-admin": "node scripts/create-admin.js",
     "test-email": "node scripts/test-email.js",
+    "cleanup-images": "node scripts/cleanup-orphaned-images.js",
+    "cleanup-images-live": "node scripts/cleanup-orphaned-images.js --live",
     "heroku-postbuild": "echo 'Build complete'"
   },
   "keywords": [

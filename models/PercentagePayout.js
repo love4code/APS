@@ -6,41 +6,43 @@ const percentagePayoutSchema = new mongoose.Schema({
     required: true
   },
   // Employee payouts for this day
-  employeePayouts: [{
-    employee: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Employee',
-      required: true
-    },
-    payType: {
-      type: String,
-      enum: ['percentage', 'hourly'],
-      required: true
-    },
-    percentageRate: {
-      type: Number,
-      min: 0,
-      max: 100
-    },
-    hourlyRate: {
-      type: Number,
-      min: 0
-    },
-    hours: {
-      type: Number,
-      min: 0
-    },
-    flatRate: {
-      type: Number,
-      min: 0,
-      default: 0
-    },
-    payoutAmount: {
-      type: Number,
-      required: true,
-      min: 0
+  employeePayouts: [
+    {
+      employee: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Employee',
+        required: true
+      },
+      payType: {
+        type: String,
+        enum: ['percentage', 'hourly'],
+        required: true
+      },
+      percentageRate: {
+        type: Number,
+        min: 0,
+        max: 100
+      },
+      hourlyRate: {
+        type: Number,
+        min: 0
+      },
+      hours: {
+        type: Number,
+        min: 0
+      },
+      flatRate: {
+        type: Number,
+        min: 0,
+        default: 0
+      },
+      payoutAmount: {
+        type: Number,
+        required: true,
+        min: 0
+      }
     }
-  }],
+  ],
   // Job costs and materials
   jobCosts: {
     type: Number,
@@ -116,4 +118,3 @@ percentagePayoutSchema.pre('save', function (next) {
 })
 
 module.exports = mongoose.model('PercentagePayout', percentagePayoutSchema)
-
