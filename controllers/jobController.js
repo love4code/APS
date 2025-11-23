@@ -318,7 +318,7 @@ exports.detail = async (req, res) => {
     const activities = await ActivityLog.find({ job: job._id })
       .populate('user', 'name')
       .sort({ createdAt: -1 })
-      // No limit - fetch all, but display 3 by default with expand option
+    // No limit - fetch all, but display 3 by default with expand option
 
     // Get all images for this job
     // Use job._id directly (MongoDB will handle ObjectId conversion)
