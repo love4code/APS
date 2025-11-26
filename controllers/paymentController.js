@@ -40,6 +40,8 @@ exports.list = async (req, res) => {
     const payments = await Payment.find(query)
       .populate('job', 'customer totalPrice')
       .populate('job.customer', 'name')
+      .populate('jobs', 'customer totalPrice')
+      .populate('jobs.customer', 'name')
       .populate({
         path: 'recipient',
         select: 'name email firstName lastName'
@@ -101,7 +103,15 @@ exports.newForm = async (req, res) => {
     const { jobId, recipientId, recipientType, employeeId } = req.query
 
     // Get jobs that have installers or sales reps
-    const jobs = await Job.find()
+    // If recipientId and recipientType are provided, filter jobs for that recipient
+    let jobQuery = {}
+    if (recipientId && recipientType === 'installer') {
+      jobQuery.installer = recipientId
+    } else if (recipientId && recipientType === 'salesRep') {
+      jobQuery.salesRep = recipientId
+    }
+    
+    const jobs = await Job.find(jobQuery)
       .populate('customer', 'name')
       .populate('installer', 'name')
       .populate('salesRep', 'name')
@@ -267,6 +277,7 @@ exports.create = async (req, res) => {
   try {
     const {
       job,
+      jobs,
       recipient,
       recipientType,
       amount,
@@ -318,8 +329,19 @@ exports.create = async (req, res) => {
       return res.redirect('/payments/new')
     }
 
+    // Handle jobs - support both single job and multiple jobs
+    let jobsArray = []
+    if (jobs && Array.isArray(jobs)) {
+      // Filter out empty values
+      jobsArray = jobs.filter(j => j && j.trim() !== '')
+    } else if (job) {
+      // Backward compatibility: if single job is provided, add it to array
+      jobsArray = [job]
+    }
+
     const payment = new Payment({
-      job: job || null,
+      job: jobsArray.length > 0 ? jobsArray[0] : null, // Keep for backward compatibility
+      jobs: jobsArray,
       recipient,
       recipientModel,
       recipientType,
@@ -350,6 +372,10 @@ exports.detail = async (req, res) => {
       .populate('job.customer', 'name')
       .populate('job.installer', 'name')
       .populate('job.salesRep', 'name')
+      .populate('jobs')
+      .populate('jobs.customer', 'name')
+      .populate('jobs.installer', 'name')
+      .populate('jobs.salesRep', 'name')
       .populate({
         path: 'recipient',
         select: 'name email firstName lastName'
@@ -377,6 +403,7 @@ exports.editForm = async (req, res) => {
   try {
     const payment = await Payment.findById(req.params.id)
       .populate('job')
+      .populate('jobs')
       .populate('recipient', 'name')
 
     if (!payment) {
@@ -423,6 +450,7 @@ exports.update = async (req, res) => {
   try {
     const {
       job,
+      jobs,
       recipient,
       recipientType,
       amount,
@@ -455,7 +483,18 @@ exports.update = async (req, res) => {
       }
     }
 
-    payment.job = job || null
+    // Handle jobs - support both single job and multiple jobs
+    let jobsArray = []
+    if (jobs && Array.isArray(jobs)) {
+      // Filter out empty values
+      jobsArray = jobs.filter(j => j && j.trim() !== '')
+    } else if (job) {
+      // Backward compatibility: if single job is provided, add it to array
+      jobsArray = [job]
+    }
+
+    payment.job = jobsArray.length > 0 ? jobsArray[0] : null // Keep for backward compatibility
+    payment.jobs = jobsArray
     payment.recipient = recipient
     payment.recipientModel = recipientModel
     payment.recipientType = recipientType

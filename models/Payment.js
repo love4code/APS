@@ -6,6 +6,11 @@ const paymentSchema = new mongoose.Schema({
     ref: 'Job',
     required: false
   },
+  jobs: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Job',
+    required: false
+  }],
   recipient: {
     type: mongoose.Schema.Types.ObjectId,
     refPath: 'recipientModel',

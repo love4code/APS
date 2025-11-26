@@ -71,6 +71,8 @@ exports.detail = async (req, res) => {
     })
       .populate('job', 'customer totalPrice')
       .populate('job.customer', 'name')
+      .populate('jobs', 'customer totalPrice')
+      .populate('jobs.customer', 'name')
       .sort({ datePaid: -1 })
 
     // Calculate statistics

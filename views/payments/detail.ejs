@@ -91,38 +91,59 @@ $${payment.amount.toFixed(2)}` }) %>
 
       <div class="card">
         <div class="card-header">
-          <h5 class="mb-0">Related Job</h5>
+          <h5 class="mb-0">Related Jobs</h5>
         </div>
         <div class="card-body">
-          <% if (payment.job) { %>
-            <p>
-              <strong>Job:</strong>
-              <a href="/jobs/<%= payment.job._id %>">
-                Job #<%= payment.job._id.toString().slice(-6) %>
-              </a>
-            </p>
-            <p>
-              <strong>Customer:</strong>
-              <% if (payment.job.customer) { %>
-              <a href="/customers/<%= payment.job.customer._id %>">
-                <%= payment.job.customer.name %>
-              </a>
-              <% } else { %> N/A <% } %>
-            </p>
-            <p>
-              <strong>Job Total:</strong> $<%= (payment.job.totalPrice ||
-              0).toFixed(2) %>
-            </p>
-            <p>
-              <strong>Job Status:</strong>
-              <span
-                class="badge bg-<%= payment.job.status === 'complete' ? 'success' : 'secondary' %>"
-              >
-                <%= payment.job.status %>
-              </span>
-            </p>
+          <% 
+            // Get jobs from jobs array, or fall back to single job for backward compatibility
+            let displayJobs = [];
+            if (payment.jobs && payment.jobs.length > 0) {
+              displayJobs = payment.jobs;
+            } else if (payment.job) {
+              displayJobs = [payment.job];
+            }
+          %>
+          <% if (displayJobs.length > 0) { %>
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Job #</th>
+                    <th>Customer</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% displayJobs.forEach(job => { %>
+                    <tr>
+                      <td>
+                        <a href="/jobs/<%= job._id %>">
+                          Job #<%= job._id.toString().slice(-6) %>
+                        </a>
+                      </td>
+                      <td>
+                        <% if (job.customer) { %>
+                        <a href="/customers/<%= job.customer._id %>">
+                          <%= job.customer.name %>
+                        </a>
+                        <% } else { %> N/A <% } %>
+                      </td>
+                      <td>$<%= (job.totalPrice || 0).toFixed(2) %></td>
+                      <td>
+                        <span
+                          class="badge bg-<%= job.status === 'complete' ? 'success' : job.status === 'delivered' ? 'info' : job.status === 'delayed' ? 'warning' : 'secondary' %>"
+                        >
+                          <%= job.status || 'N/A' %>
+                        </span>
+                      </td>
+                    </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
           <% } else { %>
-            <p><strong>Job:</strong> N/A</p>
+            <p><strong>Jobs:</strong> N/A</p>
           <% } %>
         </div>
       </div>

@@ -662,15 +662,23 @@
                     <thead>
                       <tr>
                         <th>Date</th>
-                        <th>Job</th>
-                        <th>Customer</th>
+                        <th>Jobs</th>
+                        <th>Customers</th>
                         <th>Amount</th>
                         <th>Method</th>
                         <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <% employeePayments.forEach(payment => { %>
+                      <% employeePayments.forEach(payment => { 
+                        // Get jobs from jobs array, or fall back to single job for backward compatibility
+                        let displayJobs = [];
+                        if (payment.jobs && payment.jobs.length > 0) {
+                          displayJobs = payment.jobs;
+                        } else if (payment.job) {
+                          displayJobs = [payment.job];
+                        }
+                      %>
                         <tr>
                           <td>
                             <% 
@@ -680,19 +688,27 @@
                             <%= pDateStr %>
                           </td>
                           <td>
-                            <% if (payment.job) { %>
-                              <a href="/jobs/<%= payment.job._id %>">
-                                Job #<%= payment.job._id.toString().slice(-6) %>
-                              </a>
+                            <% if (displayJobs.length > 0) { %>
+                              <% displayJobs.forEach((job, index) => { %>
+                                <a href="/jobs/<%= job._id %>">
+                                  Job #<%= job._id.toString().slice(-6) %>
+                                </a>
+                                <% if (index < displayJobs.length - 1) { %>, <% } %>
+                              <% }) %>
                             <% } else { %>
                               N/A
                             <% } %>
                           </td>
                           <td>
-                            <% if (payment.job && payment.job.customer) { %>
-                              <a href="/customers/<%= payment.job.customer._id %>">
-                                <%= payment.job.customer.name %>
-                              </a>
+                            <% if (displayJobs.length > 0) { %>
+                              <% displayJobs.forEach((job, index) => { %>
+                                <% if (job.customer) { %>
+                                  <a href="/customers/<%= job.customer._id %>">
+                                    <%= job.customer.name %>
+                                  </a>
+                                <% } else { %>N/A<% } %>
+                                <% if (index < displayJobs.length - 1) { %>, <% } %>
+                              <% }) %>
                             <% } else { %>
                               N/A
                             <% } %>

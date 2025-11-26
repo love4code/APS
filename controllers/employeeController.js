@@ -971,6 +971,8 @@ exports.detail = async (req, res) => {
     const employeePayments = await Payment.find(paymentQuery)
       .populate('job', 'customer totalPrice')
       .populate('job.customer', 'name')
+      .populate('jobs', 'customer totalPrice')
+      .populate('jobs.customer', 'name')
       .populate('createdBy', 'name')
       .sort({ datePaid: -1 })
 

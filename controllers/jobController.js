@@ -12,16 +12,86 @@ const imageService = require('../services/imageService')
 
 exports.list = async (req, res) => {
   try {
-    // Exclude sales from jobs list - only show actual jobs
-    const jobs = await Job.find({ isSale: { $ne: true } })
+    const searchQuery = req.query.search || ''
+    const statusFilter = req.query.status || ''
+    const paymentFilter = req.query.payment || ''
+    const installerFilter = req.query.installer || ''
+    const salesRepFilter = req.query.salesRep || ''
+
+    // Build query - exclude sales from jobs list
+    const query = { isSale: { $ne: true } }
+
+    // Search by customer name
+    if (searchQuery.trim()) {
+      const customers = await Customer.find({
+        name: { $regex: searchQuery, $options: 'i' }
+      }).select('_id')
+      query.customer = { $in: customers.map(c => c._id) }
+    }
+
+    // Filter by status
+    if (statusFilter) {
+      query.status = statusFilter
+    }
+
+    // Filter by payment status
+    if (paymentFilter === 'paid') {
+      query.isPaid = true
+    } else if (paymentFilter === 'unpaid') {
+      query.isPaid = false
+    }
+
+    // Filter by installer
+    if (installerFilter) {
+      query.installer = installerFilter
+    }
+
+    // Filter by sales rep
+    if (salesRepFilter) {
+      if (salesRepFilter === 'owner') {
+        query.soldByOwner = true
+      } else {
+        query.salesRep = salesRepFilter
+        query.soldByOwner = false
+      }
+    }
+
+    const jobs = await Job.find(query)
       .populate('customer', 'name')
       .populate('salesRep', 'name')
       .populate('installer', 'name')
       .populate('items.product')
       .sort({ createdAt: -1 })
 
-    res.render('jobs/list', { title: 'All Jobs', jobs, user: req.user })
+    // Get installers and sales reps for filter dropdowns
+    const installers = await User.find({
+      isInstaller: true,
+      isActive: true
+    })
+      .sort({ name: 1 })
+      .select('name')
+
+    const salesReps = await User.find({
+      isSalesRep: true,
+      isActive: true
+    })
+      .sort({ name: 1 })
+      .select('name')
+
+    res.render('jobs/list', {
+      title: 'All Jobs',
+      jobs,
+      user: req.user,
+      searchQuery,
+      statusFilter,
+      paymentFilter,
+      installerFilter,
+      salesRepFilter,
+      installers,
+      salesReps
+    })
   } catch (error) {
+    console.error('Error loading jobs:', error)
     req.flash('error', 'Error loading jobs')
     res.redirect('/')
   }

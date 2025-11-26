@@ -5,19 +5,82 @@
     <div class="col-md-8 mx-auto">
       <h1 class="h3 mb-4"><%= payment ? 'Edit Payment' : 'Record Payment' %></h1>
 
-      <form method="POST" action="<%= payment ? `/payments/${payment._id}` : '/payments' %>">
+      <form method="POST" action="<%= payment ? `/payments/${payment._id}` : '/payments' %>" onsubmit="return validateJobsSelection()">
         <div class="mb-3">
-          <label for="job" class="form-label">Job<% if (!fromEmployeePage) { %> *<% } %></label>
-          <select class="form-select" id="job" name="job"<% if (!fromEmployeePage) { %> required<% } %>>
-            <option value="">Select a job...</option>
-            <% jobs.forEach(job => { %>
-              <option value="<%= job._id %>"<% if ((payment && payment.job && payment.job._id.toString() === job._id.toString()) || (selectedJob && selectedJob._id.toString() === job._id.toString())) { %> selected<% } %>>
-                Job #<%= job._id.toString().slice(-6) %> - 
-                <%= job.customer ? job.customer.name : 'Unknown' %> 
-                ($<%= (job.totalPrice || 0).toFixed(2) %>)
-              </option>
-            <% }) %>
-          </select>
+          <label class="form-label">Jobs<% if (!fromEmployeePage) { %> *<% } %></label>
+          <div class="jobs-select-container">
+            <div class="jobs-select-header d-flex justify-content-between align-items-center mb-2">
+              <span class="text-muted">
+                <span id="selectedJobsCount">0</span> job(s) selected
+              </span>
+              <div>
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllJobs()">Select All</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearAllJobs()">Clear All</button>
+              </div>
+            </div>
+            <div class="jobs-select-wrapper border rounded p-2" style="max-height: 300px; overflow-y: auto; background-color: #f8f9fa;">
+              <% jobs.forEach(job => { 
+                let isSelected = false;
+                if (payment && payment.jobs && payment.jobs.length > 0) {
+                  isSelected = payment.jobs.some(pj => pj._id && pj._id.toString() === job._id.toString());
+                } else if (payment && payment.job && payment.job._id && payment.job._id.toString() === job._id.toString()) {
+                  isSelected = true;
+                } else if (selectedJob && selectedJob._id && selectedJob._id.toString() === job._id.toString()) {
+                  isSelected = true;
+                }
+                
+                // Get status badge color
+                let statusBadgeClass = 'secondary';
+                if (job.status === 'complete') statusBadgeClass = 'success';
+                else if (job.status === 'delivered') statusBadgeClass = 'info';
+                else if (job.status === 'delayed') statusBadgeClass = 'warning';
+                else if (job.status === 'undelivered') statusBadgeClass = 'danger';
+              %>
+                <div class="job-option-item p-2 mb-2 rounded border <%= isSelected ? 'bg-light border-primary' : 'bg-white' %>" 
+                     style="cursor: pointer; transition: all 0.2s;"
+                     onclick="toggleJobSelection('<%= job._id %>', this)">
+                  <div class="form-check d-flex align-items-start">
+                    <input class="form-check-input job-checkbox mt-1" 
+                           type="checkbox" 
+                           name="jobs" 
+                           value="<%= job._id %>" 
+                           id="job_<%= job._id %>"
+                           <%= isSelected ? 'checked' : '' %>
+                           onchange="updateSelectedCount()">
+                    <label class="form-check-label flex-grow-1 ms-2" for="job_<%= job._id %>" style="cursor: pointer;">
+                      <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                          <strong class="text-primary">Job #<%= job._id.toString().slice(-6) %></strong>
+                          <div class="mt-1">
+                            <span class="text-muted">Customer:</span> 
+                            <strong><%= job.customer ? job.customer.name : 'Unknown' %></strong>
+                          </div>
+                          <div class="mt-1 small">
+                            <span class="text-muted">Amount:</span> 
+                            <strong class="text-success">$<%= (job.totalPrice || 0).toFixed(2) %></strong>
+                            <% if (job.installer) { %>
+                              <span class="ms-2 text-muted">• Installer: <%= job.installer.name %></span>
+                            <% } %>
+                          </div>
+                        </div>
+                        <div class="ms-3">
+                          <span class="badge bg-<%= statusBadgeClass %>">
+                            <%= job.status || 'N/A' %>
+                          </span>
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              <% }) %>
+              <% if (jobs.length === 0) { %>
+                <div class="text-center text-muted p-3">No jobs available</div>
+              <% } %>
+            </div>
+            <small class="form-text text-muted mt-2">
+              <i class="bi bi-info-circle"></i> Click on a job to select/deselect it. You can select multiple jobs for this payment.
+            </small>
+          </div>
         </div>
 
         <div class="mb-3">
@@ -155,10 +218,67 @@
     }
   }
   
+  function updateSelectedCount() {
+    const checkboxes = document.querySelectorAll('.job-checkbox:checked')
+    const countElement = document.getElementById('selectedJobsCount')
+    if (countElement) {
+      countElement.textContent = checkboxes.length
+    }
+  }
+  
+  function toggleJobSelection(jobId, element) {
+    const checkbox = document.getElementById('job_' + jobId)
+    if (checkbox) {
+      checkbox.checked = !checkbox.checked
+      updateSelectedCount()
+      
+      // Update visual state
+      if (checkbox.checked) {
+        element.classList.add('bg-light', 'border-primary')
+        element.classList.remove('bg-white')
+      } else {
+        element.classList.remove('bg-light', 'border-primary')
+        element.classList.add('bg-white')
+      }
+    }
+  }
+  
+  function selectAllJobs() {
+    const checkboxes = document.querySelectorAll('.job-checkbox')
+    const items = document.querySelectorAll('.job-option-item')
+    checkboxes.forEach(cb => cb.checked = true)
+    items.forEach(item => {
+      item.classList.add('bg-light', 'border-primary')
+      item.classList.remove('bg-white')
+    })
+    updateSelectedCount()
+  }
+  
+  function clearAllJobs() {
+    const checkboxes = document.querySelectorAll('.job-checkbox')
+    const items = document.querySelectorAll('.job-option-item')
+    checkboxes.forEach(cb => cb.checked = false)
+    items.forEach(item => {
+      item.classList.remove('bg-light', 'border-primary')
+      item.classList.add('bg-white')
+    })
+    updateSelectedCount()
+  }
+  
+  function validateJobsSelection() {
+    const checkboxes = document.querySelectorAll('.job-checkbox:checked')
+    if (checkboxes.length === 0 && !document.getElementById('fromEmployeePage')) {
+      alert('Please select at least one job for this payment.')
+      return false
+    }
+    return true
+  }
+  
   // Initialize on page load
   document.addEventListener('DOMContentLoaded', function() {
     updateRecipientOptions()
     toggleCheckNumber()
+    updateSelectedCount() // Initialize selected count
     
     // Auto-populate employee if coming from employee page
     <% if (fromEmployeePage && selectedRecipient && selectedRecipientType === 'employee') { %>
@@ -184,6 +304,30 @@
         updateRecipientOptions()
       }
     <% } %>
+    
+    // If coming from installer page, filter jobs to show only that installer's jobs
+    <% if (selectedRecipient && recipientType === 'installer') { %>
+      // Jobs are already filtered in the controller, but we can add visual indication
+      const recipientSelect = document.getElementById('recipient')
+      if (recipientSelect) {
+        recipientSelect.value = '<%= selectedRecipient._id %>'
+        updateRecipientOptions()
+      }
+    <% } %>
+    
+    // Add hover effects to job items
+    document.querySelectorAll('.job-option-item').forEach(item => {
+      item.addEventListener('mouseenter', function() {
+        if (!this.querySelector('.job-checkbox').checked) {
+          this.style.backgroundColor = '#e9ecef'
+        }
+      })
+      item.addEventListener('mouseleave', function() {
+        if (!this.querySelector('.job-checkbox').checked) {
+          this.style.backgroundColor = '#fff'
+        }
+      })
+    })
   })
 </script>
 
